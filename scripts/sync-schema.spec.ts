@@ -375,4 +375,32 @@ describe('sync-schema script (D-004, D-018)', () => {
       expect(content).not.toContain('drizzle-kit');
     }
   });
+
+  it('AC-A-12: generated mirror exports every table, enum and relation the frontend schema/index.ts exports', () => {
+    const frontendIndexPath = resolve(ROOT_DIR, '../store-forge/lib/db/schema/index.ts');
+    if (!existsSync(frontendIndexPath)) return;
+
+    const frontendIndex = readFileSync(frontendIndexPath, 'utf-8');
+    const generatedIndex = readFileSync(
+      resolve(ROOT_DIR, 'src/infrastructure/database/schema/index.ts'),
+      'utf-8',
+    );
+
+    const exportRegex = /export\s+\*\s+from\s+['"]([^'"]+)['"]/g;
+    const frontendModules = Array.from(frontendIndex.matchAll(exportRegex)).map((m) => m[1]);
+    const generatedModules = Array.from(generatedIndex.matchAll(exportRegex)).map((m) =>
+      m[1].replace('.js', ''),
+    );
+
+    expect(generatedModules.sort()).toEqual(frontendModules.sort());
+  });
+
+  it('AC-A-13: generated mirror compiles (typecheck) unmodified', () => {
+    const res = spawnSync('npm.cmd', ['run', 'typecheck'], {
+      cwd: ROOT_DIR,
+      encoding: 'utf-8',
+      shell: true,
+    });
+    expect(res.status).toBe(0);
+  });
 });
