@@ -17,6 +17,15 @@ export interface AppConfig {
     prepare: boolean;
     connectTimeoutSeconds: number;
   };
+  databaseUrl: string;
+  supabase: {
+    url: string;
+    anonKey: string;
+    serviceRoleKey: string;
+    jwksUrl?: string;
+    jwtSecret?: string;
+  };
+  throttle: { ttlMs: number; limit: number };
 }
 
 /** Pure mapping from validated environment variables to AppConfig. */
@@ -35,6 +44,24 @@ export function buildConfig(env: EnvironmentVariables): AppConfig {
       poolMax: env.DB_POOL_MAX,
       prepare: env.DB_PREPARE,
       connectTimeoutSeconds: env.DB_CONNECT_TIMEOUT_SECONDS,
+    },
+    databaseUrl: env.DATABASE_URL ?? '',
+    supabase: {
+      url: (env.SUPABASE_URL ?? 'https://placeholder.supabase.co').replace(
+        /\/$/,
+        '',
+      ),
+      anonKey:
+        env.SUPABASE_ANON_KEY ?? 'placeholder-anon-key-at-least-20-chars',
+      serviceRoleKey:
+        env.SUPABASE_SERVICE_ROLE_KEY ??
+        'placeholder-service-role-key-at-least-20-chars',
+      jwksUrl: env.SUPABASE_JWKS_URL,
+      jwtSecret: env.SUPABASE_JWT_SECRET,
+    },
+    throttle: {
+      ttlMs: (env.THROTTLE_TTL_SECONDS ?? 60) * 1000,
+      limit: env.THROTTLE_LIMIT ?? 100,
     },
   };
 }

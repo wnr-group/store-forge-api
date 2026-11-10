@@ -76,6 +76,42 @@ export class EnvironmentVariables {
   @IsInt()
   @Min(1)
   DB_CONNECT_TIMEOUT_SECONDS: number = 10;
+
+  @IsOptional()
+  @IsString()
+  SUPABASE_URL?: string;
+
+  @IsOptional()
+  @IsString()
+  SUPABASE_ANON_KEY?: string;
+
+  @IsOptional()
+  @IsString()
+  SUPABASE_SERVICE_ROLE_KEY?: string;
+
+  @IsOptional()
+  @IsString()
+  SUPABASE_JWKS_URL?: string;
+
+  @IsOptional()
+  @IsString()
+  SUPABASE_JWT_SECRET?: string;
+
+  @IsOptional()
+  @Transform(({ value }) =>
+    value === '' || value === undefined ? undefined : Number(value),
+  )
+  @IsInt()
+  @Min(1)
+  THROTTLE_TTL_SECONDS?: number;
+
+  @IsOptional()
+  @Transform(({ value }) =>
+    value === '' || value === undefined ? undefined : Number(value),
+  )
+  @IsInt()
+  @Min(1)
+  THROTTLE_LIMIT?: number;
 }
 
 /**
