@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { parseEnv } from 'node:util';
 import { TEST_ENV } from '../../test/support/test-env.js';
 import { buildConfig } from './configuration.js';
 import { NodeEnv, validateEnv } from './env.validation.js';
@@ -131,5 +133,32 @@ describe('validateEnv - Supabase and database settings', () => {
     );
     expect(config.supabase.url).toBe('https://x.supabase.co');
     expect(config.throttle).toEqual({ ttlMs: 60_000, limit: 120 });
+  });
+});
+
+describe('.env.example', () => {
+  const example = parseEnv(readFileSync('.env.example', 'utf8'));
+
+  it('passes the real validation as-is, so a fresh copy only needs real values filled in', () => {
+    const env = validateEnv(example);
+    expect(env.SUPABASE_URL).toMatch(/^https:\/\//);
+    expect(env.DATABASE_URL).toContain('storeforge_app');
+  });
+
+  it('lists every required variable (so none can be forgotten)', () => {
+    for (const name of [
+      'SUPABASE_URL',
+      'SUPABASE_ANON_KEY',
+      'SUPABASE_SERVICE_ROLE_KEY',
+      'DATABASE_URL',
+      'DIRECT_URL',
+    ])
+      expect(example, name).toHaveProperty(name);
+  });
+
+  it("keeps the privileged DIRECT_URL out of the running API's config", () => {
+    expect(Object.keys(buildConfig(validateEnv(example)))).not.toContain(
+      'directUrl',
+    );
   });
 });
