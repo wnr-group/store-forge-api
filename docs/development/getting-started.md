@@ -27,9 +27,9 @@ You should see `API listening on port 4000 under /api/v1` and `Swagger UI at /ap
 curl http://localhost:4000/api/v1/health
 ```
 
-Expected: `{"status":"ok","service":"store-forge-api"}`. Open http://localhost:4000/api/docs for Swagger UI.
+Expected: `{"success":true,"message":"Service is running","data":{"status":"ok","service":"store-forge-api"}}`. Open http://localhost:4000/api/docs for Swagger UI.
 
-This only proves the app is running. It does not check a database or any external service (none is configured).
+`/health` only proves the process is up. `GET /api/v1/health/ready` also checks the database. Fill in the Supabase and `DATABASE_URL` values in `.env` first: the app refuses to start without them (see the README's environment table).
 
 ## 4. Confirm your toolchain
 

@@ -6,6 +6,8 @@ What exists today, how the backend is meant to fit around the existing Next.js a
 
 ## What exists today (implemented)
 
+> **Update (branch `feature/nestjs-api-migration`):** the foundation below is now followed by the complete backend: Supabase JWT verification, RLS-as-user database access, tenant resolution, permissions and 74 endpoints. See [API_READINESS_REPORT.md](../API_READINESS_REPORT.md). The list that follows describes the original foundation and is kept for context.
+
 A modular-monolith NestJS 12 application with:
 
 - Global prefix (`/api/v1`), global `ValidationPipe` (whitelist, reject unknown fields, transform).
@@ -49,10 +51,10 @@ The frontend uses cookies; a separate API will most likely take a Supabase acces
 |---|---|---|
 | D-001 | Use NestJS | Approved (Eshwar's project decision; Sibi said "preferably") |
 | D-002 | Scope of "everything is set" | Foundation only, per Sibi: "Just basic setup is enough" |
-| D-003 | Auth transport (bearer token vs cookie/BFF) and token verification method | Open |
-| D-004 | Who owns the schema and migrations (today in `store-forge`, with the PGlite RLS test suite) | Open |
+| D-003 | Auth transport (bearer token vs cookie/BFF) and token verification method | **Implemented as bearer token verified against Supabase JWKS** (per the migration brief); needs team confirmation |
+| D-004 | Who owns the schema and migrations (today in `store-forge`, with the PGlite RLS test suite) | **Open.** Implemented on the assumption that `store-forge` keeps owning them; this repo creates none and its tests apply that repo's migrations |
 | D-005 | How the template engine (`lib/templates`, shared by renderer and validator) is shared or split | Open |
-| D-006 | Which responsibilities move to this API vs stay in Next.js server actions | Open |
+| D-006 | Which responsibilities move to this API vs stay in Next.js server actions | **Open.** The API implements every server-action capability except template customization; the Next.js app is unchanged and does not call it |
 | D-007 | Frontend baseline branch (`main` vs the template-engine branch) | Open |
 
 ## Security baseline and what it does not cover
