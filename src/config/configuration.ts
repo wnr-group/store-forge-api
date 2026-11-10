@@ -11,6 +11,15 @@ export interface AppConfig {
   apiPrefix: string;
   corsOrigins: string[];
   swaggerEnabled: boolean;
+  supabase: {
+    url: string;
+    anonKey: string;
+    serviceRoleKey: string;
+    jwksUrl?: string;
+    jwtSecret?: string;
+  };
+  databaseUrl: string;
+  throttle: { ttlMs: number; limit: number };
 }
 
 /** Pure mapping from validated environment variables to AppConfig. */
@@ -24,6 +33,18 @@ export function buildConfig(env: EnvironmentVariables): AppConfig {
       .filter(Boolean),
     // Swagger is on by default except in production, where it must be enabled explicitly.
     swaggerEnabled: env.SWAGGER_ENABLED ?? env.NODE_ENV !== NodeEnv.Production,
+    supabase: {
+      url: env.SUPABASE_URL.replace(/\/$/, ''),
+      anonKey: env.SUPABASE_ANON_KEY,
+      serviceRoleKey: env.SUPABASE_SERVICE_ROLE_KEY,
+      jwksUrl: env.SUPABASE_JWKS_URL,
+      jwtSecret: env.SUPABASE_JWT_SECRET,
+    },
+    databaseUrl: env.DATABASE_URL,
+    throttle: {
+      ttlMs: env.THROTTLE_TTL_SECONDS * 1000,
+      limit: env.THROTTLE_LIMIT,
+    },
   };
 }
 

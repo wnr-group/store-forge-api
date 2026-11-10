@@ -6,9 +6,11 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsUrl,
   Matches,
   Max,
   Min,
+  MinLength,
   validateSync,
 } from 'class-validator';
 
@@ -17,6 +19,13 @@ export enum NodeEnv {
   Production = 'production',
   Test = 'test',
 }
+
+/** The only login role the API may use (created by the Next.js repo's migration drizzle/0004_app_role.sql). */
+export const APP_DB_ROLE = 'storeforge_app';
+
+/** Unset variables and empty strings (`VAR=` in .env) both mean "not set". */
+const emptyToUndefined = ({ value }: { value: unknown }) =>
+  value === '' ? undefined : value;
 
 const toBoolean = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim().toLowerCase() === 'true' : value;
@@ -50,6 +59,65 @@ export class EnvironmentVariables {
   @Transform(toBoolean)
   @IsBoolean()
   SWAGGER_ENABLED?: boolean;
+
+  // --- Supabase Auth ---------------------------------------------------------------------------
+  @IsUrl({ require_tld: false, protocols: ['http', 'https'] })
+  SUPABASE_URL!: string;
+
+  @IsString()
+  @MinLength(20)
+  SUPABASE_ANON_KEY!: string;
+
+  /** Auth Admin API only (create/delete users, set passwords). Never used for database queries. */
+  @IsString()
+  @MinLength(20)
+  SUPABASE_SERVICE_ROLE_KEY!: string;
+
+  /** Defaults to `${SUPABASE_URL}/auth/v1/.well-known/jwks.json`. */
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @IsUrl({ require_tld: false, protocols: ['http', 'https'] })
+  SUPABASE_JWKS_URL?: string;
+
+  /** Only for legacy projects that still sign access tokens with a shared HS256 secret. */
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @IsString()
+  @MinLength(16)
+  SUPABASE_JWT_SECRET?: string;
+
+  // --- PostgreSQL ------------------------------------------------------------------------------
+  @IsString()
+  @Matches(/^postgres(ql)?:\/\//, {
+    message: 'DATABASE_URL must be a postgres:// or postgresql:// URL',
+  })
+  DATABASE_URL!: string;
+
+  // --- Rate limiting (global default; sensitive routes set their own) -------------------------
+  @Transform(({ value }) => (value === '' ? undefined : Number(value)))
+  @IsInt()
+  @Min(1)
+  THROTTLE_TTL_SECONDS: number = 60;
+
+  @Transform(({ value }) => (value === '' ? undefined : Number(value)))
+  @IsInt()
+  @Min(1)
+  THROTTLE_LIMIT: number = 120;
+}
+
+/**
+ * Defence in depth: ordinary queries must never run as the owner role, which BYPASSES row level security.
+ * Supavisor prefixes the project ref, so the user looks like "<role>.<ref>".
+ */
+export function privilegedDatabaseUserProblem(url: string): string | null {
+  try {
+    const user = decodeURIComponent(new URL(url).username);
+    if (user === 'postgres' || user.startsWith('postgres.'))
+      return `DATABASE_URL: must connect as the ${APP_DB_ROLE} role, not the postgres owner role (which bypasses row level security)`;
+    return null;
+  } catch {
+    return 'DATABASE_URL: not a valid URL';
+  }
 }
 
 /**
@@ -71,6 +139,9 @@ export function validateEnv(
       `Invalid environment configuration - ${details.join('; ')}. See .env.example.`,
     );
   }
+  const roleProblem = privilegedDatabaseUserProblem(validated.DATABASE_URL);
+  if (roleProblem)
+    throw new Error(`Invalid environment configuration - ${roleProblem}.`);
   if (
     validated.NODE_ENV === NodeEnv.Production &&
     validated.CORS_ORIGINS.split(',').some((o) => o.trim() === '*')
