@@ -1,17 +1,31 @@
 import type { PGlite } from '@electric-sql/pglite';
 
+export async function withSuperuser<T>(
+  pg: PGlite,
+  fn: () => Promise<T>,
+): Promise<T> {
+  await pg.exec('set session authorization postgres');
+  try {
+    return await fn();
+  } finally {
+    await pg.exec('set session authorization storeforge_app').catch(() => {});
+  }
+}
+
 export async function createUser(
   pg: PGlite,
   opts: { email: string; fullName?: string },
 ): Promise<string> {
-  const meta = JSON.stringify(
-    opts.fullName ? { full_name: opts.fullName } : {},
-  );
-  const res = await pg.query<{ id: string }>(
-    'insert into auth.users (email, raw_user_meta_data) values ($1, $2::jsonb) returning id',
-    [opts.email, meta],
-  );
-  return res.rows[0].id;
+  return withSuperuser(pg, async () => {
+    const meta = JSON.stringify(
+      opts.fullName ? { full_name: opts.fullName } : {},
+    );
+    const res = await pg.query<{ id: string }>(
+      'insert into auth.users (email, raw_user_meta_data) values ($1, $2::jsonb) returning id',
+      [opts.email, meta],
+    );
+    return res.rows[0].id;
+  });
 }
 
 export async function asUser<T>(
@@ -22,17 +36,19 @@ export async function asUser<T>(
   const claims = userId
     ? JSON.stringify({ sub: userId, role: 'authenticated' })
     : '{}';
-  await pg.query("select set_config('request.jwt.claims', $1, false)", [
-    claims,
-  ]);
-  await pg.exec(`set role ${userId ? 'authenticated' : 'anon'}`);
+  await pg.exec('set session authorization postgres');
   try {
+    await pg.query("select set_config('request.jwt.claims', $1, false)", [
+      claims,
+    ]);
+    await pg.exec(`set role ${userId ? 'authenticated' : 'anon'}`);
     return await fn();
   } finally {
     await pg.exec('reset role').catch(() => {});
     await pg
       .query("select set_config('request.jwt.claims', '', false)")
       .catch(() => {});
+    await pg.exec('set session authorization storeforge_app').catch(() => {});
   }
 }
 
@@ -40,22 +56,32 @@ export async function createPlatformAdmin(
   pg: PGlite,
   opts: { email?: string; role?: 'super_admin' | 'admin' } = {},
 ): Promise<string> {
-  const email = opts.email ?? 'platform.admin@example.test';
-  const role = opts.role ?? 'super_admin';
+  return withSuperuser(pg, async () => {
+    const email = opts.email ?? 'platform.admin@example.test';
+    const role = opts.role ?? 'super_admin';
 
-  const existing = await pg.query<{ id: string }>(
-    'select id from auth.users where email = $1',
-    [email],
-  );
-  const id =
-    existing.rows[0]?.id ??
-    (await createUser(pg, { email, fullName: 'Platform Admin' }));
+    const existing = await pg.query<{ id: string }>(
+      'select id from auth.users where email = $1',
+      [email],
+    );
+    let id: string;
+    if (existing.rows[0]) {
+      id = existing.rows[0].id;
+    } else {
+      const meta = JSON.stringify({ full_name: 'Platform Admin' });
+      const res = await pg.query<{ id: string }>(
+        'insert into auth.users (email, raw_user_meta_data) values ($1, $2::jsonb) returning id',
+        [email, meta],
+      );
+      id = res.rows[0].id;
+    }
 
-  await pg.query(
-    'insert into platform_admins (user_id, role) values ($1, $2) on conflict do nothing',
-    [id, role],
-  );
-  return id;
+    await pg.query(
+      'insert into platform_admins (user_id, role) values ($1, $2) on conflict do nothing',
+      [id, role],
+    );
+    return id;
+  });
 }
 
 export async function createTenantWithOwner(
@@ -101,25 +127,27 @@ export async function addMember(
     status?: 'active' | 'disabled';
   },
 ): Promise<string> {
-  const permissions = JSON.stringify(
-    opts.permissions ?? {
-      products: 'write',
-      orders: 'write',
-      customers: 'write',
-      settings: 'write',
-    },
-  );
-  const res = await pg.query<{ id: string }>(
-    `insert into public.memberships (tenant_id, user_id, role, permissions, status)
-     values ($1, $2, $3, $4::jsonb, $5)
-     returning id`,
-    [
-      opts.tenantId,
-      opts.userId,
-      opts.role ?? 'admin',
-      permissions,
-      opts.status ?? 'active',
-    ],
-  );
-  return res.rows[0].id;
+  return withSuperuser(pg, async () => {
+    const permissions = JSON.stringify(
+      opts.permissions ?? {
+        products: 'write',
+        orders: 'write',
+        customers: 'write',
+        settings: 'write',
+      },
+    );
+    const res = await pg.query<{ id: string }>(
+      `insert into public.memberships (tenant_id, user_id, role, permissions, status)
+       values ($1, $2, $3, $4::jsonb, $5)
+       returning id`,
+      [
+        opts.tenantId,
+        opts.userId,
+        opts.role ?? 'admin',
+        permissions,
+        opts.status ?? 'active',
+      ],
+    );
+    return res.rows[0].id;
+  });
 }
