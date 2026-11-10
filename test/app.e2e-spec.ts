@@ -1,0 +1,65 @@
+import { Test } from '@nestjs/testing';
+import type { INestApplication } from '@nestjs/common';
+import request from 'supertest';
+import type { App } from 'supertest/types.js';
+import { AppModule } from '../src/app.module.js';
+import { configureApp } from '../src/app.setup.js';
+
+describe('API foundation (e2e)', () => {
+  let app: INestApplication<App>;
+
+  beforeAll(async () => {
+    const moduleRef = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+    app = moduleRef.createNestApplication();
+    configureApp(app); // same prefix, pipes, filters, headers, CORS and Swagger as main.ts
+    await app.init();
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it('GET /api/v1/health returns the liveness payload without authentication', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/v1/health')
+      .expect(200);
+    expect(res.body).toEqual({ status: 'ok', service: 'store-forge-api' });
+  });
+
+  it('serves Swagger UI and an OpenAPI document that lists only the health endpoint', async () => {
+    await request(app.getHttpServer()).get('/api/docs').expect(200);
+    const res = await request(app.getHttpServer())
+      .get('/api/docs-json')
+      .expect(200);
+    expect(Object.keys(res.body.paths)).toEqual(['/api/v1/health']);
+  });
+
+  it('returns the shared error shape for unknown routes', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/v1/nope')
+      .expect(404);
+    expect(res.body).toMatchObject({ statusCode: 404, path: '/api/v1/nope' });
+    expect(typeof res.body.timestamp).toBe('string');
+  });
+
+  it('sends security headers and hides the framework', async () => {
+    const res = await request(app.getHttpServer()).get('/api/v1/health');
+    expect(res.headers['x-content-type-options']).toBe('nosniff');
+    expect(res.headers['x-powered-by']).toBeUndefined();
+  });
+
+  it('allows the configured CORS origin and not others', async () => {
+    const allowed = await request(app.getHttpServer())
+      .get('/api/v1/health')
+      .set('Origin', 'http://localhost:3000');
+    expect(allowed.headers['access-control-allow-origin']).toBe(
+      'http://localhost:3000',
+    );
+    const denied = await request(app.getHttpServer())
+      .get('/api/v1/health')
+      .set('Origin', 'http://evil.test');
+    expect(denied.headers['access-control-allow-origin']).toBeUndefined();
+  });
+});
