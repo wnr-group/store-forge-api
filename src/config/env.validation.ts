@@ -86,6 +86,25 @@ export class EnvironmentVariables {
   @MinLength(16)
   SUPABASE_JWT_SECRET?: string;
 
+  // --- Session / BFF ---------------------------------------------------------------------------
+  /**
+   * Shared secret of the trusted server-side caller (the Next.js app, which relays the session cookies). Sent as
+   * `X-Internal-Auth`. Without it a caller cannot supply the client address used for login rate limiting, and a
+   * request without a browser `Origin` is refused on the cookie-session routes.
+   */
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @IsString()
+  @MinLength(32)
+  AUTH_BFF_SECRET?: string;
+
+  /** Keys the hashes behind login rate limiting. Defaults to the service-role key (which never leaves the server). */
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @IsString()
+  @MinLength(16)
+  RATE_LIMIT_SECRET?: string;
+
   // --- PostgreSQL ------------------------------------------------------------------------------
   @IsString()
   @Matches(/^postgres(ql)?:\/\//, {

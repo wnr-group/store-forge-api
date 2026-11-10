@@ -18,6 +18,7 @@ export interface AppConfig {
     jwksUrl?: string;
     jwtSecret?: string;
   };
+  auth: { bffSecret?: string; rateLimitSecret?: string };
   databaseUrl: string;
   throttle: { ttlMs: number; limit: number };
 }
@@ -39,6 +40,10 @@ export function buildConfig(env: EnvironmentVariables): AppConfig {
       serviceRoleKey: env.SUPABASE_SERVICE_ROLE_KEY,
       jwksUrl: env.SUPABASE_JWKS_URL,
       jwtSecret: env.SUPABASE_JWT_SECRET,
+    },
+    auth: {
+      bffSecret: env.AUTH_BFF_SECRET,
+      rateLimitSecret: env.RATE_LIMIT_SECRET,
     },
     databaseUrl: env.DATABASE_URL,
     throttle: {

@@ -13,9 +13,21 @@ export const JWT_KEY_RESOLVER = Symbol('JWT_KEY_RESOLVER');
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+function fullNameClaim(metadata: unknown): string | null {
+  const name =
+    typeof metadata === 'object' && metadata !== null
+      ? (metadata as { full_name?: unknown }).full_name
+      : null;
+  return typeof name === 'string' && name ? name : null;
+}
+
 export interface VerifiedIdentity {
   id: string;
   email: string | null;
+  /** Unix seconds. */
+  expiresAt: number | undefined;
+  /** `user_metadata.full_name` claim (kept in step with the profile on refresh); null when absent. */
+  fullName: string | null;
 }
 
 /**
@@ -79,6 +91,8 @@ export class SupabaseJwtService {
       return {
         id: payload.sub,
         email: typeof payload.email === 'string' ? payload.email : null,
+        expiresAt: typeof payload.exp === 'number' ? payload.exp : undefined,
+        fullName: fullNameClaim(payload.user_metadata),
       };
     } catch (error) {
       if (error instanceof errors.JWTExpired) {

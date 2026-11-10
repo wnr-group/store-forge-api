@@ -55,6 +55,8 @@ What the script does, and does not do:
 
 Tokens last about an hour (the Supabase project's JWT expiry). Run the command again when one expires.
 
+> **Alternative without the script:** `POST /api/v1/auth/login` works from Swagger "Try it out" (same origin). It sets the session in an HttpOnly cookie in your browser, after which Swagger's requests are authenticated by the cookie and no Authorize step is needed. Use `POST /auth/logout` to clear it.
+
 ## Step 4: Authorize Swagger
 
 1. Click the green **Authorize** button (top right) or any padlock.

@@ -33,7 +33,7 @@ const hs256 = (
 describe('SupabaseJwtService (legacy HS256 projects)', () => {
   it('verifies a token signed with the shared secret and returns the identity', async () => {
     const svc = new SupabaseJwtService(config(SECRET));
-    await expect(svc.verify(await hs256())).resolves.toEqual({
+    await expect(svc.verify(await hs256())).resolves.toMatchObject({
       id: SUB,
       email: 'a@b.test',
     });
@@ -107,6 +107,9 @@ describe('SupabaseJwtService (legacy HS256 projects)', () => {
       .setAudience('authenticated')
       .setExpirationTime('1h')
       .sign(new TextEncoder().encode(SECRET));
-    await expect(svc.verify(token)).resolves.toEqual({ id: SUB, email: null });
+    await expect(svc.verify(token)).resolves.toMatchObject({
+      id: SUB,
+      email: null,
+    });
   });
 });

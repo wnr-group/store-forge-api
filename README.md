@@ -52,6 +52,8 @@ cp .env.example .env     # Windows PowerShell: Copy-Item .env.example .env
 | `SUPABASE_JWKS_URL` | no | Defaults to `${SUPABASE_URL}/auth/v1/.well-known/jwks.json` |
 | `SUPABASE_JWT_SECRET` | no | Only for legacy projects that still sign tokens with a shared HS256 secret |
 | `DATABASE_URL` | **yes** | Transaction pooler URL as `storeforge_app.<ref>`. **The app refuses to start as `postgres`** (it bypasses RLS) |
+| `AUTH_BFF_SECRET` | no (recommended) | 32+ character secret shared with the Next.js server; lets it supply the real visitor address and call the cookie routes without a browser Origin |
+| `RATE_LIMIT_SECRET` | no | Keys the login rate-limit hashes (defaults to the service-role key) |
 | `THROTTLE_TTL_SECONDS` / `THROTTLE_LIMIT` | no (`60` / `120`) | Global per-client rate limit; sensitive routes set stricter limits |
 
 Supabase dashboard settings: **Auth > Providers > Email > "Confirm email" must be OFF** (StoreForge has no email verification; provisioned accounts are also created pre-confirmed). Public sign-ups are not used by StoreForge.
@@ -68,12 +70,12 @@ Production-style run: `npm run build && npm run start:prod`.
 
 ## Authentication in one minute
 
-1. The client signs in with the **Supabase SDK** (`signInWithPassword`), exactly as the Next.js app does today. Sign-in, sign-out and token refresh are **not** API endpoints.
-2. It sends `Authorization: Bearer <access_token>`. The API verifies signature, issuer, audience, expiry and `role = authenticated`; it issues no tokens and stores no passwords.
+1. **Browsers** sign in through the API: `POST /auth/login` checks the credentials with Supabase Auth and sets **HttpOnly** session cookies (`/auth/logout`, `/auth/refresh`, `/auth/session` complete the flow). The Next.js app calls these server-to-server and relays the cookies. **API clients / Swagger** can instead sign in with the Supabase SDK (or `npm run auth:token`) and send `Authorization: Bearer <access_token>`.
+2. Either token is verified for signature, issuer, audience, expiry and `role = authenticated`; the API issues no tokens of its own and stores no passwords. There is **no sign-up**: login only works for existing accounts.
 3. Roles and permissions are **never** read from the token. They come from Postgres on every request (`memberships`, `platform_admins`).
 4. Organization-scoped routes act on the organization named by the `X-Organization-Id` header, which is only a hint: it must match one of the caller's active memberships, otherwise `403 ORGANIZATION_ACCESS_DENIED`. Without the header the caller's first organization is used.
 
-Details: [docs/AUTHENTICATION_ANALYSIS.md](docs/AUTHENTICATION_ANALYSIS.md), [docs/AUTHENTICATION_MIGRATION_PLAN.md](docs/AUTHENTICATION_MIGRATION_PLAN.md), [docs/ROLE_PERMISSION_MATRIX.md](docs/ROLE_PERMISSION_MATRIX.md).
+Cookie session, CSRF, rate limiting, rollout and rollback: [docs/COOKIE_SESSION_AUTH.md](docs/COOKIE_SESSION_AUTH.md). Details: [docs/AUTHENTICATION_ANALYSIS.md](docs/AUTHENTICATION_ANALYSIS.md), [docs/AUTHENTICATION_MIGRATION_PLAN.md](docs/AUTHENTICATION_MIGRATION_PLAN.md), [docs/ROLE_PERMISSION_MATRIX.md](docs/ROLE_PERMISSION_MATRIX.md).
 
 ## Testing APIs with Swagger
 

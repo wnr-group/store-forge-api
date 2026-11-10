@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { AppException, invalid } from '../../common/app.exception.js';
 import type { AuthUser } from '../../common/interfaces/request-context.js';
 import { listActiveMemberships } from '../../common/tenancy/memberships.js';
 import type { AppConfig } from '../../config/configuration.js';
 import { DatabaseService, rowsOf } from '../../database/database.service.js';
+import { profiles } from '../../database/schema/index.js';
 import type { ChangePasswordDto, MeDto } from './auth.dto.js';
 
 type AuthError = { code?: string; status?: number; message?: string };
@@ -24,16 +25,21 @@ export class AuthService {
 
   /** Who the verified token belongs to, plus everything the database says about them. */
   async me(user: AuthUser): Promise<MeDto> {
-    const { memberships, level } = await this.db.withUser(
+    const { memberships, level, fullName } = await this.db.withUser(
       user.id,
       async (tx) => {
-        const [memberships, roleRows] = await Promise.all([
+        const [memberships, roleRows, profile] = await Promise.all([
           listActiveMemberships(tx, user.id),
           tx.execute(sql`select public.platform_admin_role() as r`),
+          tx
+            .select({ fullName: profiles.fullName })
+            .from(profiles)
+            .where(eq(profiles.id, user.id)),
         ]);
         const role = rowsOf<{ r: string | null }>(roleRows)[0]?.r;
         return {
           memberships,
+          fullName: profile[0]?.fullName ?? null,
           level: (role === 'super_admin' || role === 'admin'
             ? role
             : null) as MeDto['platformAdminLevel'],
@@ -43,6 +49,7 @@ export class AuthService {
     return {
       id: user.id,
       email: user.email,
+      fullName,
       platformAdminLevel: level,
       memberships: memberships.map((m) => ({
         organizationId: m.tenant.id,

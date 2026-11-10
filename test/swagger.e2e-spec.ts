@@ -21,6 +21,9 @@ const METHODS = ['get', 'post', 'patch', 'put', 'delete'] as const;
 const PUBLIC_ROUTES = new Set([
   'GET /api/v1/health',
   'GET /api/v1/health/ready',
+  'POST /api/v1/auth/login',
+  'POST /api/v1/auth/logout',
+  'POST /api/v1/auth/refresh',
   'GET /api/v1/public/branding',
   'GET /api/v1/public/storefronts/{slug}',
 ]);
@@ -70,8 +73,8 @@ describe('OpenAPI coverage (e2e)', () => {
     await app.close();
   });
 
-  it('documents every endpoint listed in docs/API_ENDPOINT_INVENTORY.md (plus health/ready)', () => {
-    expect(operations.length).toBe(74);
+  it('documents every endpoint listed in docs/API_ENDPOINT_INVENTORY.md (74 migrated + the 4 cookie-session routes)', () => {
+    expect(operations.length).toBe(78);
   });
 
   it('gives every operation a summary, a description, a tag, a success and an error response', () => {
@@ -111,7 +114,11 @@ describe('OpenAPI coverage (e2e)', () => {
   });
 
   it('documents the request body of every POST / PATCH that takes one, and the path params of every route', () => {
-    const noBody = new Set(['POST /api/v1/products/{id}/duplicate']);
+    const noBody = new Set([
+      'POST /api/v1/products/{id}/duplicate',
+      'POST /api/v1/auth/logout', // the session is the cookie
+      'POST /api/v1/auth/refresh',
+    ]);
     const problems: string[] = [];
     for (const { key, op } of operations) {
       const path = key.split(' ')[1];

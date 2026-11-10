@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { AppThrottlerGuard } from './common/guards/app-throttler.guard.js';
+import { CsrfGuard } from './common/guards/csrf.guard.js';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard.js';
 import { OrganizationContextGuard } from './common/guards/organization-context.guard.js';
 import { PermissionsGuard } from './common/guards/permissions.guard.js';
@@ -59,8 +61,9 @@ import { UsersModule } from './modules/users/users.module.js';
     PlatformAdminModule,
   ],
   providers: [
-    // Order matters: throttle -> authenticate -> resolve organization -> permission -> platform admin.
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    // Order matters: throttle -> CSRF -> authenticate -> resolve organization -> permission -> platform admin.
+    { provide: APP_GUARD, useClass: AppThrottlerGuard },
+    { provide: APP_GUARD, useClass: CsrfGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: OrganizationContextGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },

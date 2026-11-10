@@ -100,7 +100,7 @@ All passing (`test/auth-tenancy.e2e-spec.ts`, `test/store-team.e2e-spec.ts`, `te
 ## Remaining issues
 
 1. **Not exercised against a real Supabase project.** JWKS fetching, the Auth Admin API, Storage signed uploads/list/remove and `signInWithPassword` are covered by fakes at their boundary; the Supabase-side behaviour is as documented, not observed. Run the smoke checklist below against a staging project before relying on it.
-2. **Login rate limiting is not replicated** (`rate_limit_login`): the API never sees logins. Supabase's own limits apply; the frontend integration phase must decide whether to keep a server-side limiter in front of sign-in.
+2. ~~Login rate limiting is not replicated~~ **Resolved:** `POST /auth/login` now applies the same `rate_limit_login` limits before the password check (see [COOKIE_SESSION_AUTH.md](COOKIE_SESSION_AUTH.md)).
 3. **Two transactions per request** (organization resolution, then the work). With the remote pooler (the frontend team measured about 129 ms per round trip) this costs latency. Easy wins when needed: resolve membership inside the service transaction, or cache memberships for a few seconds.
 4. **No CI yet**, so nothing enforces running the database-backed tests (they use `src/database/migrations`). The two copies of the migrations (this repo and the Next.js repo) must be kept in step until D-004 is decided.
 5. **Open team decisions** from `docs/architecture/overview.md`: D-004 (who owns schema/migrations long term) and D-006 (what finally moves from server actions to this API). This implementation assumes the Next.js repo keeps owning the schema.

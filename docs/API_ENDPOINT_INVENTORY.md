@@ -25,6 +25,15 @@ Base path `/api/v1`. All JSON. Success envelope `{success,message,data,meta?}`; 
 | 6 | users | Read own profile | GET `/users/me` | JWT | self | - | `{id,email,fullName}` | `profiles` | `getOwnProfile` |
 | 7 | users | Update own name | PATCH `/users/me` | JWT | self | `{fullName}` 2-120 | profile | `profiles`, Auth metadata | RLS own row; Auth metadata kept in step (best effort) (`updateOwnName`) |
 
+## Cookie session (added with the authentication migration)
+
+| # | Feature | Endpoint | Auth | Request | Response | Logic |
+|---|---|---|---|---|---|---|
+| 75 | Sign in (existing accounts only) | POST `/auth/login` | Public + origin/secret check | `{email, password}` | safe profile; **HttpOnly cookies** | Supabase password grant; DB login rate limit counted first; never creates users/orgs |
+| 76 | Sign out | POST `/auth/logout` | Public + origin/secret check | - | `{signedOut}` | revokes at Supabase, always clears cookies |
+| 77 | Refresh session | POST `/auth/refresh` | Public + origin/secret check | - (cookie) | `{user, expiresAt}`; new cookies | refresh token rotation; used/revoked -> cookies cleared, 401 `SESSION_EXPIRED` |
+| 78 | Verify session | GET `/auth/session` | JWT (Bearer or cookie) | - | `{user:{id,email,fullName}, expiresAt}` | local signature/issuer/audience/expiry check, no database |
+
 ## Workspace & store
 
 | # | Module | Feature | Endpoint | Auth | Permission | Request | Response | DB | Logic |
@@ -118,4 +127,4 @@ All: Auth `JWT+Org`, permission `members:manage`. DB `memberships`, `profiles`, 
 | 72 | Inactive orgs `?days&limit` | GET `/platform/usage/inactive` | admin | - | - |
 | 73 | New-org series `?from&to` | GET `/platform/usage/new-organizations` | admin | - | bucket from `resolveSeriesRange` |
 
-**Total identified: 74** (the 73 migrated features + the readiness probe). Intentionally absent: sign in/out/refresh (Supabase SDK), anything template-related, orders CRUD, billing/subscriptions/integrations.
+**Total identified: 78** (the 73 migrated features + the readiness probe + the 4 cookie-session routes below). See [COOKIE_SESSION_AUTH.md](COOKIE_SESSION_AUTH.md). Intentionally absent: sign in/out/refresh (Supabase SDK), anything template-related, orders CRUD, billing/subscriptions/integrations.

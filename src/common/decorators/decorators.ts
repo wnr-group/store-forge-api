@@ -10,6 +10,13 @@ export const IS_PUBLIC = 'isPublic';
 /** Opts a route out of the global Supabase JWT guard. */
 export const Public = () => SetMetadata(IS_PUBLIC, true);
 
+export const CSRF_PROTECTED = 'csrfProtected';
+/**
+ * The route signs in, out or refreshes the cookie session, so even a request without a cookie must prove its origin
+ * (a browser origin from the allowlist, or the trusted frontend server's shared secret). See CsrfGuard.
+ */
+export const CsrfProtected = () => SetMetadata(CSRF_PROTECTED, true);
+
 export const ORG_SCOPED = 'orgScoped';
 /**
  * The route works on one organization's data. The OrganizationContextGuard resolves the caller's membership from

@@ -1,6 +1,21 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsString, MaxLength, MinLength } from 'class-validator';
-import { PasswordField } from '../../common/validation/fields.js';
+import { EmailField, PasswordField } from '../../common/validation/fields.js';
+
+/** Same rules as the Next.js login form: a trimmed, lower-cased e-mail and a non-empty password of at most 72 characters. */
+export class LoginDto {
+  @ApiProperty({ example: 'owner@example.com' })
+  @EmailField('Email')
+  email!: string;
+
+  @ApiProperty({
+    description: 'The existing account password. Never stored or logged.',
+  })
+  @IsString({ message: 'Enter your password' })
+  @MinLength(1, { message: 'Enter your password' })
+  @MaxLength(72)
+  password!: string;
+}
 
 export class ChangePasswordDto {
   @ApiProperty({ description: 'Current password, re-verified with Supabase.' })
@@ -37,6 +52,11 @@ export class MembershipDto {
 export class MeDto {
   @ApiProperty({ format: 'uuid' }) id!: string;
   @ApiPropertyOptional({ nullable: true }) email!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Display name from the profile.',
+  })
+  fullName!: string | null;
   @ApiProperty({
     enum: ['super_admin', 'admin'],
     nullable: true,
@@ -44,4 +64,37 @@ export class MeDto {
   })
   platformAdminLevel!: 'super_admin' | 'admin' | null;
   @ApiProperty({ type: [MembershipDto] }) memberships!: MembershipDto[];
+}
+
+/** What a successful sign-in returns: the safe profile (no tokens: those are only in HttpOnly cookies). */
+export class LoginResponseDto extends MeDto {
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'Unix time (seconds) at which the access token in the cookie expires.',
+  })
+  expiresAt!: number | null;
+}
+
+export class SessionUserDto {
+  @ApiProperty({ format: 'uuid' }) id!: string;
+  @ApiPropertyOptional({ nullable: true }) email!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Display name from the token (`user_metadata.full_name`).',
+  })
+  fullName?: string | null;
+}
+
+export class SessionDto {
+  @ApiProperty({ type: SessionUserDto }) user!: SessionUserDto;
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Unix time (seconds) at which the access token expires.',
+  })
+  expiresAt!: number | null;
+}
+
+export class SignedOutDto {
+  @ApiProperty({ example: true }) signedOut!: boolean;
 }
