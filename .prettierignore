@@ -4,5 +4,6 @@ src/infrastructure/database/schema/
 src/infrastructure/database/relations.ts
 src/infrastructure/database/template-deps/
 src/infrastructure/database/migrations-snapshot/
+src/infrastructure/templates-engine/
 test/fixtures/
 

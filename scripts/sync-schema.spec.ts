@@ -426,4 +426,259 @@ describe('sync-schema script (D-004, D-018)', () => {
     expect(content).not.toContain('echo $STORE_FORGE_READ_TOKEN');
     expect(content).not.toContain('echo ${{ secrets.STORE_FORGE_READ_TOKEN }}');
   });
+
+  describe('templates-engine sync (D2, D3, Task 1.1)', () => {
+    it('AC-LIFE-001: sync copies the templates-engine closure with directory structure', () => {
+      const realSourceDir = resolve(ROOT_DIR, '../store-forge');
+      if (!existsSync(realSourceDir)) return;
+
+      const res = runScript([
+        'sync',
+        '--source',
+        realSourceDir,
+        '--target',
+        tempTargetDir,
+      ]);
+      expect(res.status).toBe(0);
+
+      // Root templates-engine files
+      expect(
+        existsSync(
+          resolve(
+            tempTargetDir,
+            'src/infrastructure/templates-engine/document.ts',
+          ),
+        ),
+      ).toBe(true);
+      expect(
+        existsSync(
+          resolve(
+            tempTargetDir,
+            'src/infrastructure/templates-engine/limits.ts',
+          ),
+        ),
+      ).toBe(true);
+      expect(
+        existsSync(
+          resolve(
+            tempTargetDir,
+            'src/infrastructure/templates-engine/presets.ts',
+          ),
+        ),
+      ).toBe(true);
+      expect(
+        existsSync(
+          resolve(
+            tempTargetDir,
+            'src/infrastructure/templates-engine/registry.ts',
+          ),
+        ),
+      ).toBe(true);
+
+      // Subdirectory structure preserved
+      expect(
+        existsSync(
+          resolve(
+            tempTargetDir,
+            'src/infrastructure/templates-engine/engine/validate.ts',
+          ),
+        ),
+      ).toBe(true);
+      expect(
+        existsSync(
+          resolve(
+            tempTargetDir,
+            'src/infrastructure/templates-engine/engine/migrate.ts',
+          ),
+        ),
+      ).toBe(true);
+      expect(
+        existsSync(
+          resolve(
+            tempTargetDir,
+            'src/infrastructure/templates-engine/registry/index.ts',
+          ),
+        ),
+      ).toBe(true);
+      expect(
+        existsSync(
+          resolve(
+            tempTargetDir,
+            'src/infrastructure/templates-engine/registry/sections/hero.ts',
+          ),
+        ),
+      ).toBe(true);
+      expect(
+        existsSync(
+          resolve(
+            tempTargetDir,
+            'src/infrastructure/templates-engine/registry/blocks/button.ts',
+          ),
+        ),
+      ).toBe(true);
+      expect(
+        existsSync(
+          resolve(
+            tempTargetDir,
+            'src/infrastructure/templates-engine/registry/presets/classic.ts',
+          ),
+        ),
+      ).toBe(true);
+    });
+
+    it('AC-LIFE-001: check fails with exit 1 if an unclassified file exists under source lib/templates', () => {
+      const unclassifiedSourceDir = mkdtempSync(
+        join(tmpdir(), 'unclassified-source-'),
+      );
+      try {
+        mkdirSync(resolve(unclassifiedSourceDir, 'lib/db/schema'), {
+          recursive: true,
+        });
+        mkdirSync(resolve(unclassifiedSourceDir, 'lib/templates'), {
+          recursive: true,
+        });
+        writeFileSync(
+          resolve(unclassifiedSourceDir, 'lib/db/schema/stores.ts'),
+          'export const x = 1;\n',
+        );
+        writeFileSync(
+          resolve(unclassifiedSourceDir, 'lib/templates/document.ts'),
+          'export const doc = 1;\n',
+        );
+        writeFileSync(
+          resolve(unclassifiedSourceDir, 'lib/templates/limits.ts'),
+          'export const limits = 1;\n',
+        );
+        // Unclassified file
+        writeFileSync(
+          resolve(unclassifiedSourceDir, 'lib/templates/unclassified-mystery.ts'),
+          'export const mystery = true;\n',
+        );
+
+        const res = runScript([
+          'check',
+          '--source',
+          unclassifiedSourceDir,
+          '--target',
+          tempTargetDir,
+        ]);
+        expect(res.status).toBe(1);
+        expect(res.stderr).toContain('Unclassified');
+        expect(res.stderr).toContain('unclassified-mystery.ts');
+      } finally {
+        rmSync(unclassifiedSourceDir, { recursive: true, force: true });
+      }
+    });
+
+    it('AC-LIFE-001: ./registry resolves to registry.js and ./registry/index resolves to registry/index.js', () => {
+      const mockDir = mkdtempSync(join(tmpdir(), 'registry-resolve-mock-'));
+      try {
+        mkdirSync(resolve(mockDir, 'lib/db/schema'), { recursive: true });
+        mkdirSync(resolve(mockDir, 'lib/templates/registry'), {
+          recursive: true,
+        });
+        writeFileSync(
+          resolve(mockDir, 'lib/db/schema/dummy.ts'),
+          'export const d = 1;\n',
+        );
+        writeFileSync(
+          resolve(mockDir, 'lib/templates/document.ts'),
+          'export const d = 1;\n',
+        );
+        writeFileSync(
+          resolve(mockDir, 'lib/templates/limits.ts'),
+          'export const l = 1;\n',
+        );
+        writeFileSync(
+          resolve(mockDir, 'lib/templates/registry.ts'),
+          'export const reg = "registry";\n',
+        );
+        writeFileSync(
+          resolve(mockDir, 'lib/templates/registry/index.ts'),
+          'export const regIdx = "registry/index";\n',
+        );
+        writeFileSync(
+          resolve(mockDir, 'lib/templates/presets.ts'),
+          'import { reg } from "./registry";\nimport { regIdx } from "./registry/index";\nexport { reg, regIdx };\n',
+        );
+
+        const res = runScript([
+          'sync',
+          '--source',
+          mockDir,
+          '--target',
+          tempTargetDir,
+        ]);
+        expect(res.status).toBe(0);
+
+        const presetsContent = readFileSync(
+          resolve(
+            tempTargetDir,
+            'src/infrastructure/templates-engine/presets.ts',
+          ),
+          'utf-8',
+        );
+        expect(presetsContent).toMatch(/from\s+['"]\.\/registry\.js['"]/);
+        expect(presetsContent).toMatch(/from\s+['"]\.\/registry\/index\.js['"]/);
+      } finally {
+        rmSync(mockDir, { recursive: true, force: true });
+      }
+    });
+
+    it('AC-LIFE-001: renderer-only files are absent from templates-engine', () => {
+      const realSourceDir = resolve(ROOT_DIR, '../store-forge');
+      if (!existsSync(realSourceDir)) return;
+
+      runScript([
+        'sync',
+        '--source',
+        realSourceDir,
+        '--target',
+        tempTargetDir,
+      ]);
+
+      const forbiddenFiles = [
+        'resolve.ts',
+        'form-state.ts',
+        'variant-selection.ts',
+        'breakpoints.ts',
+        'engine/theme-css.ts',
+      ];
+      for (const forbidden of forbiddenFiles) {
+        expect(
+          existsSync(
+            resolve(
+              tempTargetDir,
+              'src/infrastructure/templates-engine',
+              forbidden,
+            ),
+          ),
+        ).toBe(false);
+      }
+    });
+
+    it('AC-LIFE-001: all generated templates-engine files carry the DO-NOT-EDIT banner', () => {
+      const realSourceDir = resolve(ROOT_DIR, '../store-forge');
+      if (!existsSync(realSourceDir)) return;
+
+      runScript([
+        'sync',
+        '--source',
+        realSourceDir,
+        '--target',
+        tempTargetDir,
+      ]);
+
+      const docContent = readFileSync(
+        resolve(
+          tempTargetDir,
+          'src/infrastructure/templates-engine/document.ts',
+        ),
+        'utf-8',
+      );
+      expect(docContent).toContain(
+        '// GENERATED from wnr-group/store-forge lib/templates/document.ts. DO NOT EDIT.',
+      );
+    });
+  });
 });
