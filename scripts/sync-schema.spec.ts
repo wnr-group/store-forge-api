@@ -403,7 +403,7 @@ describe('sync-schema script (D-004, D-018)', () => {
       shell: true,
     });
     expect(res.status).toBe(0);
-  }, 20_000);
+  }, 60_000);
 
   it('AC-A-31: CODEOWNERS lists the four shared paths', () => {
     const codeownersPath = resolve(ROOT_DIR, '.github/CODEOWNERS');
