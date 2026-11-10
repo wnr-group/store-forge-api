@@ -1,0 +1,104 @@
+name: CI
+
+on:
+  push:
+    branches: [main, feat/*, chore/*]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify (Build & Test)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout backend
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Unit tests
+        run: npm test
+
+      - name: E2E tests
+        run: npm run test:e2e
+
+      - name: Integration tests (PGlite)
+        run: npm run test:int
+
+      - name: Build
+        run: npm run build
+
+  schema-drift:
+    name: Schema Drift Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout backend
+        uses: actions/checkout@v4
+        with:
+          path: backend
+
+      - name: Checkout frontend repository (store-forge)
+        if: ${{ env.HAVE_TOKEN == 'true' }}
+        uses: actions/checkout@v4
+        with:
+          repository: wnr-group/store-forge
+          token: ${{ secrets.STORE_FORGE_READ_TOKEN }}
+          path: store-forge
+        env:
+          HAVE_TOKEN: ${{ secrets.STORE_FORGE_READ_TOKEN != '' }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Run drift check
+        working-directory: backend
+        id: drift
+        run: |
+          set +e
+          node scripts/sync-schema.mjs check --source ../store-forge
+          EXIT_CODE=$?
+          echo "exit_code=$EXIT_CODE" >> "$GITHUB_OUTPUT"
+          
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "## Schema Drift Check: PASS" >> $GITHUB_STEP_SUMMARY
+            echo "| Check | Result |" >> $GITHUB_STEP_SUMMARY
+            echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+            echo "| store-forge Schema & Migrations | :white_check_mark: In Sync (PASS) |" >> $GITHUB_STEP_SUMMARY
+            exit 0
+          elif [ $EXIT_CODE -eq 2 ]; then
+            echo "::warning::Drift check SKIPPED (store-forge source repository not available). NOT FULLY VERIFIED."
+            echo "## Schema Drift Check: SKIPPED" >> $GITHUB_STEP_SUMMARY
+            echo "| Check | Result |" >> $GITHUB_STEP_SUMMARY
+            echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+            echo "| store-forge Schema & Migrations | :warning: SKIPPED (Source missing / no token) |" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**NOT FULLY VERIFIED**: Source repository wnr-group/store-forge was not available." >> $GITHUB_STEP_SUMMARY
+            exit 0
+          else
+            echo "## Schema Drift Check: FAIL" >> $GITHUB_STEP_SUMMARY
+            echo "| Check | Result |" >> $GITHUB_STEP_SUMMARY
+            echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+            echo "| store-forge Schema & Migrations | :x: Drift Detected (FAIL) |" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi

@@ -403,4 +403,26 @@ describe('sync-schema script (D-004, D-018)', () => {
     });
     expect(res.status).toBe(0);
   });
+
+  it('AC-A-31: CODEOWNERS lists the four shared paths', () => {
+    const codeownersPath = resolve(ROOT_DIR, '.github/CODEOWNERS');
+    expect(existsSync(codeownersPath)).toBe(true);
+    const content = readFileSync(codeownersPath, 'utf-8');
+
+    expect(content).toContain('/src/infrastructure/');
+    expect(content).toContain('/src/common/');
+    expect(content).toContain('/src/config/');
+    expect(content).toContain('/.github/');
+  });
+
+  it('AC-A-39: CI workflow declares permissions, reads token safely, never echoes it', () => {
+    const ciWorkflowPath = resolve(ROOT_DIR, '.github/workflows/ci.yml');
+    expect(existsSync(ciWorkflowPath)).toBe(true);
+    const content = readFileSync(ciWorkflowPath, 'utf-8');
+
+    expect(content).toContain('permissions:\n  contents: read');
+    expect(content).toContain('STORE_FORGE_READ_TOKEN');
+    expect(content).not.toContain('echo $STORE_FORGE_READ_TOKEN');
+    expect(content).not.toContain('echo ${{ secrets.STORE_FORGE_READ_TOKEN }}');
+  });
 });
