@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import configuration from './config/configuration.js';
+import { envFilePaths } from './config/env-files.js';
 import { validateEnv } from './config/env.validation.js';
 import { HealthModule } from './modules/health/health.module.js';
 
@@ -9,6 +10,7 @@ import { HealthModule } from './modules/health/health.module.js';
     ConfigModule.forRoot({
       isGlobal: true,
       cache: true,
+      envFilePath: envFilePaths(),
       load: [configuration],
       validate: validateEnv,
     }),

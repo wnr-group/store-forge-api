@@ -34,12 +34,13 @@ Versions are the ones actually installed (`package-lock.json`).
 git clone https://github.com/wnr-group/store-forge-api.git
 cd store-forge-api
 npm install
-cp .env.example .env     # Windows PowerShell: Copy-Item .env.example .env
+cp .env.example .env.local   # Windows PowerShell: Copy-Item .env.example .env.local
 ```
 
 ## Environment configuration
 
-`.env.example` documents every variable. `.env` is git-ignored: never commit it.
+`.env.example` documents every variable. `.env.local` and `.env` are git-ignored: never commit them.
+Environment files are loaded in order of precedence: `.env.local` first (for local developer overrides), then `.env`. Real `process.env` always takes precedence over both files.
 
 | Variable | Default | Meaning |
 |---|---|---|
