@@ -3,3 +3,4 @@ export type TemplateKind = (typeof TEMPLATE_KINDS)[number];
 export interface TemplateDocument {
   version: string;
 }
+

@@ -102,3 +102,4 @@ jobs:
             echo "| store-forge Schema & Migrations | :x: Drift Detected (FAIL) |" >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
+

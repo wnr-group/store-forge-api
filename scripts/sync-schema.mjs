@@ -310,3 +310,4 @@ if (command === 'check') {
     process.exit(1);
   }
 }
+

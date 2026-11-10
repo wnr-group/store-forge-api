@@ -7,3 +7,4 @@ export const stores = pgTable('stores', {
   name: text('name').notNull(),
   status: text('status', { enum: STORE_STATUSES }).notNull().default('active'),
 });
+

@@ -8,3 +8,4 @@ export const templates = pgTable('templates', {
   storeId: uuid('store_id').notNull().references(() => stores.id),
   kind: text('kind', { enum: TEMPLATE_KINDS }).notNull(),
 });
+

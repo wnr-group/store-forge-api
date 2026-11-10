@@ -49,10 +49,27 @@ Environment files are loaded in order of precedence: `.env.local` first (for loc
 | `API_PREFIX` | `api/v1` | Global route prefix |
 | `CORS_ORIGINS` | `http://localhost:3000` | Comma-separated exact origins; `*` is rejected in production |
 | `SWAGGER_ENABLED` | on outside production, off in production | Serve Swagger UI |
+| `DATABASE_URL` | none (required unless `NODE_ENV=test`) | PostgreSQL connection URL (role `storeforge_app` only) |
+| `DB_POOL_MAX` | `5` | Maximum database pool connections |
+| `DB_PREPARE` | `false` | Enable prepared statements (keep false for transaction poolers) |
+| `DB_CONNECT_TIMEOUT_SECONDS` | `10` | Database connection timeout in seconds |
 
 Variables are validated at startup ([src/config/env.validation.ts](src/config/env.validation.ts)). A bad value stops the app with an error that names the variable and the rule, never the value. To add a variable, add it to `EnvironmentVariables`, to `AppConfig` / `buildConfig` in [src/config/configuration.ts](src/config/configuration.ts), and to `.env.example`.
 
-There are deliberately **no database or Supabase variables yet**. Do not copy credentials from the frontend repo; see [docs/architecture/overview.md](docs/architecture/overview.md).
+Database access connects exclusively as `storeforge_app` to project `xrkwyjnjemyxrbdbfmcn` (see [docs/architecture/overview.md](docs/architecture/overview.md)).
+
+## Database and schema ownership
+
+The frontend (`wnr-group/store-forge`) is the single source of truth for migrations and schema.
+The backend maintains a read-only mirror and migration snapshot:
+
+```bash
+# Sync from frontend repository:
+node scripts/sync-schema.mjs sync --source ../store-forge
+
+# Run schema drift check:
+node scripts/sync-schema.mjs check --source ../store-forge
+```
 
 ## Running locally
 
@@ -80,6 +97,7 @@ npm run start:prod       # node dist/main
 |---|---|
 | `npm test` | Unit tests (`src/**/*.spec.ts`) |
 | `npm run test:e2e` | E2E tests (`test/**/*.e2e-spec.ts`), boots the app with the real bootstrap pipeline |
+| `npm run test:int` | PGlite database integration tests (`src/**/*.int-spec.ts`), applies snapshot migrations locally |
 | `npm run test:cov` | Unit tests with coverage |
 | `npm run lint` | oxlint, type-aware |
 | `npm run typecheck` | `tsc --noEmit` |
