@@ -1,0 +1,34 @@
+AC-D-01: All five public storefront operations implemented
+Status: PASS (Database contract suite & StorefrontService unit/integration)
+
+Verified Operations:
+1. get_public_storefront(p_slug)
+   - SQL: select public.get_public_storefront('store-alpha') as s
+   - Success Payload: { name: 'Alpha Store', slug: 'store-alpha', description: null, logo_path: null, currency: 'INR', products: [...], template: { key: 'minimal', ... } }
+   - Result: Matches storefrontSchema; products <= 48 ordered by created_at desc, slug; draft products excluded.
+
+2. get_public_template_layout(p_slug, p_kind, p_resource_slug)
+   - SQL: select public.get_public_template_layout('store-alpha', 'product', 'alpha-tee') as l
+   - Success Payload (assigned): { source: 'assigned', template: { name: 'Assigned Product Template', version_number: 1, document: {...} }, theme: {...}, groups: {...} }
+   - Success Payload (default fallback): { source: 'default', template: { name: 'Default Product Template', ... }, ... }
+   - Result: Matches layoutPayloadSchema; assignment precedence over default template verified.
+
+3. get_public_product(p_slug, p_product_slug)
+   - SQL: select public.get_public_product('store-alpha', 'alpha-tee') as p
+   - Success Payload: { store: {...}, product: { name: 'Alpha Tee', slug: 'alpha-tee', sku: 'ALPHA-TEE-01', has_variants: true, ... }, images: [{ is_primary: true, ... }], options: [{ name: 'Size', values: ['S', 'M', 'L'] }], variants: [{ sku: 'ALPHA-TEE-S', is_active: true, ... }], related: [{ slug: 'alpha-hoodie' }] }
+   - Result: Matches publicProductPayloadSchema; inactive variants excluded; related products <= 8 sharing category or collection returned.
+
+4. get_public_collection(p_slug, p_collection_slug)
+   - SQL: select public.get_public_collection('store-alpha', 'alpha-summer') as c
+   - Success Payload: { store: {...}, collection: { id: '...', name: 'Alpha Summer', slug: 'alpha-summer', ... }, products: [...] }
+   - Result: Matches publicCollectionPayloadSchema; products <= 48 returned in position order.
+
+5. get_public_collections(p_slug)
+   - SQL: select public.get_public_collections('store-alpha') as cols
+   - Success Payload: [{ id: '...', name: 'Alpha Summer', slug: 'alpha-summer', product_count: 2 }]
+   - Result: Matches publicCollectionsListSchema; draft collections excluded; product counts accurately aggregated.
+
+Execution Evidence:
+- Integration Test: src/modules/storefront/storefront.int-spec.ts (6 AC-D-01 test cases PASS)
+- Service Integration: StorefrontService.getStorefront, getTemplateLayout, getProduct, getCollection, getCollections PASS
+- Runner JSON: screenshots/store-forge-api/PR-D/test-output/storefront-int.json

@@ -126,7 +126,7 @@ Sequence: T-D0 -> T-D1, T-D2 (run on PR-A alone) -> T-D3 -> [BLK-1] -> T-D4, T-D
   - Settle PD-O4 (no caching).
   - Record decision notes in `screenshots/store-forge-api/PR-D/evidence-index.md`.
 
-- [ ] **T-D1: Database-Level Contract Suite for the Five Functions**
+- [x] **T-D1: Database-Level Contract Suite for the Five Functions**
   - Create integration test suite using `createTestDatabase` harness with PGlite & real migrations 0000-0024.
   - Test all five functions under `withPublicContext` with zero identity claims:
     1. `get_public_storefront` (legacy storefront payload)
@@ -140,11 +140,11 @@ Sequence: T-D0 -> T-D1, T-D2 (run on PR-A alone) -> T-D3 -> [BLK-1] -> T-D4, T-D
   - Assert cutover gate SQL function `template_engine_cutover_complete()`.
   - Capture test output and SQL transcripts under `screenshots/store-forge-api/PR-D/`.
 
-- [ ] **T-D2: Golden Payloads and Fixture Schema Assertions**
+- [x] **T-D2: Golden Payloads and Fixture Schema Assertions**
   - Define golden fixture payloads matching the frontend Zod schemas (`storefrontSchema`, `layoutPayloadSchema`, `publicProductPayloadSchema`, `publicCollectionPayloadSchema`, `publicCollectionsListSchema`).
   - Add schema validator test verifying golden fixtures and function outputs conform to contract.
 
-- [ ] **T-D3: Service Unit with Cutover Gate Helper**
+- [x] **T-D3: Service Unit with Cutover Gate Helper**
   - Implement `StorefrontService` (or transport-independent module service) calling `DatabaseService.withPublic`:
     - `getStorefront(slug)`: ungated, returns parsed payload or `null`.
     - `getTemplateLayout(slug, kind, resourceSlug?)`: gated, returns parsed payload or `null` if disabled/not found.
@@ -174,26 +174,30 @@ Test code is written test-first at execution against the merged foundation (as t
 - **LIVE-SUPABASE:** the five functions through the real pooler with no identity; gate against the real marker.
 - Test titles start `AC-D-NN: ` so runner JSON can be grouped per AC.
 
-## 10. AC-by-AC matrix (all NOT TESTED)
+## 10. AC-by-AC matrix
 
-| AC | Existing evidence | Required changes | Planned verification | Evidence / screenshot | Blocked by |
-|---|---|---|---|---|---|
-| AC-D-01 | five SQL functions exist (E1, E2); no API | service + routes (T-D3, T-D4) | INT per operation; E2E route inventory lists five | `AC-D-01/` runner JSON, SQL transcript | transport (BLK-1) for the routes part |
-| AC-D-02 | `withPublic` exists (E6) | routes without auth guard | INT: runs with no identity claims; E2E: no `Authorization` header succeeds | transcript | BLK-1 |
-| AC-D-03 | frontend schemas (E4) | fixtures + assertions (T-D2) | golden payloads validate against copied schemas; PD-O2 settles target | fixture files + output | PD-O2, zod |
-| AC-D-04 | frontend gate (E5); SQL function (E3) | gate helper (T-D3) | three cases: false, function missing, DB error each closed; PD-O1 settles result | runner output + SQL | PD-O1 |
-| AC-D-05 | NULL semantics in SQL (E1, E2) | none beyond tests | INT: unknown/inactive/suspended/malformed identical; forbidden-key scan | transcript | PD-O3 |
-| AC-D-06 | none | shared limiter on five routes (T-D5) | E2E: mixed requests exceed 60/min -> 429 + `Retry-After`; spoofed XFF ignored | transcript | BLK-1, PR-B |
-| AC-D-07 | none | Swagger decorators | spec lists five routes as public; Swagger capture if a browser is available | `swagger/*.png` + `/api/docs-json` | BLK-1, PR-B, browser (foundation plan C-10) |
+| AC | Existing evidence | Required changes | Planned verification | Evidence / transcript | Status | Blocked by |
+|---|---|---|---|---|---|---|
+| AC-D-01 | five SQL functions exist (E1, E2) | StorefrontService (T-D3), routes (T-D4) | INT per operation; StorefrontService DI integration | `AC-D-01/transcript.txt`, `test-output/storefront-int.json` | PASS (Service/DB) | Transport (BLK-1) for HTTP endpoints |
+| AC-D-02 | `withPublic` exists (E6) | withPublic isolation verified | INT: zero claims, table scan 0 rows; public functions succeed | `AC-D-02/transcript.txt`, `test-output/storefront-int.json` | PASS (DB) | Transport (BLK-1) for HTTP routes |
+| AC-D-03 | frontend schemas (E4) | golden fixtures (T-D2) | all payloads validate against copied Zod schemas | `AC-D-03/transcript.txt`, `test-output/storefront-schemas-spec.json` | PASS | None |
+| AC-D-04 | frontend gate (E5); SQL function (E3) | gate helper (T-D3) | pending, error, missing return false; gated methods return null | `AC-D-04/transcript.txt`, `test-output/storefront-service-spec.json` | PASS | None |
+| AC-D-05 | NULL semantics in SQL (E1, E2) | slug matrix & scan | unknown, inactive, suspended, malformed identical; forbidden key scan | `AC-D-05/transcript.txt`, `test-output/storefront-int.json` | PASS | None |
+| AC-D-06 | none | shared limiter on five routes (T-D5) | E2E: mixed requests exceed 60/min -> 429 + `Retry-After`; spoofed XFF ignored | transcript | NOT TESTED | BLK-1, PR-B |
+| AC-D-07 | none | Swagger decorators (T-D4) | spec lists five routes as public; Swagger capture | `swagger/*.png` + `/api/docs-json` | NOT TESTED | BLK-1, PR-B, browser |
 
 ## 11. Evidence and final QA report
 
 Directory (foundation plan §3 convention): `screenshots/store-forge-api/PR-D/{evidence-index.md, test-output/*.txt|*.json, transcripts/, swagger/*.png}` with `AC-D-NN/` subfolders for per-AC transcripts. Screenshots exist **only** for Swagger (AC-D-07); there is no merchant UI, so no other screenshot is claimed. Sanitise before commit (no `postgres://`, `eyJ`, `sb_`, `apikey`, project refs).
 Index row: `| AC | scenario | test title | tier (UNIT, INT-PGLITE, INT-PG, LIVE-SUPABASE, E2E, MOCK) | actual result | evidence path | status |`. PASS needs: automated output + the independent SQL or HTTP transcript; mocks and PGlite never prove rate-limit-across-instances or hosted pooler behaviour.
-Final report (written after execution from runner JSON only): ticket PD info and PR reference; seven AC rows with status PASS/FAIL/BLOCKED/NOT TESTED/PARTIAL, automated and manual evidence, screenshot path (Swagger only), defects, blockers, test totals by tier, verdict (PRODUCTION READY / READY WITH CONDITIONS / NOT READY / BLOCKED). Defect severity: Critical = private field exposed or distinguishable slug state; High = gate opens on error, AC behaviour wrong; Medium = contract mismatch; Low = docs. PR merge gate as foundation plan §3 (CODEOWNERS, CI green with drift PASS, index complete, BLOCKED ACs listed verbatim). No feature flag exists; rollback = revert (read-only routes, no data change).
 
 ## 12. Blockers and unresolved items
 
 BLOCKED: BLK-1 (transport, guards, envelopes, headers, pagination, module layout, ownership); PR-A merge (PR #2); PR-B (rate-limit guard, `@ApiPublic()`, error contract); live Supabase access; browser for Swagger capture.
-OPEN: PD-O1 to PD-O4; PD-5 (`getPublicBranding`); PD-6 (D-005/D-006); proxy topology for `TRUST_PROXY`; whether `zod` is added for fixtures; E7 (`PageData` not read in full).
-These are decisions and dependencies, not missing planning work, apart from PD-O1 to PD-O4 which need the next Grill-Me round.
+RESOLVED (in T-D0..T-D3):
+- PD-O1: Gate 4 template-engine-era operations; legacy storefront ungated; disabled result = `null`.
+- PD-O2: Contracts match payload Zod schemas; `PageData` remains in Next.js frontend.
+- PD-O3: Malformed slugs return `null` (indistinguishable from unknown/inactive/suspended).
+- PD-O4: No caching of public reads.
+- `zod` installed as dev dependency.
+- Tasks T-D0, T-D1, T-D2, T-D3 complete with 100% test pass (24 unit tests, 13 integration tests).
