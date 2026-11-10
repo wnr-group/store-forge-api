@@ -368,7 +368,13 @@ describe('Templates Lifecycle Integration (INT-PGLITE)', () => {
         { resourceType: 'product', resourceId: dummyProductId },
       ]);
 
-      await publishService.publish(tx, storeA.tenantId, storeA.storeId, t.id, 1);
+      await publishService.publish(
+        tx,
+        storeA.tenantId,
+        storeA.storeId,
+        t.id,
+        1,
+      );
 
       await expect(
         templateService.deleteTemplate(

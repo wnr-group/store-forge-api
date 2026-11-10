@@ -230,7 +230,13 @@ describe('Templates Publishing and Assignments Integration (INT-PGLITE)', () => 
         },
       );
 
-      await publishService.publish(tx, storeA.tenantId, storeA.storeId, t.id, 1);
+      await publishService.publish(
+        tx,
+        storeA.tenantId,
+        storeA.storeId,
+        t.id,
+        1,
+      );
 
       const unpublished = await publishService.unpublish(
         tx,
@@ -290,7 +296,13 @@ describe('Templates Publishing and Assignments Integration (INT-PGLITE)', () => 
         1,
         modifiedDoc,
       );
-      await publishService.publish(tx, storeA.tenantId, storeA.storeId, t.id, 2);
+      await publishService.publish(
+        tx,
+        storeA.tenantId,
+        storeA.storeId,
+        t.id,
+        2,
+      );
 
       const rollRes = await publishService.rollback(
         tx,

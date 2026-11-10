@@ -1,3 +1,6 @@
+import { AppException } from '../../../common/app.exception.js';
+import type { ErrorKind } from '../../../common/constants/error-codes.js';
+
 export type ConflictReason =
   | 'archived'
   | 'published'
@@ -6,14 +9,28 @@ export type ConflictReason =
   | 'busy'
   | 'quota_exceeded';
 
-export class TemplateError extends Error {
+const STATUS_TO_KIND: Record<number, ErrorKind> = {
+  400: 'VALIDATION',
+  401: 'UNAUTHENTICATED',
+  403: 'FORBIDDEN',
+  404: 'NOT_FOUND',
+  409: 'CONFLICT',
+  422: 'VALIDATION',
+  429: 'RATE_LIMITED',
+  500: 'UNKNOWN',
+};
+
+export class TemplateError extends AppException {
+  public readonly statusCode: number;
+
   constructor(
     message: string,
-    public readonly statusCode: number,
-    public readonly code: string,
-    public readonly details: unknown = null,
+    statusCode: number,
+    code: string,
+    details: unknown = null,
   ) {
-    super(message);
+    super(STATUS_TO_KIND[statusCode] ?? 'UNKNOWN', message, { code, details });
+    this.statusCode = statusCode;
     this.name = this.constructor.name;
   }
 }
