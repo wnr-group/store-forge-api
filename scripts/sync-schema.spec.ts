@@ -396,13 +396,14 @@ describe('sync-schema script (D-004, D-018)', () => {
   });
 
   it('AC-A-13: generated mirror compiles (typecheck) unmodified', () => {
-    const res = spawnSync('npm.cmd', ['run', 'typecheck'], {
+    const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+    const res = spawnSync(npmCmd, ['run', 'typecheck'], {
       cwd: ROOT_DIR,
       encoding: 'utf-8',
       shell: true,
     });
     expect(res.status).toBe(0);
-  });
+  }, 20_000);
 
   it('AC-A-31: CODEOWNERS lists the four shared paths', () => {
     const codeownersPath = resolve(ROOT_DIR, '.github/CODEOWNERS');
