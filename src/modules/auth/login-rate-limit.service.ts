@@ -42,19 +42,19 @@ export class LoginRateLimitService {
     let worst: Hit | undefined;
     try {
       const subjects = this.subjects(address, email);
-      const hits = await this.db.withPublic(async (tx) => {
-        const byEmail = rowsOf<Hit>(
+      // One statement for both buckets (both are counted, in this order). The subjects are hex digests, so they are
+      // inlined as literals: with prepared statements off, bind parameters cost an extra describe round trip each.
+      const hits = await this.db.withPublic(async (tx) =>
+        rowsOf<Hit>(
           await tx.execute(
-            sql`select * from public.rate_limit_login(${subjects.email}, 'email')`,
+            sql.raw(
+              `select * from public.rate_limit_login('${subjects.email}', 'email')
+               union all
+               select * from public.rate_limit_login('${subjects.ip}', 'ip')`,
+            ),
           ),
-        )[0];
-        const byIp = rowsOf<Hit>(
-          await tx.execute(
-            sql`select * from public.rate_limit_login(${subjects.ip}, 'ip')`,
-          ),
-        )[0];
-        return [byEmail, byIp];
-      });
+        ),
+      );
       worst = hits
         .filter((h): h is Hit => Boolean(h) && !h!.allowed)
         .sort((a, b) => b.retry_after_seconds - a.retry_after_seconds)[0];

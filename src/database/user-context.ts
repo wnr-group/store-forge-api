@@ -121,10 +121,13 @@ export async function withPublicContext<T>(
   fn: (tx: DbTx) => Promise<T>,
 ): Promise<T> {
   return db.transaction(async (tx) => {
-    await tx.execute(
-      sql`select set_config('request.jwt.claims', '', true), set_config('request.jwt.claim.sub', '', true)`,
-    );
-    await tx.execute(REQUEST_ROLE_SQL);
+    // Pipelined like in withUserContext: one network round trip instead of two, same order.
+    await Promise.all([
+      tx.execute(
+        sql`select set_config('request.jwt.claims', '', true), set_config('request.jwt.claim.sub', '', true)`,
+      ),
+      tx.execute(REQUEST_ROLE_SQL),
+    ]);
     if (!verified.has(db)) {
       await assertRlsEnforced(tx);
       verified.add(db);

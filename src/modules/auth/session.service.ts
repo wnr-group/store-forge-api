@@ -5,7 +5,12 @@ import type { Request, Response } from 'express';
 import { AppException } from '../../common/app.exception.js';
 import type { AppConfig } from '../../config/configuration.js';
 import { NodeEnv } from '../../config/env.validation.js';
-import type { LoginDto, LoginResponseDto, SessionDto } from './auth.dto.js';
+import type {
+  LoginDto,
+  LoginResponseDto,
+  LoginSessionOnly,
+  SessionDto,
+} from './auth.dto.js';
 import { AuthService } from './auth.service.js';
 import { LoginRateLimitService } from './login-rate-limit.service.js';
 import { clientAddress, isTrustedServer } from './request-trust.js';
@@ -111,7 +116,7 @@ export class SessionService {
     req: Request,
     res: Response,
     dto: LoginDto,
-  ): Promise<LoginResponseDto> {
+  ): Promise<LoginResponseDto | LoginSessionOnly> {
     const trusted = isTrustedServer(
       req,
       this.config.get('auth', { infer: true }).bffSecret,
@@ -129,6 +134,15 @@ export class SessionService {
       throw this.mapSignInError(error ?? { message: 'no session returned' });
     }
 
+    // Callers that only relay the cookies (the Next.js server) skip the profile transaction: ~5 database round trips.
+    if (dto.includeProfile === false) {
+      this.send(res, jar);
+      return {
+        id: data.user.id,
+        email: data.user.email ?? null,
+        expiresAt: data.session.expires_at ?? null,
+      };
+    }
     const profile = await this.auth.me({
       id: data.user.id,
       email: data.user.email ?? null,

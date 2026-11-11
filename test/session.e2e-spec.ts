@@ -99,6 +99,26 @@ describe.skipIf(!migrationsAvailable)(
     });
 
     describe('login', () => {
+      it('with includeProfile false still sets the session cookies but skips the profile lookup', async () => {
+        const res = await request(http())
+          .post('/api/v1/auth/login')
+          .set({ 'X-Forwarded-For': '198.19.0.1', Origin: ORIGIN })
+          .send({
+            email: 'alice@example.test',
+            password: PASSWORDS.alice,
+            includeProfile: false,
+          })
+          .expect(200);
+        expect(res.body.data).toEqual({
+          id: w.alice,
+          email: 'alice@example.test',
+          expiresAt: expect.any(Number),
+        });
+        expect(setCookies(res).some((c) => c.startsWith(`${COOKIE}=`))).toBe(
+          true,
+        );
+      });
+
       it('signs an existing account in, sets HttpOnly cookies and returns the safe profile with roles and organizations', async () => {
         const res = await login('Alice@Example.test ', PASSWORDS.alice).expect(
           200,

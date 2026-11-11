@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import { EmailField, PasswordField } from '../../common/validation/fields.js';
 
 /** Same rules as the Next.js login form: a trimmed, lower-cased e-mail and a non-empty password of at most 72 characters. */
@@ -15,6 +21,15 @@ export class LoginDto {
   @MinLength(1, { message: 'Enter your password' })
   @MaxLength(72)
   password!: string;
+
+  @ApiPropertyOptional({
+    default: true,
+    description:
+      'Set to false when the caller only needs the session cookies: the response then carries just `id`, `email` and `expiresAt`, and the profile/memberships lookup (a database transaction) is skipped.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  includeProfile?: boolean;
 }
 
 export class ChangePasswordDto {
@@ -75,6 +90,11 @@ export class LoginResponseDto extends MeDto {
   })
   expiresAt!: number | null;
 }
+
+/** The reduced sign-in answer (`includeProfile: false`): who signed in and when the session expires, nothing from the database. */
+export type LoginSessionOnly = Pick<MeDto, 'id' | 'email'> & {
+  expiresAt: number | null;
+};
 
 export class SessionUserDto {
   @ApiProperty({ format: 'uuid' }) id!: string;
