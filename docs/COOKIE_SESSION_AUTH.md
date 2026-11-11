@@ -58,7 +58,7 @@ Every other endpoint also accepts the cookie session when no `Authorization` hea
 | API | `AUTH_BFF_SECRET` | Shared secret, 32+ characters. Optional but required for the Next.js server to be trusted (real visitor address, no Origin). |
 | API | `RATE_LIMIT_SECRET` | Optional; keys the rate-limit hashes (defaults to the service-role key). |
 | API | `CORS_ORIGINS` | Must list the frontend origin(s) if browsers ever call the API directly. |
-| Next.js | `AUTH_API_URL` | e.g. `http://localhost:4000/api/v1`. **Setting it switches authentication to the API; unsetting it restores the direct-to-Supabase behaviour.** |
+| Next.js | `API_BASE_URL` | e.g. `http://localhost:4000/api/v1`. **Setting it switches authentication to the API; unsetting it restores the direct-to-Supabase behaviour.** |
 | Next.js | `AUTH_BFF_SECRET` | Same value as the API's. Server-only, never `NEXT_PUBLIC_`. |
 
 Generate the secret: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
@@ -66,8 +66,8 @@ Generate the secret: `node -e "console.log(require('crypto').randomBytes(32).toS
 ## Rollout and rollback
 
 1. Deploy the API with `AUTH_BFF_SECRET`.
-2. Set `AUTH_API_URL` + `AUTH_BFF_SECRET` on the Next.js app and redeploy. Existing users keep their current sessions: the cookie format is identical, so nobody is logged out (their old non-HttpOnly cookie is simply replaced by an HttpOnly one at their next sign-in or refresh).
-3. **Rollback:** remove `AUTH_API_URL`. The previous direct-to-Supabase code is still in place and takes over; sessions stay valid. The old code can be deleted once the API path has proven itself.
+2. Set `API_BASE_URL` + `AUTH_BFF_SECRET` on the Next.js app and redeploy. Existing users keep their current sessions: the cookie format is identical, so nobody is logged out (their old non-HttpOnly cookie is simply replaced by an HttpOnly one at their next sign-in or refresh).
+3. **Rollback:** remove `API_BASE_URL`. The previous direct-to-Supabase code is still in place and takes over; sessions stay valid. The old code can be deleted once the API path has proven itself.
 
 ## Differences worth knowing
 
