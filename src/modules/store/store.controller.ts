@@ -22,9 +22,9 @@ export class StoreController {
 
   @Get()
   @ApiEndpoint({
-    summary: "Read the organization's store",
+    summary: 'View my store',
     description:
-      'The primary (oldest) store of the selected organization, with `currencyLocked` telling whether the currency can still change.',
+      'Get the main store of your organization (its oldest one). The response also includes `currencyLocked`, which tells you whether the store currency can still be changed.',
     auth: 'org',
     response: StoreDto,
     message: 'Store retrieved successfully',
@@ -37,9 +37,9 @@ export class StoreController {
   @Patch()
   @RequirePermission('store:manage')
   @ApiEndpoint({
-    summary: 'Update store settings',
+    summary: 'Edit store settings',
     description:
-      'Partial update. Omitted fields keep their value; `null` clears an optional field. The currency cannot change once products or orders exist.',
+      'Change your store settings. Send only the fields you want to change. Fields you leave out stay as they are, and sending `null` for an optional field clears it. Once the store has products or orders, the currency can no longer be changed, because the prices are saved in that currency.',
     auth: 'org',
     permission:
       'store:manage (Owner, or a member with write access to settings)',

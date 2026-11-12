@@ -44,7 +44,7 @@ export class ProductsController {
   @ApiEndpoint({
     summary: 'List products',
     description:
-      'Server-side search (name / SKU), filters (status, category, stock level), sorting and pagination. `GET /products?page=1&limit=20&search=tee&status=active&stock=low&sortBy=price&sortOrder=asc`.',
+      'See the products in your store, a page at a time. You can search by product name or SKU (the product code), filter by status, category or stock level, and sort the results. Searching, filtering and paging are all done by the server, so only the page you asked for is sent back. For example: `GET /products?page=1&limit=20&search=tee&status=active&stock=low&sortBy=price&sortOrder=asc`.',
     auth: 'org',
     permission: 'catalog:view',
     response: [ProductListItemDto],
@@ -59,7 +59,9 @@ export class ProductsController {
   @RequirePermission('catalog:view')
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiEndpoint({
-    summary: 'Get a product with options, variants, images and collections',
+    summary: 'View one product',
+    description:
+      'Get everything about a single product: its options (such as size or color), its variants (each size and color combination), its images, and the collections it belongs to.',
     auth: 'org',
     permission: 'catalog:view',
     response: ProductDetailDto,
@@ -73,9 +75,9 @@ export class ProductsController {
   @Post()
   @RequirePermission('catalog:manage')
   @ApiEndpoint({
-    summary: 'Create a product',
+    summary: 'Add a product',
     description:
-      "Everything is saved in one transaction: product, options, images (the first is primary), variants and collections. Prices are decimal text parsed with the store currency's decimals and stored in minor units. Uploaded image paths are re-verified against the bucket.",
+      'Create a new product together with its options, images, variants and collections. Everything is saved in one go, so if anything fails, nothing is saved. The first image in the list becomes the main image. Send prices as plain decimal text (for example `"19.99"`). They are read using the number of decimal places of your store currency and saved in the currency\'s smallest unit (for example cents). The uploaded image files are checked again in storage before they are accepted.',
     auth: 'org',
     permission: 'catalog:manage',
     body: CreateProductDto,
@@ -96,9 +98,9 @@ export class ProductsController {
   @Post('bulk-delete')
   @RequirePermission('catalog:delete')
   @ApiEndpoint({
-    summary: 'Delete several products',
+    summary: 'Remove several products',
     description:
-      'Up to 100 ids. Ids from other organizations are ignored. Image files are removed afterwards if nothing else references them.',
+      'Delete many products at once, up to 100 per request. Ids that belong to another organization are ignored. Afterwards, the image files of the deleted products are also removed, unless something else is still using them.',
     auth: 'org',
     permission: 'catalog:delete',
     body: BulkDeleteProductsDto,
@@ -117,6 +119,8 @@ export class ProductsController {
   @RequirePermission('catalog:manage')
   @ApiEndpoint({
     summary: 'Publish or unpublish several products',
+    description:
+      'Change the status of many products at once, up to 100 per request. Set the status to `active` to publish them or `draft` to hide them. Products from other organizations are not touched.',
     auth: 'org',
     permission: 'catalog:manage',
     body: BulkProductStatusDto,
@@ -131,9 +135,9 @@ export class ProductsController {
   @RequirePermission('catalog:manage')
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiEndpoint({
-    summary: 'Duplicate a product as a draft',
+    summary: 'Copy a product',
     description:
-      'Copies options and variants; SKUs are cleared and images are not copied.',
+      'Make a copy of a product, saved as a draft so it is not visible in your storefront yet. The copy gets its own name and web address, and keeps the options and variants of the original. SKUs (product codes) are cleared so they stay unique, and images are not copied.',
     auth: 'org',
     permission: 'catalog:manage',
     response: ProductDetailDto,
@@ -152,9 +156,9 @@ export class ProductsController {
   @RequirePermission('catalog:manage')
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiEndpoint({
-    summary: 'Update a product',
+    summary: 'Edit a product',
     description:
-      'Partial update: omitted fields keep their value; `options`, `variants`, `images` and `collectionIds`, when sent, replace the whole set. The merged result is validated like a create. Removed image files are deleted afterwards if nothing else references them.',
+      'Change a product. Send only the fields you want to change and the rest stay as they are. If you send `options`, `variants`, `images` or `collectionIds`, the list you send replaces the whole existing list. The final result is checked with the same rules as when adding a product. Image files that you remove are deleted afterwards, unless something else is still using them.',
     auth: 'org',
     permission: 'catalog:manage',
     body: UpdateProductDto,
@@ -175,7 +179,9 @@ export class ProductsController {
   @RequirePermission('catalog:delete')
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiEndpoint({
-    summary: 'Delete a product',
+    summary: 'Remove a product',
+    description:
+      'Delete one product. Its image files are deleted too, unless something else is still using them.',
     auth: 'org',
     permission: 'catalog:delete',
     response: null,

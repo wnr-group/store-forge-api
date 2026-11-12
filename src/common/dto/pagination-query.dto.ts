@@ -30,7 +30,7 @@ export class PaginationQueryDto {
   @Max(100)
   limit: number = DEFAULT_PAGE_SIZE;
 
-  @ApiPropertyOptional({ maxLength: 100, description: 'Free-text search' })
+  @ApiPropertyOptional({ maxLength: 100, description: 'Words to search for' })
   @IsOptional()
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()

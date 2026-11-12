@@ -28,7 +28,11 @@ export class AdjustmentDto {
     string | null;
   @ApiProperty() productName!: string;
   @ApiPropertyOptional({ nullable: true }) variantTitle!: string | null;
-  @ApiProperty({ description: 'Change applied (never 0).' }) delta!: number;
+  @ApiProperty({
+    description:
+      'How much the stock changed. Increases are positive and decreases are negative. It is never 0.',
+  })
+  delta!: number;
   @ApiProperty() quantityAfter!: number;
   @ApiProperty({ enum: INVENTORY_REASONS }) reason!: string;
   @ApiPropertyOptional({ nullable: true }) note!: string | null;
@@ -38,7 +42,7 @@ export class AdjustmentDto {
 }
 
 export class StockLevelDto {
-  @ApiProperty({ description: 'Stock after the adjustment.' })
+  @ApiProperty({ description: 'The stock level after the change.' })
   quantity!: number;
 }
 
@@ -68,7 +72,7 @@ export class AdjustStockDto {
     format: 'uuid',
     nullable: true,
     description:
-      'Required when the product has variants; refused when it has none.',
+      'The id of the variant (for example a size or color) to change. Required when the product has variants, and not allowed when it has none.',
   })
   @IsOptional()
   @IsUUID()
@@ -77,7 +81,7 @@ export class AdjustStockDto {
   @ApiProperty({
     enum: ['add', 'set'],
     description:
-      '`add` changes stock by `value` (may be negative); `set` sets it to `value`.',
+      '`add` adds `value` to the current stock (use a negative number to remove stock). `set` replaces the current stock with `value`.',
   })
   @IsIn(['add', 'set'], { message: 'Please select an adjustment type.' })
   mode!: 'add' | 'set';

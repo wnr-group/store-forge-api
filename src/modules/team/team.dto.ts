@@ -25,7 +25,7 @@ export class PermissionsDto {
 
   @ApiProperty({
     enum: levelsOf('orders'),
-    description: 'Orders are read-only for now.',
+    description: 'Orders can only be viewed for now, not changed.',
   })
   @IsIn(levelsOf('orders'), { message: 'Choose an access level.' })
   orders!: 'none' | 'read';
@@ -36,7 +36,7 @@ export class PermissionsDto {
 
   @ApiProperty({
     enum: levelsOf('settings'),
-    description: 'Store settings are always at least readable.',
+    description: 'Members can always at least view the store settings.',
   })
   @IsIn(levelsOf('settings'), { message: 'Choose an access level.' })
   settings!: 'read' | 'write';
@@ -48,7 +48,8 @@ export class TeamMemberDto {
   @ApiProperty() email!: string;
   @ApiProperty({ enum: ['owner', 'admin', 'staff'] }) role!: string;
   @ApiProperty({
-    description: 'Display label: Owner, Manager, Staff, Viewer or Custom.',
+    description:
+      "The name shown for this member's role: Owner, Manager, Staff, Viewer or Custom.",
   })
   roleLabel!: string;
   @ApiProperty({ enum: MEMBERSHIP_STATUSES }) status!: string;
@@ -67,7 +68,7 @@ export class CreateMemberDto {
 
   @ApiProperty({
     description:
-      'Initial password (8-72 chars, a letter and a number). Share it securely; it is never stored by StoreForge.',
+      'The first password for this member, 8 to 72 characters with at least one letter and one number. Share it with them in a safe way. StoreForge never saves it.',
   })
   @PasswordField()
   password!: string;
@@ -99,7 +100,8 @@ export class MemberStatusDto {
 
 export class ResetPasswordDto {
   @ApiProperty({
-    description: 'New password (8-72 chars, a letter and a number).',
+    description:
+      'The new password, 8 to 72 characters with at least one letter and one number.',
   })
   @PasswordField()
   password!: string;

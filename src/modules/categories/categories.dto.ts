@@ -15,7 +15,9 @@ export class CategoryDto {
   @ApiPropertyOptional({ format: 'uuid', nullable: true }) parentId!:
     string | null;
   @ApiPropertyOptional({ nullable: true }) parentName!: string | null;
-  @ApiProperty({ description: 'Products currently in this category.' })
+  @ApiProperty({
+    description: 'The number of products in this category right now.',
+  })
   productCount!: number;
   @ApiProperty() createdAt!: Date;
   @ApiProperty() updatedAt!: Date;
@@ -27,7 +29,8 @@ export class CreateCategoryDto {
   name!: string;
 
   @ApiPropertyOptional({
-    description: 'URL handle, 2-80 chars. Defaults to a slug of the name.',
+    description:
+      'The short name used in web addresses, 2 to 80 characters long. If you leave it out, it is made from the category name.',
   })
   @CatalogSlug()
   slug?: string;
@@ -39,7 +42,8 @@ export class CreateCategoryDto {
   @ApiPropertyOptional({
     format: 'uuid',
     nullable: true,
-    description: 'Parent category in the same organization.',
+    description:
+      'The category this one sits inside. It must be in the same organization.',
   })
   @IsOptional()
   @IsUUID('all', { message: 'Please select a valid parent category.' })

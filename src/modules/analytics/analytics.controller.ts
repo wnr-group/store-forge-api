@@ -19,9 +19,9 @@ export class AnalyticsController {
   @Get()
   @RequirePermission('orders:view')
   @ApiEndpoint({
-    summary: 'Sales analytics and dashboard overview',
+    summary: 'View sales and dashboard overview',
     description:
-      'Sales series (store timezone, zero-filled), totals compared with the previous window, top 5 products, the 8 most recent orders and low-stock units. Revenue counts paid and fulfilled orders. The dashboard overview is this endpoint with `range=30`. Orders are read-only: there is no checkout yet, so a new store returns zeros and `hasOrders: false`.',
+      'Get a snapshot of how your store is doing. It shows daily sales for the chosen period (days with no orders show zero), your total sales compared with the previous period, your 5 best-selling products, your 8 newest orders, and items that are low or out of stock. Daily figures follow your store time zone. Only paid and fulfilled orders count as revenue. The dashboard home page uses this same call with `range=30` (the last 30 days). Orders cannot be created yet, so a brand-new store simply shows zeros and `hasOrders: false`.',
     auth: 'org',
     permission: 'orders:view',
     response: AnalyticsDto,

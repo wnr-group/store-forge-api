@@ -42,11 +42,11 @@ export class AuthController {
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @HttpCode(200)
   @ApiEndpoint({
-    summary: 'Sign in (existing accounts only)',
+    summary: 'Sign in',
     description: [
-      'Checks the credentials with Supabase Auth and sets the session in **HttpOnly** cookies (`sb-<project>-auth-token`, `SameSite=Lax`, `Secure` outside local development) plus a non-secret `sf_signed_in` marker. The tokens are never in the response body.',
-      'Returns the safe profile with the existing role and organization memberships. There is **no sign-up**: unknown e-mails fail exactly like wrong passwords, and no account or organization is ever created.',
-      'Each attempt is counted against the database login rate limit BEFORE the password is checked. Requires an allowed `Origin` (browsers) or the trusted frontend server secret.',
+      'Sign in with an email and password. Your login details are checked with Supabase Auth, and your session is saved in secure cookies (`sb-<project>-auth-token`, `SameSite=Lax`, and `Secure` everywhere except local development). The cookies are HttpOnly, so scripts running in the browser cannot read them. A second, harmless cookie called `sf_signed_in` just tells the app that you are signed in. Your tokens are never included in the response body.',
+      'The response is your basic profile, your role and the organizations you belong to. This call can only sign in existing accounts. It never creates one. An unknown email gets exactly the same error as a wrong password, so nobody can use it to find out which emails are registered.',
+      'Every attempt is counted towards the login limit before the password is checked, so repeated guessing gets blocked. Browsers must call this from an allowed website address (`Origin`), and the Next.js server must send its trusted secret.',
     ].join('\n\n'),
     auth: 'public',
     body: LoginDto,
@@ -69,7 +69,7 @@ export class AuthController {
   @ApiEndpoint({
     summary: 'Sign out',
     description:
-      'Revokes the session at Supabase (best effort) and always clears the session cookies. Safe to call when already signed out.',
+      'Sign out of your account. The session is cancelled at Supabase (if that step fails, sign-out still goes ahead) and your session cookies are always removed. It is safe to call even if you are already signed out.',
     auth: 'public',
     response: SignedOutDto,
     message: 'Signed out successfully',
@@ -86,9 +86,9 @@ export class AuthController {
   @Throttle({ default: { limit: 60, ttl: 60_000 } })
   @HttpCode(200)
   @ApiEndpoint({
-    summary: 'Refresh the session',
+    summary: 'Keep the session alive',
     description:
-      'Exchanges the refresh token in the cookie for a new session. The refresh token is **rotated** by Supabase: the old one stops working. A missing, used or revoked refresh token clears the cookies and answers 401 `SESSION_EXPIRED`.',
+      'Get a fresh session without asking the user to sign in again. It uses the refresh token stored in your cookie. Each refresh token works only once: Supabase gives you a new one and the old one stops working. If the token is missing, was already used, or was cancelled, your cookies are cleared and you get a 401 error with the code `SESSION_EXPIRED`.',
     auth: 'public',
     response: SessionDto,
     message: 'Session refreshed successfully',
@@ -100,9 +100,9 @@ export class AuthController {
 
   @Get('session')
   @ApiEndpoint({
-    summary: 'Verify the current session',
+    summary: 'Check if you are signed in',
     description:
-      "Verifies the access token (Bearer header or the session cookie) against Supabase's signing keys and returns who it belongs to. Read-only: it never refreshes (call `POST /auth/refresh` on `401 TOKEN_EXPIRED`). No database access.",
+      'Find out whether your access token is still valid and who it belongs to. The token can be sent in the Bearer header or come from the session cookie, and it is checked against the Supabase signing keys. This call only checks. It never renews the session, so if you get `401 TOKEN_EXPIRED`, call `POST /auth/refresh` to renew it. It does not read from the database.',
     auth: 'jwt',
     response: SessionDto,
     message: 'Session is valid',
@@ -120,9 +120,9 @@ export class AuthController {
 
   @Get('me')
   @ApiEndpoint({
-    summary: 'Current identity (session restoration)',
+    summary: 'Get my account details',
     description:
-      'Returns the verified Supabase user, their display name, their Platform Admin level (if any) and their active organization memberships. Everything except `id`/`email` is read from the database, never from the token. Works with the Bearer header or the session cookie.',
+      'Get everything the app needs to know about the signed-in person: their id and email, display name, Platform Admin level (if they have one) and the organizations they are an active member of. Apart from `id` and `email`, all of this is read from the database and never trusted from the token. The token can be sent in the Bearer header or come from the session cookie. The app uses this to restore your session when the page reloads.',
     auth: 'jwt',
     response: MeDto,
     message: 'Profile retrieved successfully',
@@ -134,9 +134,9 @@ export class AuthController {
   @Post('change-password')
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @ApiEndpoint({
-    summary: 'Change own password',
+    summary: 'Change my password',
     description:
-      'Re-verifies the current password with Supabase Auth, then sets the new one. Works with the Bearer header or the session cookie.',
+      'Set a new password for your own account. You must first enter your current password, which is checked with Supabase Auth, and only then is the new one saved. The token can be sent in the Bearer header or come from the session cookie.',
     auth: 'jwt',
     body: ChangePasswordDto,
     response: null,

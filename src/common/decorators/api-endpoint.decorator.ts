@@ -39,13 +39,13 @@ export interface ApiEndpointOptions {
 }
 
 const ERROR_TEXT: Record<number, string> = {
-  400: 'Validation failed',
-  401: 'Missing, invalid or expired access token',
-  403: 'Not allowed (role, permission or organization)',
-  404: 'Resource not found',
-  409: 'Conflict with existing data',
-  429: 'Rate limit exceeded',
-  500: 'Unexpected server error',
+  400: 'The request is not valid. Check the data you sent',
+  401: 'You are not signed in, or your access token is missing, invalid or expired',
+  403: 'You are not allowed to do this (because of your role, permission or organization)',
+  404: 'The item could not be found',
+  409: 'This conflicts with data that already exists',
+  429: 'Too many requests. Please wait a little and try again',
+  500: 'Something went wrong on the server',
 };
 
 /**
@@ -57,12 +57,11 @@ export function ApiEndpoint(options: ApiEndpointOptions) {
   const { auth, response, paginated, status = 200 } = options;
   const secured = auth !== 'public';
   const authText: Record<AuthKind, string> = {
-    public: 'Public (no authentication).',
-    jwt: 'Requires a valid Supabase access token.',
-    org: 'Requires a Supabase access token and active membership of the selected organization.',
-    platform: 'Requires a Supabase access token of a Platform Admin.',
-    super_admin:
-      'Requires a Supabase access token of a Platform **super admin**.',
+    public: 'Anyone can call this. No sign-in is needed.',
+    jwt: 'You must be signed in (a valid Supabase access token is required).',
+    org: 'You must be signed in and be an active member of the organization you are working in.',
+    platform: 'You must be signed in as a Platform Admin.',
+    super_admin: 'You must be signed in as a Platform **super admin**.',
   };
   const description = [
     options.description,
@@ -134,7 +133,7 @@ export function ApiEndpoint(options: ApiEndpointOptions) {
         name: 'X-Organization-Id',
         required: false,
         description:
-          'Organization to act on. Verified against your memberships; defaults to your first organization.',
+          'The organization you want to work in. It is checked against the organizations you belong to. If you leave it out, your first organization is used.',
       }),
     );
   }

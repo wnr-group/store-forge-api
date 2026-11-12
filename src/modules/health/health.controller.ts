@@ -27,9 +27,9 @@ export class HealthController {
 
   @Get()
   @ApiEndpoint({
-    summary: 'Application liveness check',
+    summary: 'Check that the API is running',
     description:
-      'Confirms the API process is running. Does not check the database or any external service.',
+      'A quick check that the API is up and answering. It does not look at the database or any other service, so it only tells you the API itself is alive.',
     auth: 'public',
     response: HealthResponse,
     message: 'Service is running',
@@ -40,9 +40,9 @@ export class HealthController {
 
   @Get('ready')
   @ApiEndpoint({
-    summary: 'Readiness check (database)',
+    summary: 'Check that the API is ready',
     description:
-      'Runs a trivial query through the same row-level-security guarded transaction every request uses. Returns 503 when the database is unreachable.',
+      'Checks that the API can reach its database. It runs a tiny test query in the same protected way that normal requests use. If the database cannot be reached, you get a 503 error.',
     auth: 'public',
     response: ReadinessResponse,
     message: 'Service is ready',

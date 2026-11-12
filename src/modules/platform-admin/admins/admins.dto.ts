@@ -29,7 +29,7 @@ export class AddPlatformAdminDto {
 
   @ApiProperty({
     description:
-      'Initial password (8-72 chars, a letter and a number). Never stored or logged.',
+      'The first password for the new admin, 8 to 72 characters with at least one letter and one number. It is never saved or written to logs.',
   })
   @PasswordField()
   password!: string;

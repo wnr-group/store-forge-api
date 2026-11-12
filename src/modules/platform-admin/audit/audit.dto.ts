@@ -44,7 +44,8 @@ export class AuditQueryDto extends PaginationQueryDto {
   action: 'all' | (typeof AUDIT_ACTIONS)[number] = 'all';
 
   @ApiPropertyOptional({
-    description: 'An administrator id, or `all`.',
+    description:
+      'The id of an admin to show only their actions, or `all` to show everyone.',
     default: 'all',
   })
   @IsOptional()
@@ -58,7 +59,7 @@ export class AuditQueryDto extends PaginationQueryDto {
 
   @ApiPropertyOptional({
     format: 'uuid',
-    description: 'Narrow to one organization.',
+    description: 'Show only the actions that affected this organization.',
   })
   @IsOptional()
   @IsUUID()
@@ -66,7 +67,7 @@ export class AuditQueryDto extends PaginationQueryDto {
 
   @ApiPropertyOptional({
     example: '2026-11-01',
-    description: 'First day (UTC), inclusive.',
+    description: 'The first day to include, as a UTC date (YYYY-MM-DD).',
   })
   @IsOptional()
   @Matches(DATE, { message: 'from must be YYYY-MM-DD.' })
@@ -74,7 +75,7 @@ export class AuditQueryDto extends PaginationQueryDto {
 
   @ApiPropertyOptional({
     example: '2026-11-30',
-    description: 'Last day (UTC), inclusive.',
+    description: 'The last day to include, as a UTC date (YYYY-MM-DD).',
   })
   @IsOptional()
   @Matches(DATE, { message: 'to must be YYYY-MM-DD.' })

@@ -16,7 +16,8 @@ export class ErrorBodyDto {
   @ApiProperty({ example: 'PRODUCT_NOT_FOUND' }) code!: string;
   @ApiPropertyOptional({
     nullable: true,
-    description: 'Field errors or other safe structured data',
+    description:
+      'Details about what went wrong, such as which fields have errors. It never contains sensitive data.',
     example: null,
   })
   details!: unknown;

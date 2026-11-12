@@ -28,9 +28,9 @@ export class PlatformUsageController {
   @Get('organizations/:id/usage')
   @ApiParam({ name: 'id', format: 'uuid', description: 'Organization id' })
   @ApiEndpoint({
-    summary: 'Usage of one organization',
+    summary: 'View usage of one organization',
     description:
-      'Counts, bytes and timestamps only: no merchant records or amounts.',
+      'See how much one organization uses the platform: how many products, customers and orders it has, how much file storage it uses and when it was last active. It shows only counts, sizes and times. The actual business records, such as customer details or amounts of money, are never shown.',
     auth: 'platform',
     response: OrgUsageDto,
     message: 'Usage retrieved successfully',
@@ -45,9 +45,9 @@ export class PlatformUsageController {
 
   @Get('usage')
   @ApiEndpoint({
-    summary: 'Usage per organization',
+    summary: 'List usage of all organizations',
     description:
-      'Search, status filter, sorting and paging all run in PostgreSQL.',
+      'See how much each organization uses the platform, a page at a time. You can search, filter by status and sort the list. All of this is done inside the database, so it stays fast.',
     auth: 'platform',
     response: [OrgUsageRowDto],
     paginated: true,
@@ -59,7 +59,9 @@ export class PlatformUsageController {
 
   @Get('usage/summary')
   @ApiEndpoint({
-    summary: 'Usage summary',
+    summary: 'View the usage summary',
+    description:
+      'Get platform-wide usage numbers in one place: the total number of organizations, how many are active, suspended or inactive, and the total file storage used. Use `inactiveDays` to choose how many days without activity make an organization count as inactive (the default is 30).',
     auth: 'platform',
     response: UsageSummaryDto,
     message: 'Usage summary retrieved successfully',
@@ -73,9 +75,9 @@ export class PlatformUsageController {
 
   @Get('usage/inactive')
   @ApiEndpoint({
-    summary: 'Least active organizations',
+    summary: 'List the least active organizations',
     description:
-      'Organizations with no merchant activity in the window, never-active ones first.',
+      'Find organizations that have not been active during the chosen number of days. Organizations that have never been active come first.',
     auth: 'platform',
     response: InactiveOrgsDto,
     message: 'Inactive organizations retrieved successfully',
@@ -86,9 +88,9 @@ export class PlatformUsageController {
 
   @Get('usage/new-organizations')
   @ApiEndpoint({
-    summary: 'New organizations over time',
+    summary: 'View new organizations over time',
     description:
-      'Defaults to the last 90 days. Dates are swapped if backwards and capped at about 3 years; the bucket (day / week / month) is chosen to keep the series readable.',
+      'See how many new organizations were created over a period, ready to draw as a chart. If you do not give dates, the last 90 days are used. If the start date is after the end date, they are swapped, and the period is limited to about 3 years. The numbers are grouped by day, week or month, whichever keeps the chart easy to read.',
     auth: 'platform',
     response: NewOrganizationsSeriesDto,
     message: 'Series retrieved successfully',

@@ -15,7 +15,8 @@ export class LoginDto {
   email!: string;
 
   @ApiProperty({
-    description: 'The existing account password. Never stored or logged.',
+    description:
+      'The password of your account. It is never saved or written to logs.',
   })
   @IsString({ message: 'Enter your password' })
   @MinLength(1, { message: 'Enter your password' })
@@ -25,7 +26,7 @@ export class LoginDto {
   @ApiPropertyOptional({
     default: true,
     description:
-      'Set to false when the caller only needs the session cookies: the response then carries just `id`, `email` and `expiresAt`, and the profile/memberships lookup (a database transaction) is skipped.',
+      'Set this to false if you only need the session cookies. The response then contains just `id`, `email` and `expiresAt`, and the database lookup for your profile and organizations is skipped.',
   })
   @IsOptional()
   @IsBoolean()
@@ -33,7 +34,9 @@ export class LoginDto {
 }
 
 export class ChangePasswordDto {
-  @ApiProperty({ description: 'Current password, re-verified with Supabase.' })
+  @ApiProperty({
+    description: 'Your current password. It is checked again with Supabase.',
+  })
   @IsString({ message: 'Enter your current password' })
   @MinLength(1, { message: 'Enter your current password' })
   @MaxLength(72)
@@ -41,12 +44,15 @@ export class ChangePasswordDto {
 
   @ApiProperty({
     description:
-      '8-72 characters with at least one letter and one number. Must differ from the current password.',
+      'Your new password. It must be 8 to 72 characters long, contain at least one letter and one number, and be different from your current password.',
   })
   @PasswordField()
   password!: string;
 
-  @ApiProperty({ description: 'Must equal `password`.' })
+  @ApiProperty({
+    description:
+      'Type the new password again. It must be exactly the same as `password`.',
+  })
   @IsString({ message: 'Confirm your new password' })
   confirmPassword!: string;
 }
@@ -58,7 +64,8 @@ export class MembershipDto {
   @ApiProperty({ enum: ['owner', 'admin', 'staff'] }) role!: string;
   @ApiProperty({
     example: { products: 'write', orders: 'read' },
-    description: 'Owner-granted access level per module.',
+    description:
+      'The access level the Owner has given you for each part (module) of the store.',
   })
   permissions!: Record<string, string>;
   @ApiProperty() joinedAt!: Date;
@@ -69,13 +76,14 @@ export class MeDto {
   @ApiPropertyOptional({ nullable: true }) email!: string | null;
   @ApiPropertyOptional({
     nullable: true,
-    description: 'Display name from the profile.',
+    description: 'The name shown on your profile.',
   })
   fullName!: string | null;
   @ApiProperty({
     enum: ['super_admin', 'admin'],
     nullable: true,
-    description: 'Platform Admin level, or null for everyone else.',
+    description:
+      'Your Platform Admin level, or null if you are not a Platform Admin.',
   })
   platformAdminLevel!: 'super_admin' | 'admin' | null;
   @ApiProperty({ type: [MembershipDto] }) memberships!: MembershipDto[];
@@ -86,7 +94,7 @@ export class LoginResponseDto extends MeDto {
   @ApiPropertyOptional({
     nullable: true,
     description:
-      'Unix time (seconds) at which the access token in the cookie expires.',
+      'The time when the access token in your cookie stops working, as a Unix timestamp in seconds.',
   })
   expiresAt!: number | null;
 }
@@ -101,7 +109,8 @@ export class SessionUserDto {
   @ApiPropertyOptional({ nullable: true }) email!: string | null;
   @ApiPropertyOptional({
     nullable: true,
-    description: 'Display name from the token (`user_metadata.full_name`).',
+    description:
+      'The name stored in your sign-in token (`user_metadata.full_name`).',
   })
   fullName?: string | null;
 }
@@ -110,7 +119,8 @@ export class SessionDto {
   @ApiProperty({ type: SessionUserDto }) user!: SessionUserDto;
   @ApiPropertyOptional({
     nullable: true,
-    description: 'Unix time (seconds) at which the access token expires.',
+    description:
+      'The time when your access token stops working, as a Unix timestamp in seconds.',
   })
   expiresAt!: number | null;
 }

@@ -40,7 +40,7 @@ export class CollectionsController {
   @ApiEndpoint({
     summary: 'List collections',
     description:
-      'All collections of the organization by name, with product counts. Not paginated.',
+      'See all the collections in your store, sorted by name. Each one shows how many products it contains. The full list is returned at once, with no pages.',
     auth: 'org',
     permission: 'catalog:view',
     response: [CollectionDto],
@@ -54,8 +54,9 @@ export class CollectionsController {
   @Get('product-options')
   @RequirePermission('catalog:view')
   @ApiEndpoint({
-    summary: 'Products to choose from when building a collection',
-    description: 'Ids and names of up to 500 products, by name.',
+    summary: 'List products to pick from',
+    description:
+      'Get a simple list of products (just the id and name) to show in the picker when you build or edit a collection. The list is sorted by name and holds at most 500 products.',
     auth: 'org',
     permission: 'catalog:view',
     response: [ProductOptionChoiceDto],
@@ -69,7 +70,9 @@ export class CollectionsController {
   @RequirePermission('catalog:view')
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiEndpoint({
-    summary: 'Get a collection with its product ids',
+    summary: 'View one collection',
+    description:
+      'Get the details of a single collection, along with the ids of the products inside it, in the order they were arranged.',
     auth: 'org',
     permission: 'catalog:view',
     response: CollectionDetailDto,
@@ -83,9 +86,9 @@ export class CollectionsController {
   @Post()
   @RequirePermission('catalog:manage')
   @ApiEndpoint({
-    summary: 'Create a collection',
+    summary: 'Add a collection',
     description:
-      'The optional image must already be uploaded (see POST /uploads/signed-urls) under `{organizationId}/collections/{id}/`. Every product must belong to the organization.',
+      'Create a new collection, which is a hand-picked group of products. A cover image is optional, but it has to be uploaded first (see POST /uploads/signed-urls) into the folder `{organizationId}/collections/{id}/`. Every product you add must belong to your store.',
     auth: 'org',
     permission: 'catalog:manage',
     body: CreateCollectionDto,
@@ -106,9 +109,9 @@ export class CollectionsController {
   @RequirePermission('catalog:manage')
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiEndpoint({
-    summary: 'Update a collection',
+    summary: 'Edit a collection',
     description:
-      'Partial update. `productIds`, when sent, replaces the whole product list; a replaced image file is removed afterwards if nothing else references it.',
+      'Change a collection. Send only the fields you want to change and the rest stay as they are. If you send `productIds`, that list replaces all the products currently in the collection. If you swap the cover image, the old file is deleted afterwards, unless something else is still using it.',
     auth: 'org',
     permission: 'catalog:manage',
     body: UpdateCollectionDto,
@@ -129,7 +132,9 @@ export class CollectionsController {
   @RequirePermission('catalog:delete')
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiEndpoint({
-    summary: 'Delete a collection',
+    summary: 'Remove a collection',
+    description:
+      'Delete a collection. The products in it are not deleted. Its cover image file is also deleted, unless something else is still using it.',
     auth: 'org',
     permission: 'catalog:delete',
     response: null,

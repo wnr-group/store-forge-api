@@ -38,7 +38,7 @@ class UploadFileDto {
   @IsIn(IMAGE_TYPES, { message: 'Only JPEG, PNG and WebP images are allowed.' })
   type!: (typeof IMAGE_TYPES)[number];
 
-  @ApiProperty({ description: 'Size in bytes, at most 5 MB.' })
+  @ApiProperty({ description: 'File size in bytes. It can be at most 5 MB.' })
   @IsInt()
   @Min(1)
   size!: number;
@@ -52,7 +52,7 @@ class RequestUploadsDto {
   @ApiPropertyOptional({
     format: 'uuid',
     description:
-      'Product or collection id the files will belong to (required unless scope is `store`).',
+      'The id of the product or collection these files belong to. Required unless the scope is `store`.',
   })
   @IsOptional()
   @IsUUID()
@@ -74,12 +74,14 @@ class RequestUploadsDto {
 class UploadTargetDto {
   @ApiProperty({
     description:
-      'Object path to send back when saving the product, collection or store.',
+      'The file location. Send this back when you save the product, collection or store.',
   })
   path!: string;
-  @ApiProperty({ description: 'One-time upload token.' }) token!: string;
+  @ApiProperty({ description: 'A token that can be used for one upload only.' })
+  token!: string;
   @ApiProperty({
-    description: 'PUT the file here (Supabase signed upload URL).',
+    description:
+      'Upload the file to this address with a PUT request. It is a signed Supabase upload link.',
   })
   signedUrl!: string;
 }
@@ -92,9 +94,9 @@ export class UploadsController {
 
   @Post('signed-urls')
   @ApiEndpoint({
-    summary: 'Get one-time signed upload URLs',
+    summary: 'Get links to upload images',
     description:
-      'The target folder is derived from the verified organization, never from the request. Upload each file straight to Supabase Storage, then send the returned `path` when saving the product / collection / store.',
+      "Ask for secure, one-time upload links for your images. Choose what the images are for (a product, a collection or the store itself) and describe each file (its type and size). The folder the files go into is worked out from your own organization, never from the request, so nobody can upload into another store's folder. Then upload each file straight to Supabase Storage using its link, and send the `path` you got back when you save the product, collection or store.",
     auth: 'org',
     permission: '`store:manage` for scope `store`, otherwise `catalog:manage`',
     body: RequestUploadsDto,

@@ -35,14 +35,15 @@ export class CurrentOrganizationDto {
   @ApiProperty({ type: OrganizationRefDto }) organization!: OrganizationRefDto;
   @ApiProperty({ enum: ['owner', 'admin', 'staff'] }) role!: string;
   @ApiProperty({
-    description: 'Display label: Owner, Manager, Staff, Viewer or Custom.',
+    description:
+      'The name shown for your role: Owner, Manager, Staff, Viewer or Custom.',
   })
   roleLabel!: string;
   @ApiProperty() permissions!: Record<string, string>;
   @ApiProperty({
     type: [AccessEntryDto],
     description:
-      'Modules the caller can reach, with their effective level (the Owner has everything).',
+      'The parts (modules) of the store you can use, with your actual access level for each. The Owner can use everything.',
   })
   access!: AccessEntryDto[];
   @ApiProperty({ type: StoreDto, nullable: true }) store!: StoreDto | null;

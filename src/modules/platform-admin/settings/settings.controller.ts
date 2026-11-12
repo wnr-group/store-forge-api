@@ -20,7 +20,9 @@ export class PlatformSettingsController {
 
   @Get()
   @ApiEndpoint({
-    summary: 'Read platform settings',
+    summary: 'View platform settings',
+    description:
+      'Get the current platform-wide settings, such as the platform name and support email.',
     auth: 'platform',
     response: PlatformSettingsDto,
     message: 'Platform settings retrieved successfully',
@@ -34,7 +36,7 @@ export class PlatformSettingsController {
   @ApiEndpoint({
     summary: 'Update platform settings',
     description:
-      'Partial update; the audit entry lists only what changed. Rate limit: 20 per 10 minutes.',
+      'Change the platform-wide settings. Send only the fields you want to change. The activity log records only the things that actually changed. To protect against misuse, you can do this at most 20 times in 10 minutes.',
     auth: 'super_admin',
     permission: 'super admin',
     body: UpdatePlatformSettingsDto,

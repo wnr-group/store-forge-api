@@ -37,7 +37,7 @@ export class CustomersController {
   @ApiEndpoint({
     summary: 'List customers',
     description:
-      'Search by name, email or phone; sort by `createdAt`, `name`, `spent` or `orders`. Order counts and spend (paid + fulfilled orders) are computed in SQL.',
+      'See the people who have bought from your store, a page at a time. You can search by name, email or phone number, and sort by when they were added (`createdAt`), their name (`name`), how much they have spent (`spent`) or how many orders they placed (`orders`). Each customer shows their order count and total spend. Total spend counts only paid and fulfilled orders.',
     auth: 'org',
     permission: 'customers:view',
     response: [CustomerDto],
@@ -52,7 +52,9 @@ export class CustomersController {
   @RequirePermission('customers:view')
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiEndpoint({
-    summary: 'Get a customer with recent orders',
+    summary: 'View one customer',
+    description:
+      "Get a customer's details together with their order history. The history shows their 50 most recent orders, newest first.",
     auth: 'org',
     permission: 'customers:view',
     response: CustomerDetailDto,
@@ -66,7 +68,9 @@ export class CustomersController {
   @Post()
   @RequirePermission('customers:manage')
   @ApiEndpoint({
-    summary: 'Create a customer',
+    summary: 'Add a customer',
+    description:
+      'Add a new customer to your store. Two customers in the same store cannot have the same email address.',
     auth: 'org',
     permission: 'customers:manage',
     body: CreateCustomerDto,
@@ -83,8 +87,9 @@ export class CustomersController {
   @RequirePermission('customers:manage')
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiEndpoint({
-    summary: 'Update a customer',
-    description: 'Partial update.',
+    summary: 'Edit a customer',
+    description:
+      "Change a customer's details. Send only the fields you want to change and the rest stay as they are.",
     auth: 'org',
     permission: 'customers:manage',
     body: UpdateCustomerDto,
@@ -104,9 +109,9 @@ export class CustomersController {
   @RequirePermission('customers:delete')
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiEndpoint({
-    summary: 'Delete a customer',
+    summary: 'Remove a customer',
     description:
-      'Their orders are kept; the orders simply lose the customer link.',
+      'Delete a customer. Their past orders are not deleted, they just no longer point to a customer.',
     auth: 'org',
     permission: 'customers:delete',
     response: null,

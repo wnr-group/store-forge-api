@@ -25,7 +25,7 @@ export class OrganizationsController {
   @ApiEndpoint({
     summary: 'List my organizations',
     description:
-      'Active memberships of the verified user, oldest first. Disabled memberships and suspended organizations are not listed.',
+      'See every organization you belong to, starting with the one you joined first. Organizations where your access has been disabled, and organizations that have been suspended, are not shown.',
     auth: 'jwt',
     response: [OrganizationSummaryDto],
     message: 'Organizations retrieved successfully',
@@ -38,9 +38,9 @@ export class OrganizationsController {
   @Get('current')
   @RequirePermission('dashboard:view')
   @ApiEndpoint({
-    summary: 'Current organization, access and store',
+    summary: 'View my current organization',
     description:
-      "The organization selected by `X-Organization-Id` (or the first one), the caller's role and effective module access, and the organization's primary store.",
+      'Get the organization you are working in right now (the one named in the `X-Organization-Id` header, or your first one if none is given), your role in it, what you are allowed to do there, and its main store.',
     auth: 'org',
     permission: 'dashboard:view (any member)',
     response: CurrentOrganizationDto,

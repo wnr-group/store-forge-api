@@ -19,7 +19,7 @@ export class StoreDto {
   @ApiPropertyOptional({
     nullable: true,
     description:
-      'Object path of the logo in the `products` bucket (`{tenantId}/store/...`), not a URL.',
+      'Where the logo file is stored in the `products` storage bucket (`{tenantId}/store/...`). This is a storage path, not a web address.',
   })
   logoPath!: string | null;
   @ApiPropertyOptional({ nullable: true }) contactEmail!: string | null;
@@ -29,7 +29,7 @@ export class StoreDto {
   @ApiProperty({ enum: ['active', 'inactive', 'suspended'] }) status!: string;
   @ApiProperty({
     description:
-      'True once the organization has products or orders: the currency can no longer change.',
+      'Becomes true once the organization has products or orders. From then on the currency can no longer be changed.',
   })
   currencyLocked!: boolean;
   @ApiProperty() createdAt!: Date;
@@ -45,7 +45,7 @@ export class UpdateStoreDto {
 
   @ApiPropertyOptional({
     description:
-      'Store address: 3-40 chars, lowercase letters, digits, hyphens. Reserved names are refused.',
+      'The store web address: 3 to 40 characters, using only lowercase letters, digits and hyphens. Reserved names cannot be used.',
   })
   @WhenPresent()
   @StoreSlug()
@@ -65,7 +65,7 @@ export class UpdateStoreDto {
 
   @ApiPropertyOptional({
     example: 'INR',
-    description: 'Locked once products or orders exist.',
+    description: 'Cannot be changed once the store has products or orders.',
   })
   @WhenPresent()
   @CurrencyField()
@@ -79,7 +79,7 @@ export class UpdateStoreDto {
   @ApiPropertyOptional({
     nullable: true,
     description:
-      "Path returned by POST /uploads/signed-urls with scope `store`. Must exist under this organization's store folder.",
+      "The path you received from POST /uploads/signed-urls with scope `store`. The file must be in your organization's own store folder.",
   })
   @IsOptional()
   @IsString()

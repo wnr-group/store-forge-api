@@ -13,7 +13,8 @@ export class UsersController {
 
   @Get('me')
   @ApiEndpoint({
-    summary: 'Read own profile',
+    summary: 'View my profile',
+    description: 'Get your own profile details, such as your name and email.',
     auth: 'jwt',
     response: ProfileDto,
     message: 'Profile retrieved successfully',
@@ -25,9 +26,9 @@ export class UsersController {
 
   @Patch('me')
   @ApiEndpoint({
-    summary: 'Update own display name',
+    summary: 'Change my name',
     description:
-      'Updates `profiles.full_name` (row level security allows only your own row) and the Supabase Auth display name.',
+      'Change the name shown for your account. It is updated in your profile and in your Supabase sign-in account, and you can only ever change your own.',
     auth: 'jwt',
     body: UpdateProfileDto,
     response: ProfileDto,

@@ -16,9 +16,14 @@ export class CustomerDto {
   @ApiProperty() email!: string;
   @ApiPropertyOptional({ nullable: true }) phone!: string | null;
   @ApiPropertyOptional({ nullable: true }) notes!: string | null;
-  @ApiProperty({ description: 'Orders of any status.' }) orderCount!: number;
   @ApiProperty({
-    description: 'Sum of paid and fulfilled orders, in minor units.',
+    description:
+      'Number of orders this customer has placed, whatever their status.',
+  })
+  orderCount!: number;
+  @ApiProperty({
+    description:
+      "Total spent on paid and fulfilled orders, in the currency's smallest unit (for example cents).",
   })
   totalSpentMinor!: number;
   @ApiPropertyOptional({ nullable: true }) lastOrderAt!: Date | null;
@@ -39,7 +44,8 @@ export class CustomerOrderDto {
 export class CustomerDetailDto extends CustomerDto {
   @ApiProperty({
     type: [CustomerOrderDto],
-    description: 'The 50 most recent orders. Orders are read-only.',
+    description:
+      "The customer's 50 most recent orders. Orders can only be viewed, not changed.",
   })
   orders!: CustomerOrderDto[];
 }
@@ -59,7 +65,10 @@ export class CreateCustomerDto {
   @RequiredText('Customer name', 120)
   fullName!: string;
 
-  @ApiProperty({ description: 'Unique per organization, case-insensitive.' })
+  @ApiProperty({
+    description:
+      "The customer's email address. It must be unique in your organization, and capital letters do not make it different.",
+  })
   @EmailField('Email address')
   email!: string;
 

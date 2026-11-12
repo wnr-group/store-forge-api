@@ -10,7 +10,7 @@ export class AnalyticsQueryDto {
   @ApiPropertyOptional({
     enum: RANGES,
     default: 30,
-    description: 'Window in days.',
+    description: 'How many days back to look: 7, 30 or 90.',
   })
   @IsOptional()
   @Type(() => Number)
@@ -21,12 +21,18 @@ export class AnalyticsQueryDto {
 export class SeriesPointDto {
   @ApiProperty({
     example: '2026-11-10',
-    description: 'Calendar day in the store timezone.',
+    description: 'The calendar day, based on your store time zone.',
   })
   day!: string;
-  @ApiProperty({ description: 'Paid + fulfilled sales, minor units.' })
+  @ApiProperty({
+    description:
+      "Total sales for the day from paid and fulfilled orders, in the currency's smallest unit (for example cents).",
+  })
   salesMinor!: number;
-  @ApiProperty({ description: 'Orders that day, excluding cancelled.' })
+  @ApiProperty({
+    description:
+      'Number of orders placed that day, not counting cancelled ones.',
+  })
   orders!: number;
 }
 
@@ -48,12 +54,14 @@ export class RecentOrderDto {
 export class AnalyticsDto {
   @ApiProperty({ enum: RANGES }) range!: number;
   @ApiProperty({
-    description: 'False until the store has at least one order of any status.',
+    description:
+      'Stays false until the store has received at least one order, whatever its status.',
   })
   hasOrders!: boolean;
   @ApiProperty() totalSalesMinor!: number;
   @ApiProperty({
-    description: 'Sales in the window just before this one, for comparison.',
+    description:
+      'Sales in the period just before this one, so you can compare the two.',
   })
   previousSalesMinor!: number;
   @ApiProperty() orders!: number;
@@ -61,14 +69,16 @@ export class AnalyticsDto {
   @ApiProperty() averageOrderMinor!: number;
   @ApiProperty({
     type: [SeriesPointDto],
-    description: 'One point per day, zero-filled.',
+    description:
+      'One entry for every day in the period. Days with no orders show zero.',
   })
   series!: SeriesPointDto[];
   @ApiProperty({ type: [BestSellerDto] }) bestSellers!: BestSellerDto[];
   @ApiProperty({ type: [RecentOrderDto] }) recentOrders!: RecentOrderDto[];
   @ApiProperty({
     type: [InventoryRowDto],
-    description: 'Out-of-stock then low-stock units, at most 8.',
+    description:
+      'Items that are out of stock, followed by items running low, with at most 8 shown.',
   })
   lowStock!: InventoryRowDto[];
   @ApiProperty({ example: 'INR' }) currency!: string;

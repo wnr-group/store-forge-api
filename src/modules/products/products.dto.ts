@@ -44,7 +44,7 @@ export class ProductListItemDto {
   @ApiProperty({ enum: PRODUCT_STATUSES }) status!: string;
   @ApiProperty({
     description:
-      'Price in minor units of the store currency (e.g. paise, cents).',
+      "The price in the currency's smallest unit (for example cents or paise).",
   })
   priceMinor!: number;
   @ApiProperty() hasVariants!: boolean;
@@ -52,14 +52,14 @@ export class ProductListItemDto {
   @ApiProperty() trackInventory!: boolean;
   @ApiProperty({
     description:
-      'Sellable stock: active-variant total when the product has variants, else its quantity.',
+      'How many can be sold. If the product has variants, this is the total of all active variants. Otherwise it is the product quantity.',
   })
   stock!: number;
   @ApiProperty() lowStockThreshold!: number;
   @ApiPropertyOptional({ nullable: true }) categoryName!: string | null;
   @ApiPropertyOptional({
     nullable: true,
-    description: 'Storage path of the primary image.',
+    description: 'Where the main image is stored.',
   })
   imagePath!: string | null;
   @ApiProperty() updatedAt!: Date;
@@ -92,7 +92,10 @@ export class ProductVariantDto {
 
 export class ProductImageDto {
   @ApiProperty({ format: 'uuid' }) id!: string;
-  @ApiProperty({ description: 'Object path in the `products` bucket.' })
+  @ApiProperty({
+    description:
+      'Where the image file is stored in the `products` storage bucket.',
+  })
   storagePath!: string;
   @ApiPropertyOptional({ nullable: true }) altText!: string | null;
   @ApiProperty() position!: number;
@@ -112,7 +115,8 @@ export class ProductDetailDto {
     string | null;
   @ApiPropertyOptional({
     nullable: true,
-    description: 'Used when the product has no variants.',
+    description:
+      'The product code (SKU). It is used only when the product has no variants.',
   })
   sku!: string | null;
   @ApiProperty() priceMinor!: number;
@@ -132,7 +136,8 @@ export class ProductDetailDto {
 }
 
 export class BulkCountDto {
-  @ApiProperty({ description: 'Products affected.' }) count!: number;
+  @ApiProperty({ description: 'How many products were changed.' })
+  count!: number;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -163,7 +168,7 @@ function Sku() {
 export class ProductImageInputDto {
   @ApiProperty({
     description:
-      'Object path returned by POST /uploads/signed-urls. Re-verified against the organization, the product folder and the bucket.',
+      'The file path you received from POST /uploads/signed-urls. It is checked again against your organization, the product folder and the storage bucket.',
   })
   @IsString()
   @MinLength(10)
@@ -203,7 +208,7 @@ export class ProductVariantInputDto {
   @ApiPropertyOptional({
     format: 'uuid',
     description:
-      'Existing variant id when editing; absent for new combinations.',
+      'The id of an existing variant when you are editing it. Leave it out for a new combination.',
   })
   @IsOptional()
   @IsUUID()
@@ -226,7 +231,8 @@ export class ProductVariantInputDto {
 
   @ApiProperty({
     example: '1299.50',
-    description: 'Decimal text; decimals allowed depend on the store currency.',
+    description:
+      'The price as plain decimal text. How many decimal places are allowed depends on the store currency.',
   })
   @MoneyText('Variant price', { required: true, positive: true })
   price!: string;
@@ -241,7 +247,7 @@ export class ProductVariantInputDto {
 
   @ApiPropertyOptional({
     nullable: true,
-    description: "Storage path of one of this product's images.",
+    description: "Where one of this product's images is stored.",
   })
   @IsOptional()
   @IsString()
@@ -282,7 +288,8 @@ class ProductWritableFields {
   @ApiPropertyOptional({
     nullable: true,
     maxLength: 64,
-    description: 'Ignored when the product has variants.',
+    description:
+      'The product code (SKU). It is ignored when the product has variants.',
   })
   @Sku()
   sku?: string | null;
@@ -303,7 +310,8 @@ class ProductWritableFields {
   @ApiPropertyOptional({
     minimum: 0,
     default: 0,
-    description: 'Ignored when the product has variants.',
+    description:
+      'How many are in stock. It is ignored when the product has variants.',
   })
   @IsOptional()
   @WholeNumber('Inventory quantity')
@@ -341,7 +349,8 @@ class ProductWritableFields {
   @ApiPropertyOptional({
     type: [ProductImageInputDto],
     maxItems: MAX_IMAGES_PER_PRODUCT,
-    description: 'Ordered; the first is the primary image.',
+    description:
+      'The product images in order. The first one is the main image.',
   })
   @IsOptional()
   @IsArray()
@@ -357,7 +366,7 @@ export class CreateProductDto extends ProductWritableFields {
   @ApiPropertyOptional({
     format: 'uuid',
     description:
-      'Client-generated id, so images can be uploaded under `{organizationId}/{id}/` before the product exists. Generated by the server when omitted.',
+      'An id you create yourself, so you can upload images into `{organizationId}/{id}/` before the product exists. If you leave it out, the server makes one.',
   })
   @IsOptional()
   @IsUUID()
@@ -369,14 +378,15 @@ export class CreateProductDto extends ProductWritableFields {
 
   @ApiPropertyOptional({
     description:
-      'URL handle, 2-80 chars. Defaults to a unique slug of the name.',
+      'The short name used in web addresses, 2 to 80 characters long. If you leave it out, a unique one is made from the product name.',
   })
   @CatalogSlug()
   slug?: string;
 
   @ApiProperty({
     example: '1299.50',
-    description: 'Greater than zero. Decimal text in the store currency.',
+    description:
+      'The price as plain decimal text in the store currency. It must be greater than zero.',
   })
   @MoneyText('Price', { required: true, positive: true })
   price!: string;
@@ -433,7 +443,8 @@ export class ProductListQueryDto extends PaginationQueryDto {
 
   @ApiPropertyOptional({
     default: 'all',
-    description: 'A category id, `none` for uncategorised, or `all`.',
+    description:
+      'A category id to show only that category, `none` for products without a category, or `all` to show every product.',
   })
   @IsOptional()
   @Check(

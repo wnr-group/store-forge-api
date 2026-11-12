@@ -31,7 +31,8 @@ export class UpdatePlatformSettingsDto {
 
   @ApiPropertyOptional({
     example: 'INR',
-    description: 'Applied to organizations created from now on.',
+    description:
+      'The default currency for organizations created from now on. Existing organizations are not affected.',
   })
   @WhenPresent()
   @CurrencyField()
@@ -44,7 +45,7 @@ export class UpdatePlatformSettingsDto {
 
   @ApiPropertyOptional({
     enum: ['active', 'inactive'],
-    description: 'How new stores start.',
+    description: 'Whether new stores start as `active` or `inactive`.',
   })
   @WhenPresent()
   @IsIn(['active', 'inactive'], { message: 'Choose how new stores start.' })

@@ -61,9 +61,9 @@ export class PlatformOrganizationsController {
 
   @Get('me')
   @ApiEndpoint({
-    summary: 'My Platform Admin level',
+    summary: 'Check my Platform Admin level',
     description:
-      'Answered by the database (`platform_admin_role()`). Non-admins get 403.',
+      'Find out whether you are a Platform Admin and at which level (`super_admin` or `admin`). The answer comes from the database (`platform_admin_role()`). If you are not a Platform Admin, you get a 403 error.',
     auth: 'platform',
     response: PlatformMeDto,
     message: 'Platform admin level retrieved successfully',
@@ -74,9 +74,9 @@ export class PlatformOrganizationsController {
 
   @Get('overview')
   @ApiEndpoint({
-    summary: 'Platform overview',
+    summary: 'View the platform overview',
     description:
-      'Organization and user totals plus the five newest organizations.',
+      'Get a quick summary of the whole platform: how many organizations and users there are, and the five newest organizations.',
     auth: 'platform',
     response: PlatformOverviewDto,
     message: 'Overview retrieved successfully',
@@ -89,7 +89,7 @@ export class PlatformOrganizationsController {
   @ApiEndpoint({
     summary: 'List organizations',
     description:
-      'Search (name / slug), status filter, sorting and paging all run in PostgreSQL. A page past the end returns the last real page.',
+      'See all the organizations on the platform, a page at a time. You can search by name or slug (the short web-address name), filter by status and sort the list. All of this is done inside the database, so it stays fast. If you ask for a page beyond the end of the list, you get the last page that actually exists.',
     auth: 'platform',
     response: [CompanyDto],
     paginated: true,
@@ -102,9 +102,9 @@ export class PlatformOrganizationsController {
   @Post('organizations')
   @PlatformAccess({ bucket: 'org.create' })
   @ApiEndpoint({
-    summary: 'Create an organization and its Owner',
+    summary: 'Add an organization with its Owner',
     description:
-      'Creates a confirmed Supabase account for the Owner (no email verification), then the organization, its store and the owner membership in one transaction. Idempotent for the same owner and store address; the Auth account is removed again if provisioning fails. Rate limit: 10 per 10 minutes per admin.',
+      "Set up a new organization in one step. First an account is created for the Owner, ready to use with no email verification step. Then the organization, its store and the Owner's membership are created together, so either everything is saved or nothing is. Sending the same request again for the same owner and store address is safe and does not create duplicates. If the setup fails, the new sign-in account is removed again. Each admin can do this at most 10 times in 10 minutes.",
     auth: 'platform',
     permission: 'any Platform Admin',
     body: CreateOrganizationDto,
@@ -120,9 +120,9 @@ export class PlatformOrganizationsController {
   @Get('organizations/:id')
   @ApiParam(ID)
   @ApiEndpoint({
-    summary: 'Organization detail',
+    summary: 'View one organization',
     description:
-      'The organization, its primary store and its team. Never catalog, customer or order data.',
+      'Get the details of a single organization: the organization itself, its main store and its team. Private business data such as products, customers and orders is never included.',
     auth: 'platform',
     response: CompanyDetailDto,
     message: 'Organization retrieved successfully',
@@ -138,7 +138,7 @@ export class PlatformOrganizationsController {
   @ApiEndpoint({
     summary: 'Edit an organization',
     description:
-      'Partial update of name, contact phone and address. Nothing is written or logged when nothing changed. Rate limit: 60 per 10 minutes.',
+      "Change an organization's name, contact phone number or address. Send only what you want to change. If nothing actually changed, nothing is saved and nothing is added to the activity log. Each admin can do this at most 60 times in 10 minutes.",
     auth: 'platform',
     body: UpdateOrganizationDto,
     response: CompanyDto,
@@ -159,7 +159,7 @@ export class PlatformOrganizationsController {
   @ApiEndpoint({
     summary: 'Delete an organization permanently',
     description:
-      'Deletes the organization and everything under it in one transaction, then (best effort) the sign-ins of people who belonged to no other organization and its stored files. Rate limit: 5 per 10 minutes.',
+      "Permanently delete an organization and everything inside it. The data is deleted in one go, so either all of it goes or none of it does. Afterwards the system also tries to delete the sign-in accounts of people who belonged to no other organization, and the organization's stored files. If that cleanup step fails, the organization is still deleted. This cannot be undone. Each admin can do this at most 5 times in 10 minutes.",
     auth: 'platform',
     response: null,
     message: 'Organization deleted successfully',
@@ -178,7 +178,7 @@ export class PlatformOrganizationsController {
   @ApiEndpoint({
     summary: 'Suspend or reactivate an organization',
     description:
-      'A suspended organization is invisible to all of its members at the database level.',
+      'Switch an organization off or back on. While an organization is suspended, none of its members can see or use it, and this is enforced in the database itself.',
     auth: 'platform',
     body: OrganizationStatusDto,
     response: CompanyDto,
@@ -197,9 +197,9 @@ export class PlatformOrganizationsController {
   @PlatformAccess({ bucket: 'org.edit' })
   @ApiParam(ID)
   @ApiEndpoint({
-    summary: 'Edit the primary store',
+    summary: 'Edit the main store',
     description:
-      'Name, description, contacts, currency and timezone (never the address or logo). The currency is locked once the store has products or orders.',
+      "Change an organization's main store: its name, description, contact details, currency and time zone. The store web address and logo cannot be changed here. The currency can no longer be changed once the store has products or orders.",
     auth: 'platform',
     body: UpdateOrganizationStoreDto,
     response: PlatformStoreDto,
@@ -220,7 +220,7 @@ export class PlatformOrganizationsController {
   @ApiEndpoint({
     summary: 'Add a team member to an organization',
     description:
-      'Same account an Owner can create; the Owner role cannot be assigned. The Auth account is removed again if linking fails.',
+      'Create an account for a new team member and add them to this organization. It works the same way as when an Owner adds a member from their own Team page. You cannot make someone an Owner here. If adding them to the organization fails, the new sign-in account is removed again.',
     auth: 'platform',
     body: CreateMemberDto,
     response: CreatedMemberDto,
@@ -242,7 +242,8 @@ export class PlatformOrganizationsController {
   @ApiParam({ name: 'userId', format: 'uuid' })
   @ApiEndpoint({
     summary: 'Disable or reactivate a team member',
-    description: 'The Owner cannot be disabled; transfer ownership first.',
+    description:
+      "Switch a team member's access to this organization off or back on. The Owner cannot be disabled. Transfer the ownership to someone else first.",
     auth: 'platform',
     body: MemberStatusDto,
     response: TeamMemberDto,
@@ -265,7 +266,7 @@ export class PlatformOrganizationsController {
   @ApiEndpoint({
     summary: 'Remove a team member',
     description:
-      'The Owner cannot be removed. The sign-in is deleted too when the person belongs to no other organization.',
+      "Take a person off this organization's team. The Owner cannot be removed. If the person does not belong to any other organization, their sign-in account is deleted as well.",
     auth: 'platform',
     response: null,
     message: 'Team member removed successfully',
@@ -285,7 +286,7 @@ export class PlatformOrganizationsController {
   @ApiEndpoint({
     summary: 'Transfer ownership to an existing member',
     description:
-      'The target must be an active team member. Atomic: the old owner becomes a team member (kept or disabled), so there are never zero or two owners. Rate limit: 5 per 10 minutes.',
+      'Make an existing team member the new Owner. The new owner must be an active member of the team. The change happens in one step: the old Owner becomes an ordinary team member (kept active or disabled), so there is never a moment with no owner or with two owners. Each admin can do this at most 5 times in 10 minutes.',
     auth: 'platform',
     body: TransferOwnershipDto,
     response: CompanyDetailDto,
@@ -305,9 +306,9 @@ export class PlatformOrganizationsController {
   @PlatformAccess({ bucket: 'ownership.change' })
   @ApiParam(ID)
   @ApiEndpoint({
-    summary: 'Recover ownership with a new account',
+    summary: 'Recover an organization with a new Owner',
     description:
-      'For an organization whose owner is lost or missing: creates a brand-new confirmed account and makes it the owner.',
+      'Use this when an organization has lost its Owner or the Owner can no longer be reached. It creates a brand-new account, ready to use with no email verification step, and makes that account the Owner.',
     auth: 'platform',
     body: RecoverOwnerDto,
     response: RecoveredOwnerDto,

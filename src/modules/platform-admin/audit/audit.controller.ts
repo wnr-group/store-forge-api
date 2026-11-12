@@ -17,9 +17,9 @@ export class AuditController {
 
   @Get()
   @ApiEndpoint({
-    summary: 'Audit log',
+    summary: 'View the activity log',
     description:
-      'Append-only record of Platform Admin actions, newest first. Filter by action, administrator, organization, text (organization name) and date range (UTC days). Rows cannot be edited or deleted; passwords and tokens are stripped from stored data.',
+      'See a history of what Platform Admins have done, newest first, a page at a time. You can filter it by the type of action, the admin who did it, the organization it affected, a search word (matched against the organization name) and a date range (counted in whole UTC days). Entries can never be edited or deleted, and passwords and tokens are removed before anything is saved.',
     auth: 'platform',
     response: [AuditLogDto],
     paginated: true,
@@ -31,8 +31,9 @@ export class AuditController {
 
   @Get('admins')
   @ApiEndpoint({
-    summary: 'Administrators who appear in the audit log',
-    description: 'For a filter dropdown.',
+    summary: 'List admins in the activity log',
+    description:
+      'Get the admins who appear in the activity log, so you can offer them in a filter dropdown.',
     auth: 'platform',
     response: [AuditAdminDto],
     message: 'Administrators retrieved successfully',

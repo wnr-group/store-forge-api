@@ -13,9 +13,9 @@ export class PublicController {
 
   @Get('branding')
   @ApiEndpoint({
-    summary: 'Platform name and support contact',
+    summary: 'Get the platform name and support email',
     description:
-      'For pages anyone can open (sign-in, "no workspace"). Falls back to defaults if the database is unreachable.',
+      'Get the platform name and the support email address to show on pages anyone can open, such as the sign-in page and the "no workspace" page. No sign-in is needed. If the database cannot be reached, standard default values are returned instead of an error.',
     auth: 'public',
     response: PublicBrandingDto,
     message: 'Branding retrieved successfully',
@@ -27,9 +27,9 @@ export class PublicController {
   @Get('storefronts/:slug')
   @ApiParam({ name: 'slug', example: 'acme-store' })
   @ApiEndpoint({
-    summary: 'Public storefront data',
+    summary: 'View a public storefront',
     description:
-      'Public fields of an active store in an active organization. Unknown, inactive and suspended stores all return 404.',
+      "Get the information a shopper sees on a store's public page: the store details, its latest products and its look. Anyone can call it without signing in. If the store does not exist, is inactive, or its organization is suspended, you get a 404 error in every case, so nobody can tell those situations apart.",
     auth: 'public',
     response: StorefrontDto,
     message: 'Storefront retrieved successfully',

@@ -29,10 +29,10 @@ export function buildOpenApiDocument(app: INestApplication, apiPrefix: string) {
       .setTitle('Store Forge API')
       .setDescription(
         [
-          `All routes are served under /${apiPrefix}.`,
-          'Authentication is **Supabase Auth**: sign in with the Supabase SDK and send the access token as `Authorization: Bearer <token>`. This API verifies the token; it never issues one.',
-          'Organization-scoped routes act on the organization named by the `X-Organization-Id` header (checked against your memberships) or, without it, your first organization.',
-          'Success envelope: `{ success, message, data, meta? }`. Error envelope: `{ success:false, message, error:{ code, details }, timestamp, path }`.',
+          `Every route starts with /${apiPrefix}.`,
+          'Signing in is handled by **Supabase Auth**. Sign in with the Supabase SDK and send your access token as `Authorization: Bearer <token>`. This API only checks that the token is genuine, it never creates tokens itself.',
+          'Routes that belong to an organization work on the organization named in the `X-Organization-Id` header. The header is checked against the organizations you belong to. If you leave it out, your first organization is used.',
+          'Every successful answer looks like this: `{ success, message, data, meta? }`. Every error looks like this: `{ success:false, message, error:{ code, details }, timestamp, path }`.',
         ].join('\n\n'),
       )
       .setVersion('1.0.0')
@@ -40,7 +40,7 @@ export function buildOpenApiDocument(app: INestApplication, apiPrefix: string) {
         type: 'http',
         scheme: 'bearer',
         bearerFormat: 'JWT',
-        description: 'Supabase access token',
+        description: 'Your Supabase access token',
       })
       .build(),
   );

@@ -40,7 +40,7 @@ export class TeamController {
   @ApiEndpoint({
     summary: 'List team members',
     description:
-      'The Owner and every member of the organization, with their module access.',
+      'See everyone on your team: the Owner and all the other members. For each person you can see which parts of the store (modules) they are allowed to use.',
     auth: 'org',
     permission: 'members:manage (Owner only)',
     response: [TeamMemberDto],
@@ -53,9 +53,9 @@ export class TeamController {
   @Post()
   @Throttle(SENSITIVE)
   @ApiEndpoint({
-    summary: 'Create a team member',
+    summary: 'Add a team member',
     description:
-      'Creates a confirmed Supabase account (no email verification) and links it to the organization with the given module access. The Owner role cannot be assigned. If linking fails the new account is deleted again.',
+      'Create an account for a new team member and add them to your organization with the access you choose. The account is ready to use straight away, with no email verification step. You cannot make someone an Owner here. If adding them to the organization fails, the new account is deleted again, so no half-finished account is left behind.',
     auth: 'org',
     permission: 'members:manage (Owner only)',
     body: CreateMemberDto,
@@ -73,7 +73,7 @@ export class TeamController {
   @ApiEndpoint({
     summary: 'Edit a team member',
     description:
-      'Partial update of name and/or module access. The Owner and yourself cannot be edited here.',
+      "Change a team member's name, the parts of the store they can use, or both. Send only what you want to change. You cannot use this to edit the Owner or yourself.",
     auth: 'org',
     permission: 'members:manage (Owner only)',
     body: UpdateMemberDto,
@@ -94,7 +94,7 @@ export class TeamController {
   @ApiEndpoint({
     summary: 'Disable or re-enable a team member',
     description:
-      'A disabled member keeps their account but has no access at all. Reversible. The Owner and yourself cannot be changed.',
+      "Switch a team member's access off or back on. A disabled member keeps their account but cannot get into your store at all, and you can turn their access back on at any time. You cannot use this on the Owner or yourself.",
     auth: 'org',
     permission: 'members:manage (Owner only)',
     body: MemberStatusDto,
@@ -115,7 +115,7 @@ export class TeamController {
   @ApiEndpoint({
     summary: 'Remove a team member',
     description:
-      'Removes the membership. The Supabase account is deleted too when the person belongs to no other organization.',
+      'Take a person off your team. They lose access to your organization. If they do not belong to any other organization, their sign-in account is deleted as well.',
     auth: 'org',
     permission: 'members:manage (Owner only)',
     response: null,
@@ -133,9 +133,9 @@ export class TeamController {
   @Throttle(SENSITIVE)
   @ApiParam({ name: 'userId', format: 'uuid' })
   @ApiEndpoint({
-    summary: "Reset a team member's password",
+    summary: 'Reset a team member password',
     description:
-      'Admin-assisted reset: sets a new password for one of your own non-owner members. Share it securely.',
+      'Set a new password for one of your team members, for example when they forgot theirs. This works only for members of your own team, not for the Owner. Remember to share the new password with them in a safe way.',
     auth: 'org',
     permission: 'members:manage (Owner only)',
     body: ResetPasswordDto,

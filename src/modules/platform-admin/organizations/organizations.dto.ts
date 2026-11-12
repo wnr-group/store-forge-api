@@ -45,7 +45,7 @@ export class PlatformOverviewDto {
   @ApiProperty() totalUsers!: number;
   @ApiProperty({
     type: [CompanyDto],
-    description: 'The five newest organizations.',
+    description: 'The five organizations created most recently.',
   })
   recent!: CompanyDto[];
 }
@@ -62,7 +62,7 @@ export class PlatformStoreDto {
   @ApiPropertyOptional({ nullable: true }) contactPhone!: string | null;
   @ApiProperty({
     description:
-      'True once products or orders exist: the currency can no longer change.',
+      'Becomes true once the store has products or orders. From then on the currency can no longer be changed.',
   })
   hasMoneyData!: boolean;
 }
@@ -112,7 +112,8 @@ export class CreateOrganizationDto {
 
   @ApiProperty({
     example: 'acme-store',
-    description: 'Store address: 3-40 chars; reserved names refused.',
+    description:
+      'The store web address: 3 to 40 characters. Reserved names cannot be used.',
   })
   @StoreSlug()
   storeSlug!: string;
@@ -139,7 +140,7 @@ export class CreateOrganizationDto {
 
   @ApiProperty({
     description:
-      'Initial password for the Owner (8-72 chars, a letter and a number). Never stored or logged.',
+      'The first password for the Owner, 8 to 72 characters with at least one letter and one number. It is never saved or written to logs.',
   })
   @PasswordField()
   ownerPassword!: string;
@@ -202,7 +203,8 @@ const PREVIOUS_OWNER = ['keep', 'disable'] as const;
 export class TransferOwnershipDto {
   @ApiProperty({
     format: 'uuid',
-    description: 'An existing, active team member of this organization.',
+    description:
+      'The id of an active member of this organization who will become the new Owner.',
   })
   @IsUUID('all', { message: 'Choose a team member.' })
   userId!: string;
@@ -210,7 +212,8 @@ export class TransferOwnershipDto {
   @ApiPropertyOptional({
     enum: PREVIOUS_OWNER,
     default: 'keep',
-    description: 'What happens to the current owner.',
+    description:
+      'What happens to the current Owner after the transfer: `keep` them as a team member or `disable` their access.',
   })
   @IsOptional()
   @IsIn(PREVIOUS_OWNER, {
@@ -230,7 +233,7 @@ export class RecoverOwnerDto {
 
   @ApiProperty({
     description:
-      'Initial password for the new owner. Set once, never stored or logged.',
+      'The first password for the new Owner. It is set once and is never saved or written to logs.',
   })
   @PasswordField()
   ownerPassword!: string;

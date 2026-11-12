@@ -33,7 +33,7 @@ export class PlatformAdminsController {
   @ApiEndpoint({
     summary: 'List Platform Admins',
     description:
-      'Every Platform Admin can see the list; only super admins can change it.',
+      'See all the Platform Admins. Every Platform Admin can view this list, but only super admins can change it.',
     auth: 'platform',
     response: [PlatformAdminDto],
     message: 'Platform admins retrieved successfully',
@@ -47,7 +47,7 @@ export class PlatformAdminsController {
   @ApiEndpoint({
     summary: 'Add a Platform Admin',
     description:
-      'Creates a confirmed account (no email verification) and makes it a Platform Admin. An account that belongs to an organization cannot become one. Rate limit: 10 per 10 minutes.',
+      'Create a new account and make it a Platform Admin. The account is ready to use straight away, with no email verification step. A person who already belongs to an organization cannot become a Platform Admin. To protect against misuse, you can do this at most 10 times in 10 minutes.',
     auth: 'super_admin',
     permission: 'super admin',
     body: AddPlatformAdminDto,
@@ -66,7 +66,7 @@ export class PlatformAdminsController {
   @ApiEndpoint({
     summary: 'Change a Platform Admin level',
     description:
-      'The last super admin can never be demoted. Nothing is written or logged when the level is unchanged.',
+      'Promote or demote a Platform Admin by changing their level. The last remaining super admin can never be demoted. If the level you send is the same as the current one, nothing is changed and nothing is added to the audit log.',
     auth: 'super_admin',
     permission: 'super admin',
     body: SetPlatformAdminRoleDto,
@@ -88,7 +88,7 @@ export class PlatformAdminsController {
   @ApiEndpoint({
     summary: 'Remove a Platform Admin',
     description:
-      'Also possible for yourself while another super admin remains. The last super admin can never be removed. The account is deleted afterwards.',
+      "Take away someone's Platform Admin access. You can remove yourself too, as long as another super admin remains. The last remaining super admin can never be removed. Afterwards, the person's account is deleted.",
     auth: 'super_admin',
     permission: 'super admin',
     response: null,

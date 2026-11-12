@@ -26,9 +26,9 @@ export class InventoryController {
   @Get()
   @RequirePermission('catalog:view')
   @ApiEndpoint({
-    summary: 'Stock levels',
+    summary: 'View stock levels',
     description:
-      'One row per sellable unit: a simple product, or each active variant of a product with variants. Out-of-stock first, then low stock. Filter with `stock=in|low|out|untracked`.',
+      'See how many items are available in your store, a page at a time. Products that come in different sizes, colors or other options are listed separately for each active option, so you can check each one on its own. Items that are out of stock appear first, followed by items running low. You can filter the list with `stock`: `in` (in stock), `low` (running low), `out` (out of stock) or `untracked` (stock is not being counted). Leave `stock` out to see everything. You can also search by product name, SKU (the product code) or option name.',
     auth: 'org',
     permission: 'catalog:view',
     response: [InventoryRowDto],
@@ -42,8 +42,9 @@ export class InventoryController {
   @Get('adjustments')
   @RequirePermission('catalog:view')
   @ApiEndpoint({
-    summary: 'Recent stock adjustments',
-    description: 'The append-only stock ledger, newest first.',
+    summary: 'View stock change history',
+    description:
+      'See the most recent changes made to stock levels, newest first. Every change is recorded here and old entries are never edited or removed, so it works as a permanent history.',
     auth: 'org',
     permission: 'catalog:view',
     response: [AdjustmentDto],
@@ -59,9 +60,9 @@ export class InventoryController {
   @Post('adjustments')
   @RequirePermission('catalog:manage')
   @ApiEndpoint({
-    summary: 'Adjust stock',
+    summary: 'Change the stock of an item',
     description:
-      'Changes the quantity and writes a ledger row in one transaction, with the row locked. Stock can never go below zero; a variant is required exactly when the product has variants; untracked products are refused.',
+      'Add to, remove from, or set the stock of a product. The new quantity and its entry in the stock history are saved together, so they can never get out of step, and the item is locked while this happens so two people cannot overwrite each other. Stock can never go below zero. If the product has options such as sizes or colors, you must say which option you mean. If it has none, you must not. Products whose stock is not being tracked cannot be changed.',
     auth: 'org',
     permission: 'catalog:manage',
     body: AdjustStockDto,

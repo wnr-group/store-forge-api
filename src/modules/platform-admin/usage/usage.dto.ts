@@ -13,13 +13,13 @@ export class OrgUsageDto {
   @ApiPropertyOptional({
     nullable: true,
     description:
-      'Bytes in the products bucket, or null when it cannot be measured (not the same as 0).',
+      'The storage used in the products bucket, in bytes. It is null when it cannot be measured, which is not the same as 0.',
   })
   storageBytes!: number | null;
   @ApiPropertyOptional({
     nullable: true,
     description:
-      'Latest change to products, customers, orders, stock, categories or collections; null when there has been none.',
+      'When something last changed in products, customers, orders, stock, categories or collections. It is null if nothing has changed yet.',
   })
   lastActivity!: Date | null;
   @ApiProperty() createdAt!: Date;
@@ -38,12 +38,13 @@ export class UsageSummaryDto {
   @ApiProperty() suspended!: number;
   @ApiProperty({
     description:
-      'Created before the window and with no merchant activity inside it.',
+      'Organizations that were created before the chosen period and had no activity during it.',
   })
   inactive!: number;
   @ApiPropertyOptional({
     nullable: true,
-    description: 'Null when Storage cannot be measured.',
+    description:
+      'The total storage used, in bytes. It is null when storage cannot be measured.',
   })
   storageTotalBytes!: number | null;
 }
@@ -61,13 +62,16 @@ export class InactiveOrgsDto {
   @ApiProperty({ type: [InactiveOrgDto] }) rows!: InactiveOrgDto[];
   @ApiProperty({
     description:
-      'How many organizations match, of which `rows` shows the first ones.',
+      'The total number of matching organizations. `rows` shows only the first few of them.',
   })
   total!: number;
 }
 
 export class SeriesPointDto {
-  @ApiProperty({ example: '2026-11-01', description: 'Start of the bucket.' })
+  @ApiProperty({
+    example: '2026-11-01',
+    description: 'The first day of this group (a day, a week or a month).',
+  })
   start!: string;
   @ApiProperty() created!: number;
 }
@@ -96,7 +100,8 @@ export class UsageSummaryQueryDto {
   @ApiPropertyOptional({
     enum: INACTIVE_DAY_OPTIONS,
     default: 30,
-    description: 'How far back "no recent activity" looks.',
+    description:
+      'How many days back to look when deciding that an organization has had no recent activity.',
   })
   @IsOptional()
   @Type(() => Number)
@@ -123,7 +128,8 @@ export class InactiveQueryDto {
 export class SeriesQueryDto {
   @ApiPropertyOptional({
     example: '2026-08-12',
-    description: 'Defaults to 90 days before `to`.',
+    description:
+      'The first day of the period (YYYY-MM-DD). If left out, it is 90 days before `to`.',
   })
   @IsOptional()
   @Matches(DATE, { message: 'from must be YYYY-MM-DD.' })
@@ -131,7 +137,8 @@ export class SeriesQueryDto {
 
   @ApiPropertyOptional({
     example: '2026-11-10',
-    description: 'Defaults to today (UTC).',
+    description:
+      'The last day of the period (YYYY-MM-DD). If left out, today (UTC) is used.',
   })
   @IsOptional()
   @Matches(DATE, { message: 'to must be YYYY-MM-DD.' })
