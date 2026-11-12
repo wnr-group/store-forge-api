@@ -1,5 +1,6 @@
 import {
   ConsoleLogger,
+  Logger,
   ValidationPipe,
   type INestApplication,
 } from '@nestjs/common';
@@ -76,6 +77,20 @@ export function configureApp(app: INestApplication): void {
       ? docs(req, res, next)
       : strict(req, res, next),
   );
+
+  // One line per request once the response is sent. Skipped in tests to keep their output clean.
+  if (config.get('env', { infer: true }) !== NodeEnv.Test) {
+    const httpLogger = new Logger('HTTP');
+    app.use((req: Request, res: Response, next: NextFunction) => {
+      const started = Date.now();
+      res.on('finish', () => {
+        httpLogger.log(
+          `${req.method} ${req.originalUrl} ${res.statusCode} ${Date.now() - started}ms`,
+        );
+      });
+      next();
+    });
+  }
 
   app.enableCors({
     origin: config.get('corsOrigins', { infer: true }),
