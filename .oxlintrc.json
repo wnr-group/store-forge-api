@@ -6,5 +6,12 @@
   },
   "env": {
     "node": true
-  }
+  },
+  "ignorePatterns": [
+    "src/infrastructure/database/schema/**",
+    "src/infrastructure/database/relations.ts",
+    "src/infrastructure/database/template-deps/**",
+    "src/infrastructure/database/migrations-snapshot/**",
+    "test/fixtures/**"
+  ]
 }

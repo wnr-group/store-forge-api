@@ -11,6 +11,12 @@ export interface AppConfig {
   apiPrefix: string;
   corsOrigins: string[];
   swaggerEnabled: boolean;
+  database: {
+    url: string;
+    poolMax: number;
+    prepare: boolean;
+    connectTimeoutSeconds: number;
+  };
 }
 
 /** Pure mapping from validated environment variables to AppConfig. */
@@ -24,6 +30,12 @@ export function buildConfig(env: EnvironmentVariables): AppConfig {
       .filter(Boolean),
     // Swagger is on by default except in production, where it must be enabled explicitly.
     swaggerEnabled: env.SWAGGER_ENABLED ?? env.NODE_ENV !== NodeEnv.Production,
+    database: {
+      url: env.DATABASE_URL ?? '',
+      poolMax: env.DB_POOL_MAX,
+      prepare: env.DB_PREPARE,
+      connectTimeoutSeconds: env.DB_CONNECT_TIMEOUT_SECONDS,
+    },
   };
 }
 

@@ -8,10 +8,17 @@ A first-run walkthrough. Full reference is in the [README](../../README.md).
 git clone https://github.com/wnr-group/store-forge-api.git
 cd store-forge-api
 npm install
-cp .env.example .env
+cp .env.example .env.local    # Windows PowerShell: Copy-Item .env.example .env.local
 ```
 
 Requires Node.js >= 22.12 (`node -v`).
+
+### Environment loading order (D-016)
+
+Environment files are loaded in order:
+1. `.env.local` (developer local overrides, git-ignored)
+2. `.env` (default environment variables, git-ignored)
+3. Real `process.env` always takes precedence over both files.
 
 ## 2. Start the API
 
@@ -29,27 +36,38 @@ curl http://localhost:4000/api/v1/health
 
 Expected: `{"status":"ok","service":"store-forge-api"}`. Open http://localhost:4000/api/docs for Swagger UI.
 
-This only proves the app is running. It does not check a database or any external service (none is configured).
-
-## 4. Confirm your toolchain
+## 4. Run tests and verifications
 
 ```bash
-npm run typecheck && npm run lint && npm test && npm run test:e2e && npm run build
+npm test                 # unit tests
+npm run test:e2e         # e2e tests
+npm run test:int         # PGlite database integration tests
+npm run typecheck        # TypeScript check
+npm run lint             # oxlint
+npm run format:check     # Prettier code style
+npm run build            # production build
 ```
 
-All five must pass on a clean checkout.
+All must pass on a clean checkout.
+
+## 5. Schema synchronization and drift check (D-004, D-018)
+
+The frontend `wnr-group/store-forge` is the single source of truth for the database schema.
+To check or sync schema locally:
+
+```bash
+# Sync from adjacent frontend repository:
+node scripts/sync-schema.mjs sync --source ../store-forge
+
+# Run drift check:
+node scripts/sync-schema.mjs check --source ../store-forge
+```
 
 ## Troubleshooting
 
 | Symptom | Cause / fix |
 |---|---|
-| `Invalid environment configuration - PORT: ...` | A value in `.env` failed validation; the message names the variable. Fix `.env` (see `.env.example`). |
-| `EADDRINUSE` | Port 4000 is taken. Set a different `PORT` in `.env`. |
-| Browser blocked by CORS | Add the frontend origin to `CORS_ORIGINS` (exact origin, comma-separated). |
+| `Invalid environment configuration - DATABASE_URL: ...` | `DATABASE_URL` is missing or invalid. It must use the `storeforge_app` role. In test mode (`NODE_ENV=test`), `DATABASE_URL` is optional. |
+| `Invalid environment configuration - PORT: ...` | A value in `.env.local` or `.env` failed validation. |
+| `EADDRINUSE` | Port 4000 is taken. Set a different `PORT` in `.env.local`. |
 | `Cannot find module './x'` / `ERR_MODULE_NOT_FOUND` | ESM project: relative imports need the `.js` suffix (`'./x.js'`). |
-| `jest is not defined` | Tests use Vitest: `vi.fn()`, not `jest.fn()`. |
-| Swagger returns 404 | `SWAGGER_ENABLED` is off (the default when `NODE_ENV=production`). |
-
-## Next
-
-Read [santu-onboarding.md](santu-onboarding.md) and [../architecture/overview.md](../architecture/overview.md).
