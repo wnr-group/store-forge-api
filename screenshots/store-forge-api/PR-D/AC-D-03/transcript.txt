@@ -1,0 +1,24 @@
+AC-D-03: Responses match frontend contracts (Zod schemas and golden fixtures)
+Status: PASS (Unit schema validation & Integration contract checks)
+
+Verified Schemas (copied directly from wnr-group/store-forge frontend):
+1. storefrontSchema (services/storefront.service.ts)
+   - Validated against test/fixtures/public/storefront.fixture.json
+   - Validated against live function return in PGlite
+2. layoutPayloadSchema (services/storefront-template.service.ts)
+   - Validated against test/fixtures/public/template-layout.fixture.json
+   - Validated against live function return in PGlite
+3. publicProductPayloadSchema (services/storefront-template.service.ts)
+   - Validated against test/fixtures/public/product.fixture.json
+   - Validated against live function return in PGlite
+4. publicCollectionPayloadSchema (services/storefront-template.service.ts)
+   - Validated against test/fixtures/public/collection.fixture.json
+   - Validated against live function return in PGlite
+5. publicCollectionsListSchema (services/storefront-template.service.ts)
+   - Validated against test/fixtures/public/collections.fixture.json
+   - Validated against live function return in PGlite
+
+Execution Evidence:
+- Unit Test: src/modules/storefront/storefront-schemas.spec.ts (6 tests PASS)
+- Integration Test: src/modules/storefront/storefront.int-spec.ts (all payloads parsed through zod schemas)
+- Runner JSON: screenshots/store-forge-api/PR-D/test-output/storefront-schemas-spec.json

@@ -1,0 +1,56 @@
+{
+  "source": "assigned",
+  "template": {
+    "name": "Custom Product Template",
+    "version_number": 1,
+    "document": {
+      "schemaVersion": 1,
+      "sections": {
+        "main": {
+          "type": "product-details",
+          "settings": {
+            "show_sku": true
+          }
+        }
+      }
+    }
+  },
+  "theme": {
+    "schemaVersion": 1,
+    "settings": {
+      "primaryColor": "#0055ff",
+      "fontFamily": "Inter"
+    }
+  },
+  "groups": {
+    "header": {
+      "schemaVersion": 1,
+      "sections": {
+        "nav": {
+          "type": "navbar",
+          "settings": {}
+        }
+      }
+    },
+    "footer": {
+      "schemaVersion": 1,
+      "sections": {
+        "bottom": {
+          "type": "footer-links",
+          "settings": {}
+        }
+      }
+    },
+    "announcement": {
+      "schemaVersion": 1,
+      "sections": {
+        "banner": {
+          "type": "announcement-bar",
+          "settings": {
+            "text": "Free shipping on orders over ₹999"
+          }
+        }
+      }
+    }
+  }
+}

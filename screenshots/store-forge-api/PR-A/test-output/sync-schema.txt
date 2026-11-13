@@ -1,0 +1,22 @@
+﻿
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.12 [39m[90mC:/Users/Eshwar/WNR/store-forge-api[39m
+
+ [32m✓[39m scripts/sync-schema.spec.ts[2m > [22msync-schema script (D-004, D-018)[2m > [22mAC-A-09: sync reproduces schema, relations, template deps, snapshot from source tree[32m 78[2mms[22m[39m
+ [32m✓[39m scripts/sync-schema.spec.ts[2m > [22msync-schema script (D-004, D-018)[2m > [22mAC-A-10: sync is idempotent (second run changes nothing)[32m 138[2mms[22m[39m
+ [32m✓[39m scripts/sync-schema.spec.ts[2m > [22msync-schema script (D-004, D-018)[2m > [22mAC-A-11: transform rewrites @/lib/templates/* and extensionless imports; unsupported imports abort with a report[32m 129[2mms[22m[39m
+ [32m✓[39m scripts/sync-schema.spec.ts[2m > [22msync-schema script (D-004, D-018)[2m > [22mAC-A-14: snapshot contains SQL and meta/* identical to source[32m 72[2mms[22m[39m
+ [32m✓[39m scripts/sync-schema.spec.ts[2m > [22msync-schema script (D-004, D-018)[2m > [22mAC-A-15: check returns PASS and exit 0 on a clean tree[32m 130[2mms[22m[39m
+ [32m✓[39m scripts/sync-schema.spec.ts[2m > [22msync-schema script (D-004, D-018)[2m > [22mAC-A-16: check returns FAIL exit 1 for modified, missing, and unexpected files[32m 300[2mms[22m[39m
+ [32m✓[39m scripts/sync-schema.spec.ts[2m > [22msync-schema script (D-004, D-018)[2m > [22mAC-A-17: check returns SKIPPED exit 2 when source is missing and never prints PASS[32m 50[2mms[22m[39m
+ [32m✓[39m scripts/sync-schema.spec.ts[2m > [22msync-schema script (D-004, D-018)[2m > [22mAC-A-18: snapshot README states test-only, nothing outside test/support imports snapshot or migrator, drizzle-kit absent[32m 118[2mms[22m[39m
+ [32m✓[39m scripts/sync-schema.spec.ts[2m > [22msync-schema script (D-004, D-018)[2m > [22mAC-A-12: generated mirror exports every table, enum and relation the frontend schema/index.ts exports[32m 2[2mms[22m[39m
+ [32m✓[39m scripts/sync-schema.spec.ts[2m > [22msync-schema script (D-004, D-018)[2m > [22mAC-A-13: generated mirror compiles (typecheck) unmodified[33m 3161[2mms[22m[39m
+ [32m✓[39m scripts/sync-schema.spec.ts[2m > [22msync-schema script (D-004, D-018)[2m > [22mAC-A-31: CODEOWNERS lists the four shared paths[32m 1[2mms[22m[39m
+ [32m✓[39m scripts/sync-schema.spec.ts[2m > [22msync-schema script (D-004, D-018)[2m > [22mAC-A-39: CI workflow declares permissions, reads token safely, never echoes it[32m 2[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m12 passed[39m[22m[90m (12)[39m
+[2m   Start at [22m 16:30:45
+[2m   Duration [22m 4.47s[2m (transform 41ms, setup 0ms, import 81ms, tests 4.18s, environment 0ms)[22m
+
+JSON report written to C:/Users/Eshwar/WNR/store-forge-api/screenshots/store-forge-api/PR-A/test-output/sync-schema.json

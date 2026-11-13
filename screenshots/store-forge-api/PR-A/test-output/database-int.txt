@@ -1,0 +1,22 @@
+﻿
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.12 [39m[90mC:/Users/Eshwar/WNR/store-forge-api[39m
+
+ [32m✓[39m src/infrastructure/database/database.int-spec.ts[2m > [22mDatabaseService integration (D-011, D-018, D-025)[2m > [22mAC-A-19: runs select 1 through postgres-js over the PGlite socket[32m 5[2mms[22m[39m
+ [32m✓[39m src/infrastructure/database/database.int-spec.ts[2m > [22mDatabaseService integration (D-011, D-018, D-025)[2m > [22mAC-A-20: withUser sets current_user=authenticated, auth.uid()=user, claims has sub and role[32m 9[2mms[22m[39m
+ [32m✓[39m src/infrastructure/database/database.int-spec.ts[2m > [22mDatabaseService integration (D-011, D-018, D-025)[2m > [22mAC-A-21: after commit and rollback the pinned connection shows empty claims and role storeforge_app[32m 14[2mms[22m[39m
+ [32m✓[39m src/infrastructure/database/database.int-spec.ts[2m > [22mDatabaseService integration (D-011, D-018, D-025)[2m > [22mAC-A-22: non-UUID userId is rejected before any SQL is sent[32m 2[2mms[22m[39m
+ [32m✓[39m src/infrastructure/database/database.int-spec.ts[2m > [22mDatabaseService integration (D-011, D-018, D-025)[2m > [22mAC-A-23: connecting as a superuser makes withUser throw RlsGuardError and callback never runs[33m 1369[2mms[22m[39m
+ [32m✓[39m src/infrastructure/database/database.int-spec.ts[2m > [22mDatabaseService integration (D-011, D-018, D-025)[2m > [22mAC-A-24: RLS prevents user A from reading rows of tenant B through withUser with unfiltered query[32m 22[2mms[22m[39m
+ [32m✓[39m src/infrastructure/database/database.int-spec.ts[2m > [22mDatabaseService integration (D-011, D-018, D-025)[2m > [22mAC-A-25: withPublic has no claims, sees no table rows, get_public_storefront returns data or null[32m 28[2mms[22m[39m
+ [32m✓[39m src/infrastructure/database/database.int-spec.ts[2m > [22mDatabaseService integration (D-011, D-018, D-025)[2m > [22mAC-A-26: error thrown inside withUser rolls back writes made before it[32m 28[2mms[22m[39m
+ [32m✓[39m src/infrastructure/database/database.int-spec.ts[2m > [22mDatabaseService integration (D-011, D-018, D-025)[2m > [22mAC-A-27: onApplicationShutdown ends pool cleanly[32m 63[2mms[22m[39m
+ [32m✓[39m src/infrastructure/database/database.int-spec.ts[2m > [22mDatabaseService integration (D-011, D-018, D-025)[2m > [22mAC-A-28: unreachable database at startup logs a warning, process stays up, log has no URL/password[32m 41[2mms[22m[39m
+ [32m✓[39m src/infrastructure/database/database.int-spec.ts[2m > [22mDatabaseService integration (D-011, D-018, D-025)[2m > [22mAC-A-30: fixtures create valid state: owner membership visible through withUser as the owner[32m 4[2mms[22m[39m
+ [32m✓[39m src/infrastructure/database/database.int-spec.ts[2m > [22mDatabaseService integration (D-011, D-018, D-025)[2m > [22mAC-A-34: harness runs with no hosted credentials (env -u DATABASE_URL)[32m 0[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m12 passed[39m[22m[90m (12)[39m
+[2m   Start at [22m 16:27:48
+[2m   Duration [22m 6.30s[2m (transform 274ms, setup 0ms, import 1.16s, tests 4.93s, environment 0ms)[22m
+
+JSON report written to C:/Users/Eshwar/WNR/store-forge-api/screenshots/store-forge-api/PR-A/test-output/database-int.json

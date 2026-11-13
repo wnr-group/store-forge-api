@@ -2,61 +2,95 @@
 
 ## Scope of this document
 
-What exists today, how the backend is meant to fit around the existing Next.js app, and which decisions are still open. Items marked **Proposal** are recommendations, not approved decisions.
+What exists today, how the backend is structured, decision register D-001 through D-025, schema ownership, and architectural boundaries.
 
-## What exists today (implemented)
+## Next.js caller limitation (D-003, D-009)
 
-A modular-monolith NestJS 12 application with:
+> **Important architectural boundary:**
+> Next.js is the intended caller; direct API access is not technically prevented; valid user tokens work from any client; user authentication, authorization and RLS are the real security boundaries; public endpoints need separate abuse protection.
 
-- Global prefix (`/api/v1`), global `ValidationPipe` (whitelist, reject unknown fields, transform).
-- One error shape for all failures; unknown errors are not leaked to clients.
-- `helmet` security headers, environment-driven CORS allowlist.
-- Validated, typed configuration (fails fast at startup, never prints values).
-- Swagger at `/api/docs`, JSON logs in production.
-- One feature module: `health` (application-level liveness only).
+## System overview and repository split
 
-Request flow: `main.ts` -> `configureApp()` (prefix, helmet, CORS, pipe, filter, Swagger) -> controller -> service.
+- **Frontend:** [`wnr-group/store-forge`](https://github.com/wnr-group/store-forge). Single source of truth for the database schema and migrations.
+- **Backend:** `store-forge-api`. Dedicated NestJS modular-monolith providing scalable API services, security guards, database integration, and provisioning.
 
-Why a modular monolith: one deployable, one repository, clear module boundaries. There is no evidence (load, team size, independent scaling needs) that justifies microservices.
+## Database and multi-tenant isolation (D-010, D-011, D-016)
 
-## The existing system (evidence from `wnr-group/store-forge`)
+- Single project: `xrkwyjnjemyxrbdbfmcn` only.
+- Connecting role: `storeforge_app` only. No `postgres` owner URL, no `DIRECT_URL`, no service-role key for database access.
+- Ported per-request pattern (`withUserContext` / `withPublicContext`):
+  1. Opens transaction.
+  2. Sets `request.jwt.claims` locally with verified identity (`sub` and `role = authenticated`).
+  3. `SET LOCAL ROLE authenticated` so RLS policies are enforced.
+  4. RLS guard asserts the role switch took effect and the connection cannot bypass RLS.
+- Database access is encapsulated in `DatabaseModule` (`src/infrastructure/database`).
 
-Observed in the frontend repository (branch `feat/template-engine-pr-readiness`):
+### Local testing and PGlite limits (D-018, D-025)
 
-- Next.js 16 / React 19 / TypeScript; no REST API at all: backend logic runs as server actions calling `services/*.ts`.
-- **Supabase Postgres** accessed with Drizzle ORM + postgres-js, through the Supabase transaction pooler.
-- **Supabase Auth** (cookie sessions via `@supabase/ssr`); the service-role key is used only for the Admin Auth API (provisioning users).
-- **Supabase Storage**: browser uploads straight to signed URLs; the server verifies and cleans up.
-- **Multi-tenant isolation by Postgres Row Level Security.** The app connects as the limited role `storeforge_app`; each request opens a transaction, sets the verified user's JWT claims and runs `SET LOCAL ROLE authenticated`, so RLS policies apply. App-level permission checks deliberately duplicate RLS.
-- 25 SQL migrations (`drizzle/0000`-`0024`) with many `SECURITY DEFINER` functions (platform admin, public storefront, rate limits).
-- Checkout, orders and payments are not built; there are no webhooks, queues or other external integrations.
+The database test kit runs tests using PGlite (`@electric-sql/pglite`) and an ephemeral socket server (`@electric-sql/pglite-socket`), applying snapshot migrations over a Supabase stub.
 
-## Database integration (Proposal, not implemented)
+> **PGlite limits:**
+> Tests using PGlite have limitations: no real pooler behaviour, no multi-instance rate limiting, and no genuine concurrent isolation. PGlite results do not prove hosted-Supabase compatibility. Hosted Supabase verification is tracked via Gate G-LIVE.
 
-- **Reuse the existing Supabase Postgres** as the single source of truth. Do not introduce a second database or a competing schema.
-- Connect as `storeforge_app` (never `postgres` or the service-role key) and **port the same per-request pattern**: transaction -> set claims from a *verified* identity -> `SET LOCAL ROLE authenticated` -> run queries, with the same guard that refuses to run if the role can bypass RLS. A pooled "superuser" ORM connection would silently bypass tenant isolation.
-- Prefer **Drizzle** (already used by the frontend, first-party Nest support via `@nestjs/drizzle`) over Prisma/TypeORM, which would duplicate the schema and fight the per-request role switch.
-- Keep it behind a Nest module in `src/infrastructure/` so feature modules never see connection details.
-- The service-role key, if ever needed, goes in one isolated provisioning module with its own security design.
+## Schema ownership and migration sync (D-004, D-018)
 
-## Authentication (Proposal, not implemented)
+The backend never generates or runs migrations against Supabase and has no `drizzle-kit`.
+Migrations and schema are owned exclusively by `store-forge`.
+A read-only mirror and migrations snapshot are maintained in `src/infrastructure/database/` using `scripts/sync-schema.mjs`:
 
-The frontend uses cookies; a separate API will most likely take a Supabase access token in `Authorization: Bearer`, verified on the server (never trusting a decoded-but-unverified token). Identity must come only from that verified token; tenant ids from URLs, headers or bodies are preferences to be checked against database memberships, as the frontend does today. Cross-origin cookies and the per-store subdomain model (`<store>.<root>`) need a deliberate design.
+```bash
+# Sync from frontend repository:
+node scripts/sync-schema.mjs sync --source ../store-forge
 
-## Open decisions
+# Check drift:
+node scripts/sync-schema.mjs check --source ../store-forge
+```
 
-| ID | Decision | Status |
-|---|---|---|
-| D-001 | Use NestJS | Approved (Eshwar's project decision; Sibi said "preferably") |
-| D-002 | Scope of "everything is set" | Foundation only, per Sibi: "Just basic setup is enough" |
-| D-003 | Auth transport (bearer token vs cookie/BFF) and token verification method | Open |
-| D-004 | Who owns the schema and migrations (today in `store-forge`, with the PGlite RLS test suite) | Open |
-| D-005 | How the template engine (`lib/templates`, shared by renderer and validator) is shared or split | Open |
-| D-006 | Which responsibilities move to this API vs stay in Next.js server actions | Open |
-| D-007 | Frontend baseline branch (`main` vs the template-engine branch) | Open |
+CI runs this drift check on pull requests against `wnr-group/store-forge`.
 
-## Security baseline and what it does not cover
+## Decision register (D-001 to D-025)
 
-Done: CORS allowlist, helmet, request validation, safe error responses, no secrets in the repo, fail-fast config.
+| ID | Decision | Owner / Target | Status |
+|---|---|---|---|
+| D-001 | Use NestJS 12 (ESM) | Eshwar / PR-A | APPROVED |
+| D-002 | Foundation-first architecture | Eshwar / PR-A | APPROVED |
+| D-003 | Next.js sole intended caller (boundary convention) | Architecture / PR-A | APPROVED |
+| D-004 | Schema and migration ownership in frontend with drift check | Eshwar / PR-A | APPROVED |
+| D-005 | Template engine sharing mechanism | Architecture | OPEN |
+| D-006 | Responsibility split between API and Next.js server actions | Architecture | OPEN |
+| D-007 | Frontend baseline branch alignment | Architecture | OPEN |
+| D-008 | ES256 JWKS authentication and live auth check | Eshwar / PR-B | APPROVED |
+| D-009 | Public endpoint abuse protection | Architecture / PR-A | OPEN |
+| D-010 | Shared Supabase project (`xrkwyjnjemyxrbdbfmcn`) & `storeforge_app` role | Eshwar / PR-A, PR-B | APPROVED |
+| D-011 | Drizzle ORM and `withUserContext` RLS pattern | Eshwar / PR-A | APPROVED |
+| D-012 | Module ownership split | Eshwar & Santu / PR-A | APPROVED |
+| D-013 | Five public storefront operations | Eshwar / PR-D | APPROVED |
+| D-014 | Isolated `ProvisioningModule` with four admin auth methods | Eshwar / PR-C | APPROVED |
+| D-015 | Swagger OpenAPI documentation and decorators | Eshwar / PR-B | APPROVED |
+| D-016 | Env loading (`.env.local` before `.env`) and validation | Eshwar / PR-A | APPROVED |
+| D-017 | PR workflow, CI verification and CODEOWNERS | Eshwar / PR-A | APPROVED |
+| D-018 | CI drift check, PGlite integration tests, token secret | Eshwar / PR-A | APPROVED |
+| D-019 | Public rate limiting (60/min) and `TRUST_PROXY` | Eshwar / PR-B | APPROVED |
+| D-020 | Strict `X-Tenant-Id` header and permission guard | Eshwar / PR-B | APPROVED |
+| D-021 | Standard error contract with `code` and `fieldErrors` | Eshwar / PR-B | APPROVED |
+| D-022 | Bare DTO responses, pagination query and envelope contract | Eshwar / PR-B | APPROVED |
+| D-023 | Health liveness and readiness endpoints | Eshwar / PR-A, PR-B | APPROVED |
+| D-024 | Platform-admin safeguard primitives, rate limits and audit | Eshwar / PR-B | APPROVED |
+| D-025 | Database test kit (PGlite) and auth test kit | Eshwar / PR-A, PR-B | APPROVED |
 
-Not done, and required before exposing protected endpoints: authentication, tenant resolution, per-module authorization, rate limiting, audit logging. Existing RLS policies and tenant isolation in the database are untouched by this repository.
+## Module ownership split (D-012)
+
+- **Foundation & Shared Infrastructure (PR-A, PR-B, PR-C):** Eshwar
+  - Database layer, `withUserContext`, `withPublicContext`
+  - Authentication (JWKS ES256, LiveAuth)
+  - Security, tenant guard, permission guard, rate limits
+  - API contracts, pagination, error filter, Swagger
+  - Admin auth `ProvisioningModule`
+- **Platform & Public Storefront (PR-D, PR-E):** Eshwar
+  - Public storefront 5 operations (D-013)
+  - Platform admin operations (companies, settings, platform team, audit)
+- **Feature Modules (to be built independently after foundation):** Santu
+  - Catalog (products, categories, collections, inventory)
+  - Customers and orders
+  - Store settings and profile
+  - Team management (consuming `ProvisioningModule` after permissions)

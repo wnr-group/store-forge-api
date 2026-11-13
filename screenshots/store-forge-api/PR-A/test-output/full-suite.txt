@@ -1,0 +1,102 @@
+﻿
+> store-forge-api@0.1.0 test
+> vitest run --reporter=verbose
+
+
+ RUN  v4.1.12 C:/Users/Eshwar/WNR/store-forge-api
+
+ ✓ test/docs.spec.ts > Documentation integrity and compliance (D-001, D-002, D-003, D-009, D-012, D-018, D-025) > AC-A-35: overview states the Next.js caller limitation verbatim 4ms
+ ✓ test/docs.spec.ts > Documentation integrity and compliance (D-001, D-002, D-003, D-009, D-012, D-018, D-025) > AC-A-36: decision register and ownership split present with statuses matching plan 3ms
+ ✓ test/docs.spec.ts > Documentation integrity and compliance (D-001, D-002, D-003, D-009, D-012, D-018, D-025) > AC-A-38: docs state PGlite limits and that PGlite results do not prove hosted-Supabase compatibility 1ms
+ ✓ scripts/sync-schema.spec.ts > sync-schema script (D-004, D-018) > AC-A-09: sync reproduces schema, relations, template deps, snapshot from source tree 267ms
+ ✓ src/config/env.validation.spec.ts > validateEnv > applies local-development defaults when valid DATABASE_URL is provided 11ms
+ ✓ src/config/env.validation.spec.ts > validateEnv > allows empty environment under NODE_ENV=test without DATABASE_URL 2ms
+ ✓ src/config/env.validation.spec.ts > validateEnv > converts PORT from a string to a number 1ms
+ ✓ src/config/env.validation.spec.ts > validateEnv > rejects an invalid NODE_ENV, naming the variable 4ms
+ ✓ src/config/env.validation.spec.ts > validateEnv > rejects a non-numeric or out-of-range PORT 2ms
+ ✓ src/config/env.validation.spec.ts > validateEnv > rejects an API_PREFIX with leading or trailing slashes 2ms
+ ✓ src/config/env.validation.spec.ts > validateEnv > rejects a wildcard CORS origin in production 1ms
+ ✓ src/config/env.validation.spec.ts > validateEnv > never includes the offending value in the error message 1ms
+ ✓ src/config/env.validation.spec.ts > validateEnv > DATABASE_URL validation (D-010, D-011, D-016) > AC-A-06: accepts storeforge_app and storeforge_app.<ref> 3ms
+ ✓ src/config/env.validation.spec.ts > validateEnv > DATABASE_URL validation (D-010, D-011, D-016) > AC-A-07: rejects postgres, postgres.<ref>, non-postgres scheme, missing (non-test) 4ms
+ ✓ src/config/env.validation.spec.ts > validateEnv > DATABASE_URL validation (D-010, D-011, D-016) > AC-A-08: validation errors name the variable and never contain the value 1ms
+ ✓ src/config/env.validation.spec.ts > validateEnv > DATABASE_URL validation (D-010, D-011, D-016) > handles encoded characters in password correctly 0ms
+ ✓ src/config/env.validation.spec.ts > validateEnv > DATABASE_URL validation (D-010, D-011, D-016) > rejects case mismatch like STOREFORGE_APP 1ms
+ ✓ src/config/env.validation.spec.ts > validateEnv > DB pool configuration > accepts valid pool parameters and transforms correctly 1ms
+ ✓ src/config/env.validation.spec.ts > validateEnv > DB pool configuration > rejects DB_POOL_MAX of 0 or > 100 3ms
+ ✓ src/config/env.validation.spec.ts > buildConfig > splits and trims CORS origins 2ms
+ ✓ src/config/env.validation.spec.ts > buildConfig > enables Swagger outside production and disables it in production by default 1ms
+ ✓ src/config/env.validation.spec.ts > buildConfig > lets SWAGGER_ENABLED override the default 1ms
+ ✓ src/config/env.validation.spec.ts > buildConfig > maps database configuration correctly 2ms
+ ✓ scripts/sync-schema.spec.ts > sync-schema script (D-004, D-018) > AC-A-10: sync is idempotent (second run changes nothing) 309ms
+ ✓ scripts/sync-schema.spec.ts > sync-schema script (D-004, D-018) > AC-A-11: transform rewrites @/lib/templates/* and extensionless imports; unsupported imports abort with a report 274ms
+ ✓ scripts/sync-schema.spec.ts > sync-schema script (D-004, D-018) > AC-A-14: snapshot contains SQL and meta/* identical to source 133ms
+ ✓ src/config/env-files.spec.ts > envFilePaths and environment precedence (D-016) > resolves .env.local before .env 9ms
+ ✓ scripts/sync-schema.spec.ts > sync-schema script (D-004, D-018) > AC-A-15: check returns PASS and exit 0 on a clean tree 274ms
+ ✓ src/modules/health/health.controller.spec.ts > HealthController > reports the service as running 316ms
+ ✓ src/config/env-files.spec.ts > envFilePaths and environment precedence (D-016) > AC-A-01: .env.local values override .env 418ms
+ ✓ src/config/env-files.spec.ts > envFilePaths and environment precedence (D-016) > AC-A-02: .env supplies keys absent from .env.local 23ms
+ ✓ src/config/env-files.spec.ts > envFilePaths and environment precedence (D-016) > AC-A-03: real process.env wins over both files (documented behaviour) 18ms
+ ✓ src/config/env-files.spec.ts > envFilePaths and environment precedence (D-016) > allows startup when neither .env.local nor .env is present 10ms
+ ✓ src/config/env-files.spec.ts > envFilePaths and environment precedence (D-016) > AC-A-04: .env.local and .env stay git-ignored 222ms
+ ✓ src/config/env-files.spec.ts > envFilePaths and environment precedence (D-016) > AC-A-05: .env.example and README name .env.local 2ms
+ ✓ scripts/sync-schema.spec.ts > sync-schema script (D-004, D-018) > AC-A-16: check returns FAIL exit 1 for modified, missing, and unexpected files 645ms
+ ✓ scripts/sync-schema.spec.ts > sync-schema script (D-004, D-018) > AC-A-17: check returns SKIPPED exit 2 when source is missing and never prints PASS 105ms
+ ✓ scripts/sync-schema.spec.ts > sync-schema script (D-004, D-018) > AC-A-18: snapshot README states test-only, nothing outside test/support imports snapshot or migrator, drizzle-kit absent 191ms
+ ✓ scripts/sync-schema.spec.ts > sync-schema script (D-004, D-018) > AC-A-12: generated mirror exports every table, enum and relation the frontend schema/index.ts exports 4ms
+ ✓ scripts/sync-schema.spec.ts > sync-schema script (D-004, D-018) > AC-A-13: generated mirror compiles (typecheck) unmodified 4392ms
+ ✓ scripts/sync-schema.spec.ts > sync-schema script (D-004, D-018) > AC-A-31: CODEOWNERS lists the four shared paths 2ms
+ ✓ scripts/sync-schema.spec.ts > sync-schema script (D-004, D-018) > AC-A-39: CI workflow declares permissions, reads token safely, never echoes it 2ms
+
+ Test Files  5 passed (5)
+      Tests  42 passed (42)
+   Start at  16:33:43
+   Duration  7.21s (transform 363ms, setup 0ms, import 4.14s, tests 7.69s, environment 1ms)
+
+
+> store-forge-api@0.1.0 test:e2e
+> vitest run --config ./vitest.config.e2e.ts --reporter=verbose
+
+
+ RUN  v4.1.12 C:/Users/Eshwar/WNR/store-forge-api
+
+ ✓ test/app.e2e-spec.ts > API foundation (e2e) > GET /api/v1/health returns the liveness payload without authentication 33ms
+ ✓ test/app.e2e-spec.ts > API foundation (e2e) > serves Swagger UI and an OpenAPI document that lists only the health endpoint 11ms
+ ✓ test/app.e2e-spec.ts > API foundation (e2e) > returns the shared error shape for unknown routes 7ms
+ ✓ test/app.e2e-spec.ts > API foundation (e2e) > sends security headers and hides the framework 5ms
+ ✓ test/app.e2e-spec.ts > API foundation (e2e) > allows the configured CORS origin and not others 11ms
+
+ Test Files  1 passed (1)
+      Tests  5 passed (5)
+   Start at  16:33:53
+   Duration  3.50s (transform 326ms, setup 0ms, import 2.07s, tests 786ms, environment 0ms)
+
+
+> store-forge-api@0.1.0 test:int
+> vitest run --config ./vitest.config.integration.ts --reporter=verbose
+
+
+ RUN  v4.1.12 C:/Users/Eshwar/WNR/store-forge-api
+
+ ✓ src/infrastructure/database/database.int-spec.ts > DatabaseService integration (D-011, D-018, D-025) > AC-A-19: runs select 1 through postgres-js over the PGlite socket 14ms
+ ✓ src/infrastructure/database/database.int-spec.ts > DatabaseService integration (D-011, D-018, D-025) > AC-A-20: withUser sets current_user=authenticated, auth.uid()=user, claims has sub and role 26ms
+ ✓ src/infrastructure/database/database.int-spec.ts > DatabaseService integration (D-011, D-018, D-025) > AC-A-21: after commit and rollback the pinned connection shows empty claims and role storeforge_app 33ms
+ ✓ src/infrastructure/database/database.int-spec.ts > DatabaseService integration (D-011, D-018, D-025) > AC-A-22: non-UUID userId is rejected before any SQL is sent 2ms
+ ✓ src/infrastructure/database/database.int-spec.ts > DatabaseService integration (D-011, D-018, D-025) > AC-A-23: connecting as a superuser makes withUser throw RlsGuardError and callback never runs 5555ms
+ ✓ src/infrastructure/database/database.int-spec.ts > DatabaseService integration (D-011, D-018, D-025) > AC-A-24: RLS prevents user A from reading rows of tenant B through withUser with unfiltered query 36ms
+ ✓ src/infrastructure/database/database.int-spec.ts > DatabaseService integration (D-011, D-018, D-025) > AC-A-25: withPublic has no claims, sees no table rows, get_public_storefront returns data or null 26ms
+ ✓ src/infrastructure/database/database.int-spec.ts > DatabaseService integration (D-011, D-018, D-025) > AC-A-26: error thrown inside withUser rolls back writes made before it 23ms
+ ✓ src/infrastructure/database/database.int-spec.ts > DatabaseService integration (D-011, D-018, D-025) > AC-A-27: onApplicationShutdown ends pool cleanly 89ms
+ ✓ src/infrastructure/database/database.int-spec.ts > DatabaseService integration (D-011, D-018, D-025) > AC-A-28: unreachable database at startup logs a warning, process stays up, log has no URL/password 60ms
+ ✓ src/infrastructure/database/database.int-spec.ts > DatabaseService integration (D-011, D-018, D-025) > AC-A-30: fixtures create valid state: owner membership visible through withUser as the owner 8ms
+ ✓ src/infrastructure/database/database.int-spec.ts > DatabaseService integration (D-011, D-018, D-025) > AC-A-34: harness runs with no hosted credentials (env -u DATABASE_URL) 0ms
+
+ Test Files  1 passed (1)
+      Tests  12 passed (12)
+   Start at  16:33:57
+   Duration  12.73s (transform 318ms, setup 0ms, import 1.64s, tests 10.43s, environment 0ms)
+
+
+> store-forge-api@0.1.0 build
+> nest build
+
