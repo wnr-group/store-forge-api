@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 
 // Parse arguments
@@ -43,28 +43,159 @@ function normalizeLineEndings(str) {
 }
 
 /**
+ * Allowlist for the template engine subset synced into `src/infrastructure/templates-engine/` (D2, D3).
+ * Preserves directory structure.
+ */
+const TEMPLATES_ENGINE_ALLOWLIST = [
+  // Root templates files
+  'document.ts',
+  'limits.ts',
+  'presets.ts',
+  'registry.ts',
+
+  // engine/
+  'engine/bindings.ts',
+  'engine/compile.ts',
+  'engine/descriptor-check.ts',
+  'engine/descriptors.ts',
+  'engine/fonts.ts',
+  'engine/image-scan.ts',
+  'engine/measure.ts',
+  'engine/migrate.ts',
+  'engine/root-schema.ts',
+  'engine/schema.ts',
+  'engine/size.ts',
+  'engine/tenant-cache.ts',
+  'engine/tree-ids.ts',
+  'engine/tree-walk.ts',
+  'engine/validate.ts',
+
+  // registry/
+  'registry/index.ts',
+  'registry/theme-settings.ts',
+
+  // registry/blocks/
+  'registry/blocks/button.ts',
+  'registry/blocks/collapsible-info.ts',
+  'registry/blocks/collapsible-item.ts',
+  'registry/blocks/column.ts',
+  'registry/blocks/group.ts',
+  'registry/blocks/heading.ts',
+  'registry/blocks/image.ts',
+  'registry/blocks/link-column.ts',
+  'registry/blocks/link.ts',
+  'registry/blocks/product-category.ts',
+  'registry/blocks/product-compare-at-price.ts',
+  'registry/blocks/product-description.ts',
+  'registry/blocks/product-price.ts',
+  'registry/blocks/product-sku.ts',
+  'registry/blocks/product-title.ts',
+  'registry/blocks/product-type.ts',
+  'registry/blocks/social-link.ts',
+  'registry/blocks/social-share.ts',
+  'registry/blocks/testimonial.ts',
+  'registry/blocks/text.ts',
+  'registry/blocks/variant-picker.ts',
+
+  // registry/presets/
+  'registry/presets/classic.ts',
+  'registry/presets/collection.ts',
+  'registry/presets/group-announcement.ts',
+  'registry/presets/group-footer.ts',
+  'registry/presets/group-header.ts',
+  'registry/presets/product.ts',
+  'registry/presets/spotlight.ts',
+  'registry/presets/theme.ts',
+
+  // registry/sections/
+  'registry/sections/announcement-bar.ts',
+  'registry/sections/collapsible-content.ts',
+  'registry/sections/collection-banner.ts',
+  'registry/sections/collection-list.ts',
+  'registry/sections/featured-collection.ts',
+  'registry/sections/footer.ts',
+  'registry/sections/header.ts',
+  'registry/sections/hero.ts',
+  'registry/sections/image-banner.ts',
+  'registry/sections/image-with-text.ts',
+  'registry/sections/logo-list.ts',
+  'registry/sections/main-product.ts',
+  'registry/sections/multicolumn.ts',
+  'registry/sections/product-grid.ts',
+  'registry/sections/promotional-banner.ts',
+  'registry/sections/related-products.ts',
+  'registry/sections/rich-text.ts',
+  'registry/sections/testimonials.ts',
+];
+
+/**
+ * Explicitly classified excluded files (renderer-only, frontend UI, or legacy) in `lib/templates/`.
+ */
+const TEMPLATES_ENGINE_EXCLUDED = [
+  'breakpoints.ts',
+  'engine/richtext.ts',
+  'engine/theme-css.ts',
+  'engine/tree.ts',
+  'form-state.ts',
+  'legacy-resync.ts',
+  'resolve.ts',
+  'types.ts',
+  'variant-selection.ts',
+];
+
+/**
+ * Scans `sourceTemplatesDir` for any unclassified `.ts` files.
+ */
+function findUnclassifiedTemplateFiles(sourceTemplatesDir) {
+  if (!existsSync(sourceTemplatesDir)) return [];
+  const allowSet = new Set(TEMPLATES_ENGINE_ALLOWLIST.map(p => p.replace(/\\/g, '/')));
+  const excludedSet = new Set(TEMPLATES_ENGINE_EXCLUDED.map(p => p.replace(/\\/g, '/')));
+  const unclassified = [];
+
+  function walk(currentDir) {
+    const entries = readdirSync(currentDir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = join(currentDir, entry.name);
+      if (entry.isDirectory()) {
+        walk(fullPath);
+      } else if (entry.isFile() && entry.name.endsWith('.ts')) {
+        const rel = relative(sourceTemplatesDir, fullPath).replace(/\\/g, '/');
+        if (!allowSet.has(rel) && !excludedSet.has(rel)) {
+          unclassified.push(rel);
+        }
+      }
+    }
+  }
+
+  walk(sourceTemplatesDir);
+  return unclassified;
+}
+
+/**
  * Performs deterministic import/export transformations on TypeScript files.
  */
-function transformTs(content, relSourcePath) {
+function transformTs(content, relSourcePath, targetRelDirOverride) {
   const normalizedRel = relSourcePath.replace(/\\/g, '/');
   const banner = `// GENERATED from wnr-group/store-forge ${normalizedRel}. DO NOT EDIT.\n\n`;
 
   // Determine target directory structure:
   // lib/db/schema/*.ts -> src/infrastructure/database/schema/*.ts
   // lib/db/relations.ts -> src/infrastructure/database/relations.ts
-  // lib/templates/*.ts -> src/infrastructure/database/template-deps/*.ts
+  // lib/templates/*.ts -> src/infrastructure/database/template-deps/*.ts OR src/infrastructure/templates-engine/...
   // lib/auth/permissions.ts -> src/infrastructure/auth/generated/permissions.ts
-  let targetRelDir;
-  if (normalizedRel.startsWith('lib/db/schema/')) {
-    targetRelDir = 'src/infrastructure/database/schema';
-  } else if (normalizedRel === 'lib/db/relations.ts') {
-    targetRelDir = 'src/infrastructure/database';
-  } else if (normalizedRel.startsWith('lib/templates/')) {
-    targetRelDir = 'src/infrastructure/database/template-deps';
-  } else if (normalizedRel === 'lib/auth/permissions.ts') {
-    targetRelDir = 'src/infrastructure/auth/generated';
-  } else {
-    targetRelDir = 'src/infrastructure/database';
+  let targetRelDir = targetRelDirOverride;
+  if (!targetRelDir) {
+    if (normalizedRel.startsWith('lib/db/schema/')) {
+      targetRelDir = 'src/infrastructure/database/schema';
+    } else if (normalizedRel === 'lib/db/relations.ts') {
+      targetRelDir = 'src/infrastructure/database';
+    } else if (normalizedRel.startsWith('lib/templates/')) {
+      targetRelDir = 'src/infrastructure/database/template-deps';
+    } else if (normalizedRel === 'lib/auth/permissions.ts') {
+      targetRelDir = 'src/infrastructure/auth/generated';
+    } else {
+      targetRelDir = 'src/infrastructure/database';
+    }
   }
 
   // Regex for import / export from '...'
@@ -76,8 +207,13 @@ function transformTs(content, relSourcePath) {
     const specifier = isDynamic ? specifier2 : specifier1;
     const suffix = isDynamic ? p6 : p3;
 
-    // 1. Drizzle ORM packages
-    if (specifier === 'drizzle-orm' || specifier.startsWith('drizzle-orm/')) {
+    // 1. External packages: drizzle-orm and zod
+    if (
+      specifier === 'drizzle-orm' ||
+      specifier.startsWith('drizzle-orm/') ||
+      specifier === 'zod' ||
+      specifier.startsWith('zod/')
+    ) {
       return `${prefix}${specifier}${suffix}`;
     }
 
@@ -129,7 +265,7 @@ function transformTs(content, relSourcePath) {
     }
 
     // 5. Any other import is unsupported
-    throw new Error(`Unsupported import "${specifier}" in ${relSourcePath}. Only drizzle-orm*, resolvable relative paths, and @/lib/templates/* are supported.`);
+    throw new Error(`Unsupported import "${specifier}" in ${relSourcePath}. Only drizzle-orm*, zod*, resolvable relative paths, and @/lib/templates/* are supported.`);
   });
 
   return normalizeLineEndings(banner + transformedContent);
@@ -161,17 +297,33 @@ function buildExpectedFiles() {
     expected['src/infrastructure/database/relations.ts'] = transformed;
   }
 
-  // 3. lib/templates/document.ts and limits.ts
+  // 3. lib/templates/document.ts and limits.ts -> template-deps
   for (const templateFile of ['document.ts', 'limits.ts']) {
     const p = resolve(sourceDir, 'lib/templates', templateFile);
     if (existsSync(p)) {
       const content = readFileSync(p, 'utf-8');
-      const transformed = transformTs(content, join('lib/templates', templateFile));
+      const transformed = transformTs(content, join('lib/templates', templateFile), 'src/infrastructure/database/template-deps');
       expected[join('src/infrastructure/database/template-deps', templateFile).replace(/\\/g, '/')] = transformed;
     }
   }
 
-  // 4. drizzle/*.sql and drizzle/meta/*
+  // 4. lib/templates/* -> src/infrastructure/templates-engine/* (closure allowlist)
+  const templatesSourceDir = resolve(sourceDir, 'lib/templates');
+  if (existsSync(templatesSourceDir)) {
+    for (const relTemplatePath of TEMPLATES_ENGINE_ALLOWLIST) {
+      const fullPath = resolve(templatesSourceDir, relTemplatePath);
+      if (existsSync(fullPath)) {
+        const content = readFileSync(fullPath, 'utf-8');
+        const relSource = join('lib/templates', relTemplatePath);
+        const relTarget = join('src/infrastructure/templates-engine', relTemplatePath).replace(/\\/g, '/');
+        const targetRelDir = dirname(relTarget).replace(/\\/g, '/');
+        const transformed = transformTs(content, relSource, targetRelDir);
+        expected[relTarget] = transformed;
+      }
+    }
+  }
+
+  // 5. drizzle/*.sql and drizzle/meta/*
   const drizzleDir = resolve(sourceDir, 'drizzle');
   if (existsSync(drizzleDir)) {
     // .sql files
@@ -195,7 +347,7 @@ function buildExpectedFiles() {
     }
   }
 
-  // 5. migrations-snapshot/README.md
+  // 6. migrations-snapshot/README.md
   expected['src/infrastructure/database/migrations-snapshot/README.md'] = normalizeLineEndings(
     '# Migrations Snapshot\n\nThis directory contains a read-only mirror of frontend migrations for test environments (PGlite).\nTest-only. Never executed against Supabase.\n'
   );
@@ -232,6 +384,7 @@ const MANAGED_DIRS = [
   'src/infrastructure/database/schema',
   'src/infrastructure/database/template-deps',
   'src/infrastructure/database/migrations-snapshot',
+  'src/infrastructure/templates-engine',
 ];
 const MANAGED_FILES = [
   'src/infrastructure/database/relations.ts',
@@ -249,6 +402,17 @@ if (command === 'sync') {
 }
 
 if (command === 'check') {
+  // Check for unclassified source template files first
+  const sourceTemplatesDir = resolve(sourceDir, 'lib/templates');
+  const unclassifiedTemplates = findUnclassifiedTemplateFiles(sourceTemplatesDir);
+  if (unclassifiedTemplates.length > 0) {
+    console.error(`FAIL: Unclassified source template file(s) detected (${unclassifiedTemplates.length}):`);
+    for (const f of unclassifiedTemplates) {
+      console.error(`  - lib/templates/${f}`);
+    }
+    process.exit(1);
+  }
+
   let expected;
   try {
     expected = buildExpectedFiles();
@@ -310,4 +474,3 @@ if (command === 'check') {
     process.exit(1);
   }
 }
-

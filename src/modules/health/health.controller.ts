@@ -5,6 +5,7 @@ import {
   ApiProperty,
   ApiTags,
 } from '@nestjs/swagger';
+import { Public } from '../../common/decorators/decorators.js';
 import { HealthService } from './health.service.js';
 
 class HealthResponse {
@@ -17,6 +18,7 @@ class HealthResponse {
 
 @ApiTags('health')
 @Controller('health')
+@Public()
 export class HealthController {
   constructor(private readonly healthService: HealthService) {}
 

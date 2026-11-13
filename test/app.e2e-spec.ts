@@ -21,27 +21,54 @@ describe('API foundation (e2e)', () => {
     await app.close();
   });
 
-  it('GET /api/v1/health returns the liveness payload without authentication', async () => {
+  it('GET /api/v1/health returns the liveness payload in the standard envelope without authentication', async () => {
     const res = await request(app.getHttpServer())
       .get('/api/v1/health')
       .expect(200);
-    expect(res.body).toEqual({ status: 'ok', service: 'store-forge-api' });
+    expect(res.body).toMatchObject({
+      success: true,
+      data: { status: 'ok', service: 'store-forge-api' },
+    });
   });
 
-  it('serves Swagger UI and an OpenAPI document that lists only the health endpoint', async () => {
+  it('serves Swagger UI and an OpenAPI document at /api/docs-json', async () => {
     await request(app.getHttpServer()).get('/api/docs').expect(200);
     const res = await request(app.getHttpServer())
       .get('/api/docs-json')
       .expect(200);
-    expect(Object.keys(res.body.paths)).toEqual(['/api/v1/health']);
+    expect(res.body.openapi).toMatch(/^3\./);
+    expect(res.body.paths['/api/v1/health']).toBeDefined();
+    expect(res.body.components.securitySchemes.bearer).toMatchObject({
+      type: 'http',
+      scheme: 'bearer',
+    });
   });
 
-  it('returns the shared error shape for unknown routes', async () => {
+  it('returns the shared error envelope for unknown routes', async () => {
     const res = await request(app.getHttpServer())
       .get('/api/v1/nope')
       .expect(404);
-    expect(res.body).toMatchObject({ statusCode: 404, path: '/api/v1/nope' });
+    expect(res.body).toMatchObject({
+      success: false,
+      error: { code: 'NOT_FOUND', details: null },
+      path: '/api/v1/nope',
+    });
     expect(typeof res.body.timestamp).toBe('string');
+    expect(typeof res.body.message).toBe('string');
+  });
+
+  it('protects every non-public route: no token means 401, before any database access', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/v1/template-images')
+      .expect(401);
+    expect(res.body.error.code).toBe('AUTH_REQUIRED');
+  });
+
+  it('drops the query string from the reported path', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/v1/nope?token=secret&search=private')
+      .expect(404);
+    expect(res.body.path).toBe('/api/v1/nope');
   });
 
   it('sends security headers and hides the framework', async () => {
