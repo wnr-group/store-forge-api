@@ -1,0 +1,16 @@
+AC-D-02: No user session required (public reads execute with zero claims)
+Status: PASS (Database integration suite)
+
+Verified Contract:
+1. `withPublic` Context Isolation:
+   - Sets empty claims: `select current_setting('request.jwt.claims', true)` evaluates to '' (empty string).
+   - Role: Database role executes without user identity.
+   - Direct Table Access Under RLS:
+     `select count(*)::int as count from public.stores` returns 0 rows (RLS isolates all tenant tables).
+2. Function Execution:
+   - Despite zero table visibility under RLS, SECURITY DEFINER storefront functions execute successfully and return public storefront data.
+   - Proves that no user authorization header or session token is required to read public storefront resources.
+
+Execution Evidence:
+- Integration Test: src/modules/storefront/storefront.int-spec.ts > "AC-D-02: withPublic has zero JWT claims and cannot read direct tenant tables, but public functions succeed" (PASS)
+- Runner JSON: screenshots/store-forge-api/PR-D/test-output/storefront-int.json

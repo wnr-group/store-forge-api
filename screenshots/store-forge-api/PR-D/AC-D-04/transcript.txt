@@ -1,0 +1,24 @@
+AC-D-04: Cutover gate fails closed (false, missing function, database error return disabled result)
+Status: PASS (SQL function verification & StorefrontService gate helper)
+
+Verified Behaviour:
+1. SQL Function `public.template_engine_cutover_complete()`:
+   - Initial state (status='pending') -> returns false.
+   - Status 'complete' with valid verified_stores and completed_at -> returns true.
+   - Empty/missing table row -> returns false.
+2. Service Unit Gate Helper `StorefrontService.isEngineReadEnabled()`:
+   - Evaluates to true only when DB function returns exactly `true`.
+   - Returns false when DB function returns boolean `false`.
+   - Returns false when DB function returns non-boolean (e.g. string 'true').
+   - Returns false when DB returns empty row set.
+   - Returns false on DB exceptions (function missing, timeout, connection lost).
+3. Fail-Closed Disabled Result (PD-O1 APPROVED):
+   - Legacy storefront (`getStorefront`) remains UNGATED.
+   - Four template-engine reads (`getTemplateLayout`, `getProduct`, `getCollection`, `getCollections`) are GATED.
+   - When gate is closed, all gated methods return `null` (disabled result = indistinguishable from not found).
+
+Execution Evidence:
+- Integration Test: src/modules/storefront/storefront.int-spec.ts > "AC-D-04: template_engine_cutover_complete() returns false when pending and true when complete" (PASS)
+- Service Unit Tests: src/modules/storefront/storefront.service.spec.ts > "isEngineReadEnabled" & "gated operations when cutover gate is closed" (9 tests PASS)
+- Service Integration Test: src/modules/storefront/storefront.int-spec.ts > "gated methods return null when cutover gate is pending (AC-D-04, PD-O1)" (PASS)
+- Runner JSON: screenshots/store-forge-api/PR-D/test-output/storefront-int.json, storefront-service-spec.json

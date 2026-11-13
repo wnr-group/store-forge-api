@@ -1,0 +1,18 @@
+[
+  {
+    "id": "44444444-4444-4444-8444-444444444444",
+    "name": "Summer Essentials",
+    "slug": "summer-essentials",
+    "description": "Curated pieces for hot summer days",
+    "image_path": "t1/collections/c1/banner.jpg",
+    "product_count": 12
+  },
+  {
+    "id": "55555555-5555-4555-8555-555555555555",
+    "name": "Winter Warmers",
+    "slug": "winter-warmers",
+    "description": "Cozy knitwear and jackets",
+    "image_path": "t1/collections/c2/banner.jpg",
+    "product_count": 8
+  }
+]
