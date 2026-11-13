@@ -56,19 +56,11 @@ describe.skipIf(!migrationsAvailable)(
       // The seeder runs as the privileged owner connection, exactly like `npm run db:seed:demo`.
       await db.asOwner(async (pg) => {
         const orm = drizzle(pg) as never;
+        // The verifier compares order dates with the database clock, so seed relative to the real current time.
+        const seedNow = new Date();
         await ensureDemoUsers(orm);
-        first = await seedDemoData(
-          orm,
-          owner.id,
-          new Date('2026-11-10T10:00:00Z'),
-          team,
-        );
-        second = await seedDemoData(
-          orm,
-          owner.id,
-          new Date('2026-11-10T10:00:00Z'),
-          team,
-        );
+        first = await seedDemoData(orm, owner.id, seedNow, team);
+        second = await seedDemoData(orm, owner.id, seedNow, team);
       });
       t = await createTestApp(db);
     });

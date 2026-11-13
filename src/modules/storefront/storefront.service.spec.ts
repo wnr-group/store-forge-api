@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { DatabaseService } from '../../infrastructure/database/database.service.js';
+import type { DatabaseService } from '../../database/database.service.js';
 import { StorefrontService } from './storefront.service.js';
 
 describe('StorefrontService unit tests (PR-D, T-D3)', () => {

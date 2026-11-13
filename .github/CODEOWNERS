@@ -1,6 +1,6 @@
 # Shared paths require approval from foundation owners (D-012, D-017)
 # Santu's GitHub handle pending confirmation (Q-P2); Eshwar: @Eshwar154
-/src/infrastructure/ @Eshwar154
+/src/database/ @Eshwar154
 /src/common/ @Eshwar154
 /src/config/ @Eshwar154
 /.github/ @Eshwar154

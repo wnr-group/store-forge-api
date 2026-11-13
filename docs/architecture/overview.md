@@ -38,7 +38,7 @@ Observed in the frontend repository (branch `feat/template-engine-pr-readiness`)
 - **Reuse the existing Supabase Postgres** as the single source of truth. Do not introduce a second database or a competing schema.
 - Connect as `storeforge_app` (never `postgres` or the service-role key) and **port the same per-request pattern**: transaction -> set claims from a *verified* identity -> `SET LOCAL ROLE authenticated` -> run queries, with the same guard that refuses to run if the role can bypass RLS. A pooled "superuser" ORM connection would silently bypass tenant isolation.
 - Prefer **Drizzle** (already used by the frontend, first-party Nest support via `@nestjs/drizzle`) over Prisma/TypeORM, which would duplicate the schema and fight the per-request role switch.
-- Keep it behind a Nest module in `src/infrastructure/` so feature modules never see connection details.
+- Keep it behind a Nest module in `src/database/` so feature modules never see connection details.
 - The service-role key, if ever needed, goes in one isolated provisioning module with its own security design.
 
 ## Authentication (Proposal, not implemented)
@@ -52,7 +52,7 @@ The frontend uses cookies; a separate API will most likely take a Supabase acces
 | D-001 | Use NestJS | Approved (Eshwar's project decision; Sibi said "preferably") |
 | D-002 | Scope of "everything is set" | Foundation only, per Sibi: "Just basic setup is enough" |
 | D-003 | Auth transport (bearer token vs cookie/BFF) and token verification method | **Implemented as bearer token verified against Supabase JWKS** (per the migration brief); needs team confirmation |
-| D-004 | Who owns the schema and migrations (today in `store-forge`, with the PGlite RLS test suite) | **Open.** Implemented on the assumption that `store-forge` keeps owning them; this repo creates none and its tests apply that repo's migrations |
+| D-004 | Who owns the schema and migrations | **Decided.** This repository owns them: `src/database/schema` and `src/database/migrations`, managed with `drizzle-kit` and applied by `npm run db:migrate` |
 | D-005 | How the template engine (`lib/templates`, shared by renderer and validator) is shared or split | Open |
 | D-006 | Which responsibilities move to this API vs stay in Next.js server actions | **Open.** The API implements every server-action capability except template customization; the Next.js app is unchanged and does not call it |
 | D-007 | Frontend baseline branch (`main` vs the template-engine branch) | Open |
@@ -63,9 +63,11 @@ Done: CORS allowlist, helmet, request validation, safe error responses, no secre
 
 Not done, and required before exposing protected endpoints: authentication, tenant resolution, per-module authorization, rate limiting, audit logging. Existing RLS policies and tenant isolation in the database are untouched by this repository.
 
-## Merge note: schema ownership is unresolved
+## Database layer and schema ownership (D-004, D-018)
 
-The `main` branch documents the frontend repository (`wnr-group/store-forge`) as the only owner of migrations, with a read-only schema mirror in `src/infrastructure/database/` kept by `scripts/sync-schema.mjs` and no `drizzle-kit` in this repo (D-004, D-018). This branch instead owns its schema and migrations in `src/database/` and generates them with `drizzle-kit`. Both layers currently exist side by side; only `src/database` is wired into `AppModule`. Which one wins is an open team decision.
+`src/database` is the only database implementation. `AppModule` imports its `DatabaseModule`, and auth and every feature module (including `StorefrontModule`) use its `DatabaseService`, which runs each request in a transaction as the verified user (`withUser`) or with no identity (`withPublic`).
+
+This repository owns its schema and migrations: `src/database/schema`, `src/database/migrations`, `drizzle-kit` for generation, and `npm run db:migrate`, `db:state` and `db:verify-schema` for applying and checking them. The earlier read-only mirror (`src/infrastructure/database`) and its `sync-schema` drift check were removed. `test/database-layer.spec.ts` (AC-A-18) enforces that no code refers to them.
 
 ## Next.js caller limitation (D-003, D-009)
 
@@ -74,7 +76,7 @@ The `main` branch documents the frontend repository (`wnr-group/store-forge`) as
 
 ### Local testing and PGlite limits (D-018, D-025)
 
-The database test kit runs tests using PGlite (`@electric-sql/pglite`) and an ephemeral socket server (`@electric-sql/pglite-socket`), applying snapshot migrations over a Supabase stub.
+The database test kit runs tests using PGlite (`@electric-sql/pglite`) and an ephemeral socket server (`@electric-sql/pglite-socket`), applying the migrations in `src/database/migrations` over a Supabase stub.
 
 > **PGlite limits:**
 > Tests using PGlite have limitations: no real pooler behaviour, no multi-instance rate limiting, and no genuine concurrent isolation. PGlite results do not prove hosted-Supabase compatibility. Hosted Supabase verification is tracked via Gate G-LIVE.
@@ -86,7 +88,7 @@ The database test kit runs tests using PGlite (`@electric-sql/pglite`) and an ep
 | D-001 | Use NestJS 12 (ESM) | Eshwar / PR-A | APPROVED |
 | D-002 | Foundation-first architecture | Eshwar / PR-A | APPROVED |
 | D-003 | Next.js sole intended caller (boundary convention) | Architecture / PR-A | APPROVED |
-| D-004 | Schema and migration ownership in frontend with drift check | Eshwar / PR-A | APPROVED |
+| D-004 | Schema and migration ownership in this repository (`src/database`) | Eshwar / PR-A | APPROVED |
 | D-005 | Template engine sharing mechanism | Architecture | OPEN |
 | D-006 | Responsibility split between API and Next.js server actions | Architecture | OPEN |
 | D-007 | Frontend baseline branch alignment | Architecture | OPEN |
@@ -100,7 +102,7 @@ The database test kit runs tests using PGlite (`@electric-sql/pglite`) and an ep
 | D-015 | Swagger OpenAPI documentation and decorators | Eshwar / PR-B | APPROVED |
 | D-016 | Env loading (`.env.local` before `.env`) and validation | Eshwar / PR-A | APPROVED |
 | D-017 | PR workflow, CI verification and CODEOWNERS | Eshwar / PR-A | APPROVED |
-| D-018 | CI drift check, PGlite integration tests, token secret | Eshwar / PR-A | APPROVED |
+| D-018 | PGlite integration tests and token secret (the schema drift check was removed with D-004) | Eshwar / PR-A | APPROVED |
 | D-019 | Public rate limiting (60/min) and `TRUST_PROXY` | Eshwar / PR-B | APPROVED |
 | D-020 | Strict `X-Tenant-Id` header and permission guard | Eshwar / PR-B | APPROVED |
 | D-021 | Standard error contract with `code` and `fieldErrors` | Eshwar / PR-B | APPROVED |
