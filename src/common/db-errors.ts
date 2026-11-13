@@ -65,6 +65,24 @@ const RULES: Rule[] = [
       ),
   },
   {
+    match: /store_pages_store_slug_key/,
+    error: () =>
+      conflict(
+        'Another page already uses that address.',
+        field('slug', 'This address is already in use.'),
+        'PAGE_SLUG_TAKEN',
+      ),
+  },
+  {
+    match: /store_pages_slug_reserved_check/,
+    error: () =>
+      invalid(
+        'That address is used by the store itself.',
+        field('slug', 'Please pick another address.'),
+        'PAGE_SLUG_RESERVED',
+      ),
+  },
+  {
     match: /stores_slug_key/,
     error: () =>
       conflict(

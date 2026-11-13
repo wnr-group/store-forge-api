@@ -81,3 +81,71 @@ export class PublicCollectionDto {
   @ApiPropertyOptional({ nullable: true }) image_path!: string | null;
   @ApiProperty() product_count!: number;
 }
+
+export class PublicResourceDto {
+  @ApiProperty({
+    type: 'object',
+    additionalProperties: true,
+    description:
+      'Public store details: name, slug, description, logo_path, currency.',
+  })
+  store!: Record<string, unknown>;
+  @ApiPropertyOptional({
+    type: 'object',
+    additionalProperties: true,
+    description: 'The product or collection itself (public fields only).',
+  })
+  product?: Record<string, unknown>;
+  @ApiPropertyOptional({
+    type: 'object',
+    additionalProperties: true,
+  })
+  collection?: Record<string, unknown>;
+  @ApiPropertyOptional({
+    type: 'array',
+    items: { type: 'object', additionalProperties: true },
+    description:
+      'Images, options, variants, related products or the collection products.',
+  })
+  images?: Record<string, unknown>[];
+  @ApiPropertyOptional({
+    type: 'array',
+    items: { type: 'object', additionalProperties: true },
+  })
+  options?: Record<string, unknown>[];
+  @ApiPropertyOptional({
+    type: 'array',
+    items: { type: 'object', additionalProperties: true },
+  })
+  variants?: Record<string, unknown>[];
+  @ApiPropertyOptional({
+    type: 'array',
+    items: { type: 'object', additionalProperties: true },
+  })
+  related?: Record<string, unknown>[];
+  @ApiPropertyOptional({
+    type: 'array',
+    items: { type: 'object', additionalProperties: true },
+  })
+  products?: Record<string, unknown>[];
+}
+
+export class PublicPageDto {
+  @ApiProperty({
+    type: 'object',
+    additionalProperties: true,
+    description: 'Public store details.',
+  })
+  store!: Record<string, unknown>;
+  @ApiProperty({
+    type: 'object',
+    additionalProperties: true,
+    description: 'The published page: `{ title, slug, body, updated_at }`.',
+  })
+  page!: Record<string, unknown>;
+}
+
+export class PublicPageLinkDto {
+  @ApiProperty() title!: string;
+  @ApiProperty() slug!: string;
+}

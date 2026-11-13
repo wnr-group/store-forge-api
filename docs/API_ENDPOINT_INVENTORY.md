@@ -149,3 +149,12 @@ Built on the template engine tables (migrations 0010-0016) plus the theme catalo
 | 90 | design | Restore a version | POST `/store/templates/:id/rollback` | JWT+Org | `store:manage` | `{versionId, label?}` | `{published[], ...}` | `template_versions`, `templates` | republished as a new version; history is append-only |
 | 91 | public | Published design of a store page | GET `/public/storefronts/:slug/layout?kind=&resource=` | Public | - | `kind` index/product/collection | `{source, template, theme, groups}` (published only) | `get_public_template_layout()` | no identity; drafts never returned; unknown store 404 |
 | 92 | public | Public collections | GET `/public/storefronts/:slug/collections` | Public | - | slug | collections with product counts | `get_public_collections()` | unknown/inactive store 404 |
+| 93 | public | Public product | GET `/public/storefronts/:slug/products/:productSlug` | Public | - | slug, productSlug | product, images, options, variants, related | `get_public_product()` | active products only; unknown/inactive store or product 404 |
+| 94 | public | Public collection | GET `/public/storefronts/:slug/collections/:collectionSlug` | Public | - | slug, collectionSlug | collection with its active products | `get_public_collection()` | active collections only; unknown/inactive store or collection 404 |
+| 95 | public | Public content pages | GET `/public/storefronts/:slug/pages` | Public | - | slug | published pages (title, slug) | `get_public_pages()` | published only; unknown/inactive store 404 |
+| 96 | public | Public content page | GET `/public/storefronts/:slug/pages/:pageSlug` | Public | - | slug, pageSlug | `{store, page}` | `get_public_page()` | published only; drafts 404 |
+| 97 | store-design | List content pages | GET `/store/pages` | `dashboard:view` | org | - | pages incl. drafts | `store_pages` (RLS) | own store only |
+| 98 | store-design | View a content page | GET `/store/pages/:id` | `dashboard:view` | org | id | page | `store_pages` (RLS) | other tenant 404 |
+| 99 | store-design | Add a content page | POST `/store/pages` | `store:manage` | org | title, slug?, body?, status? | page (201) | `store_pages` (RLS) | reserved/duplicate address rejected |
+| 100 | store-design | Change a content page | PATCH `/store/pages/:id` | `store:manage` | org | title?, slug?, body?, status? | page | `store_pages` (RLS) | other tenant 404 |
+| 101 | store-design | Remove a content page | DELETE `/store/pages/:id` | `store:manage` | org | id | - | `store_pages` (RLS) | other tenant 404 |

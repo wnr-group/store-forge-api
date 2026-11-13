@@ -158,3 +158,31 @@ export type Template = typeof templates.$inferSelect;
 export type TemplateVersion = typeof templateVersions.$inferSelect;
 export type Theme = typeof themes.$inferSelect;
 export type StoreTheme = typeof storeThemes.$inferSelect;
+
+/** Content pages of a store (About, Contact...), migration 0026. Only `published` pages are visible to shoppers. */
+export const STORE_PAGE_STATUSES = ['draft', 'published'] as const;
+export type StorePageStatus = (typeof STORE_PAGE_STATUSES)[number];
+
+export const storePages = pgTable(
+  'store_pages',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id').notNull(),
+    storeId: uuid('store_id').notNull(),
+    title: text('title').notNull(),
+    slug: text('slug').notNull(),
+    body: text('body').notNull().default(''),
+    status: text('status').$type<StorePageStatus>().notNull().default('draft'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index('store_pages_tenant_store_idx').on(t.tenantId, t.storeId, t.status),
+  ],
+).enableRLS();
+
+export type StorePage = typeof storePages.$inferSelect;

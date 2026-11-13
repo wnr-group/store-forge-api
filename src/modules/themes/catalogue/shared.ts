@@ -17,9 +17,6 @@ const NAV: Child[] = [
 ];
 
 export interface HeaderOptions {
-  announcement: string;
-  announcementBg: string;
-  announcementText: string;
   menuAlignment: 'left' | 'center' | 'right';
   logoWidth: number;
   sticky?: boolean;
@@ -27,20 +24,9 @@ export interface HeaderOptions {
   nav?: Child[];
 }
 
-/** The store-wide header group: an announcement bar above the main header. */
+/** The store-wide header group: the main header only; the announcement bar is its own shared document. */
 export function headerGroup(o: HeaderOptions): PageDocument {
   return page('classic', [
-    [
-      'announcement',
-      node('announcement-bar', {
-        text: o.announcement,
-        link: '',
-        backgroundColor: o.announcementBg,
-        textColor: o.announcementText,
-        showSocial: false,
-        alignment: 'center',
-      }),
-    ],
     [
       'header',
       node(

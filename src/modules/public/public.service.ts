@@ -132,4 +132,78 @@ export class PublicService {
     const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
     return Array.isArray(parsed) ? parsed : [];
   }
+
+  /** One active product with images, options, variants and related products. Unknown store or product is not found. */
+  async product(
+    slug: string,
+    productSlug: string,
+  ): Promise<Record<string, unknown>> {
+    const raw = await this.db.withPublic(
+      async (tx) =>
+        rowsOf<{ p: unknown }>(
+          await tx.execute(
+            sql`select public.get_public_product(${slug}, ${productSlug}) as p`,
+          ),
+        )[0]?.p,
+    );
+    if (raw === null || raw === undefined)
+      throw notFound('Product not found.', 'PRODUCT_NOT_FOUND');
+    return (typeof raw === 'string' ? JSON.parse(raw) : raw) as Record<
+      string,
+      unknown
+    >;
+  }
+
+  /** One active collection with its active products. Unknown store or collection is not found. */
+  async collection(
+    slug: string,
+    collectionSlug: string,
+  ): Promise<Record<string, unknown>> {
+    const raw = await this.db.withPublic(
+      async (tx) =>
+        rowsOf<{ c: unknown }>(
+          await tx.execute(
+            sql`select public.get_public_collection(${slug}, ${collectionSlug}) as c`,
+          ),
+        )[0]?.c,
+    );
+    if (raw === null || raw === undefined)
+      throw notFound('Collection not found.', 'COLLECTION_NOT_FOUND');
+    return (typeof raw === 'string' ? JSON.parse(raw) : raw) as Record<
+      string,
+      unknown
+    >;
+  }
+
+  /** Titles and addresses of the published content pages, for menus. */
+  async pages(slug: string): Promise<Record<string, unknown>[]> {
+    const raw = await this.db.withPublic(
+      async (tx) =>
+        rowsOf<{ g: unknown }>(
+          await tx.execute(sql`select public.get_public_pages(${slug}) as g`),
+        )[0]?.g,
+    );
+    if (raw === null || raw === undefined)
+      throw notFound('Store not found.', 'STORE_NOT_FOUND');
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    return Array.isArray(parsed) ? parsed : [];
+  }
+
+  /** One published content page. Drafts, unknown pages and unavailable stores are all "not found". */
+  async page(slug: string, pageSlug: string): Promise<Record<string, unknown>> {
+    const raw = await this.db.withPublic(
+      async (tx) =>
+        rowsOf<{ g: unknown }>(
+          await tx.execute(
+            sql`select public.get_public_page(${slug}, ${pageSlug}) as g`,
+          ),
+        )[0]?.g,
+    );
+    if (raw === null || raw === undefined)
+      throw notFound('Page not found.', 'PAGE_NOT_FOUND');
+    return (typeof raw === 'string' ? JSON.parse(raw) : raw) as Record<
+      string,
+      unknown
+    >;
+  }
 }

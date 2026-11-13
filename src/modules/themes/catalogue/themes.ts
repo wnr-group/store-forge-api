@@ -41,7 +41,7 @@ export const fashion: ThemeDefinition = {
     'Editorial fashion theme with a full-bleed campaign hero, serif headlines, square corners and a brand story.',
   industry: 'fashion',
   version: 1,
-  previewImage: '/themes/atelier/preview.jpg',
+  previewImage: '/themes/atelier/preview.svg',
   documents: {
     theme_settings: themeSettings({
       colors: {
@@ -57,7 +57,7 @@ export const fashion: ThemeDefinition = {
         headingFont: 'system-serif',
         bodyFont: 'inter',
         baseSize: 16,
-        headingWeight: 500,
+        headingWeight: 400,
         bodyWeight: 400,
         lineHeight: 1.6,
       },
@@ -76,7 +76,7 @@ export const fashion: ThemeDefinition = {
             subheading:
               'Considered pieces in natural fabrics, made to be worn for years.',
             accentColor: '#9a3412',
-            image: asset('atelier', 'hero.jpg'),
+            image: asset('atelier', 'hero.svg'),
           },
           [['cta', button('Shop the edit', '/#products')]],
         ),
@@ -103,7 +103,7 @@ export const fashion: ThemeDefinition = {
         node(
           'image-with-text',
           {
-            image: asset('atelier', 'story.jpg'),
+            image: asset('atelier', 'story.svg'),
             imagePosition: 'left',
             imageWidth: 'medium',
           },
@@ -168,9 +168,6 @@ export const fashion: ThemeDefinition = {
     }),
     collection: collectionPage('spotlight', 4, 12, '#9a3412'),
     group_header: headerGroup({
-      announcement: 'Complimentary shipping on orders above ₹1,999',
-      announcementBg: '#1c1917',
-      announcementText: '#faf7f2',
       menuAlignment: 'center',
       logoWidth: 140,
     }),
@@ -198,9 +195,9 @@ export const fashion: ThemeDefinition = {
       ],
     }),
     group_announcement: announcementGroup(
-      'New season has landed',
-      '#9a3412',
-      '#ffffff',
+      'Complimentary shipping on orders above ₹1,999',
+      '#1c1917',
+      '#faf7f2',
     ),
   },
 };
@@ -215,7 +212,7 @@ export const electronics: ThemeDefinition = {
     'Technology-focused theme: product hero, spec highlights, best sellers, promo banners and a brand strip.',
   industry: 'electronics',
   version: 1,
-  previewImage: '/themes/voltage/preview.jpg',
+  previewImage: '/themes/voltage/preview.svg',
   documents: {
     theme_settings: themeSettings({
       colors: {
@@ -250,7 +247,7 @@ export const electronics: ThemeDefinition = {
             subheading:
               'Phones, audio and smart-home essentials, tested and ready to ship.',
             accentColor: '#2563eb',
-            image: asset('voltage', 'hero.jpg'),
+            image: asset('voltage', 'hero.svg'),
           },
           [['cta', button('Shop devices', '/#products')]],
         ),
@@ -296,7 +293,7 @@ export const electronics: ThemeDefinition = {
         node(
           'image-with-text',
           {
-            image: asset('voltage', 'spotlight.jpg'),
+            image: asset('voltage', 'spotlight.svg'),
             imagePosition: 'right',
             imageWidth: 'medium',
           },
@@ -356,9 +353,6 @@ export const electronics: ThemeDefinition = {
     }),
     collection: collectionPage('classic', 4, 16, '#2563eb'),
     group_header: headerGroup({
-      announcement: 'Free delivery on orders over ₹999 · 7-day returns',
-      announcementBg: '#0f172a',
-      announcementText: '#f8fafc',
       menuAlignment: 'left',
       logoWidth: 120,
     }),
@@ -387,9 +381,9 @@ export const electronics: ThemeDefinition = {
       ],
     }),
     group_announcement: announcementGroup(
-      'Launch week: extra 10% off accessories',
-      '#2563eb',
-      '#ffffff',
+      'Free delivery on orders over ₹999 · 7-day returns',
+      '#0f172a',
+      '#f8fafc',
     ),
   },
 };
@@ -404,7 +398,7 @@ export const beauty: ThemeDefinition = {
     'Premium beauty theme with soft tones, rounded buttons, category tiles, a ritual story and reviews.',
   industry: 'beauty',
   version: 1,
-  previewImage: '/themes/lumiere/preview.jpg',
+  previewImage: '/themes/lumiere/preview.svg',
   documents: {
     theme_settings: themeSettings({
       colors: {
@@ -438,7 +432,7 @@ export const beauty: ThemeDefinition = {
             heading: 'Skin that feels like you',
             subheading: 'Gentle formulas for a calm, glowing routine.',
             accentColor: '#9d4a5b',
-            image: asset('lumiere', 'hero.jpg'),
+            image: asset('lumiere', 'hero.svg'),
           },
           [['cta', button('Discover skincare', '/#products')]],
         ),
@@ -448,7 +442,7 @@ export const beauty: ThemeDefinition = {
         node(
           'image-with-text',
           {
-            image: asset('lumiere', 'ritual.jpg'),
+            image: asset('lumiere', 'ritual.svg'),
             imagePosition: 'right',
             imageWidth: 'medium',
           },
@@ -530,9 +524,6 @@ export const beauty: ThemeDefinition = {
     }),
     collection: collectionPage('spotlight', 3, 12, '#9d4a5b'),
     group_header: headerGroup({
-      announcement: 'Free shipping over ₹799 · Free samples with every order',
-      announcementBg: '#f3dfd9',
-      announcementText: '#3b2a2a',
       menuAlignment: 'center',
       logoWidth: 130,
       separator: false,
@@ -561,9 +552,9 @@ export const beauty: ThemeDefinition = {
       ],
     }),
     group_announcement: announcementGroup(
-      'Free mini with your first order',
-      '#9d4a5b',
-      '#ffffff',
+      'Free shipping over ₹799 · Free samples with every order',
+      '#f3dfd9',
+      '#3b2a2a',
     ),
   },
 };
@@ -578,7 +569,7 @@ export const furniture: ThemeDefinition = {
     'Lifestyle furniture theme with a large room banner, shop-by-room tiles and alternating editorial blocks.',
   industry: 'home',
   version: 1,
-  previewImage: '/themes/haven/preview.jpg',
+  previewImage: '/themes/haven/preview.svg',
   documents: {
     theme_settings: themeSettings({
       colors: {
@@ -608,7 +599,7 @@ export const furniture: ThemeDefinition = {
         node(
           'image-banner',
           {
-            image: asset('haven', 'living-room.jpg'),
+            image: asset('haven', 'living-room.svg'),
             height: 'large',
             overlayOpacity: 30,
             textAlignment: 'left',
@@ -633,7 +624,7 @@ export const furniture: ThemeDefinition = {
         node(
           'image-with-text',
           {
-            image: asset('haven', 'craft.jpg'),
+            image: asset('haven', 'craft.svg'),
             imagePosition: 'left',
             imageWidth: 'large',
           },
@@ -662,7 +653,7 @@ export const furniture: ThemeDefinition = {
         node(
           'image-with-text',
           {
-            image: asset('haven', 'studio.jpg'),
+            image: asset('haven', 'studio.svg'),
             imagePosition: 'right',
             imageWidth: 'large',
           },
@@ -727,9 +718,6 @@ export const furniture: ThemeDefinition = {
     }),
     collection: collectionPage('classic', 3, 12, '#3f5d45'),
     group_header: headerGroup({
-      announcement: 'Free delivery and assembly on orders over ₹15,000',
-      announcementBg: '#3f5d45',
-      announcementText: '#f6f3ee',
       menuAlignment: 'right',
       logoWidth: 150,
     }),
@@ -758,9 +746,9 @@ export const furniture: ThemeDefinition = {
       ],
     }),
     group_announcement: announcementGroup(
-      'Showroom open Saturday and Sunday',
-      '#c08552',
-      '#ffffff',
+      'Free delivery and assembly on orders over ₹15,000',
+      '#3f5d45',
+      '#f6f3ee',
     ),
   },
 };
@@ -775,7 +763,7 @@ export const grocery: ThemeDefinition = {
     'Fast-scanning grocery theme: many category tiles, offers up front, dense product grids and delivery promises.',
   industry: 'grocery',
   version: 1,
-  previewImage: '/themes/freshly/preview.jpg',
+  previewImage: '/themes/freshly/preview.svg',
   documents: {
     theme_settings: themeSettings({
       colors: {
@@ -827,7 +815,7 @@ export const grocery: ThemeDefinition = {
             heading: 'Groceries, delivered fresh',
             subheading: 'Order before 6pm and get it the same evening.',
             accentColor: '#15803d',
-            image: asset('freshly', 'hero.jpg'),
+            image: asset('freshly', 'hero.svg'),
           },
           [['cta', button('Start shopping', '/#products')]],
         ),
@@ -870,14 +858,11 @@ export const grocery: ThemeDefinition = {
       pickerType: 'dropdown',
       priceSize: 'large',
       relatedHeading: 'Customers also bought',
-      relatedColumns: 5,
+      relatedColumns: 4,
       truncateDescription: true,
     }),
     collection: collectionPage('classic', 5, 30, '#15803d'),
     group_header: headerGroup({
-      announcement: 'Free delivery over ₹499 · Same-day slots available',
-      announcementBg: '#15803d',
-      announcementText: '#ffffff',
       menuAlignment: 'left',
       logoWidth: 110,
     }),
@@ -907,8 +892,8 @@ export const grocery: ThemeDefinition = {
       ],
     }),
     group_announcement: announcementGroup(
-      'Fresh stock arrives every morning',
-      '#4d7c0f',
+      'Free delivery over ₹499 · Same-day slots available',
+      '#15803d',
       '#ffffff',
     ),
   },
@@ -924,7 +909,7 @@ export const minimal: ThemeDefinition = {
     'A quiet, flexible store: a short intro, a clean product grid and room for your own sections.',
   industry: 'general',
   version: 1,
-  previewImage: '/themes/plain/preview.jpg',
+  previewImage: '/themes/plain/preview.svg',
   documents: {
     theme_settings: themeSettings({
       colors: {
@@ -985,9 +970,6 @@ export const minimal: ThemeDefinition = {
     }),
     collection: collectionPage('classic', 4, 12, '#111827'),
     group_header: headerGroup({
-      announcement: 'Welcome to our store',
-      announcementBg: '#111827',
-      announcementText: '#ffffff',
       menuAlignment: 'left',
       logoWidth: 120,
     }),
@@ -1007,7 +989,7 @@ export const minimal: ThemeDefinition = {
       ],
     }),
     group_announcement: announcementGroup(
-      'Thanks for visiting',
+      'Welcome to our store',
       '#111827',
       '#ffffff',
     ),

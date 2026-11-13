@@ -604,6 +604,64 @@ describe.skipIf(!migrationsAvailable)('themes and store design (e2e)', () => {
         .expect(400);
     });
 
+    it('serves one product and one collection of the store, never another stores', async () => {
+      const { anonymous } = await import('./support/app.js');
+      const product = await alice
+        .post('/products', {
+          name: 'Wool Scarf',
+          price: '499',
+          status: 'active',
+        })
+        .expect(201);
+      const draft = await alice
+        .post('/products', {
+          name: 'Hidden Draft',
+          price: '10',
+          status: 'draft',
+        })
+        .expect(201);
+      await alice
+        .post('/collections', {
+          name: 'Winter Edit',
+          status: 'active',
+          productIds: [product.body.data.id],
+        })
+        .expect(201);
+
+      const p = await anonymous(t)
+        .get('/public/storefronts/alpha-shop/products/wool-scarf')
+        .expect(200);
+      expect(p.body.data.product).toMatchObject({
+        name: 'Wool Scarf',
+        slug: 'wool-scarf',
+        price_minor: 49900,
+      });
+      expect(p.body.data.store.slug).toBe('alpha-shop');
+      expect(JSON.stringify(p.body.data)).not.toContain('tenant_id');
+
+      const c = await anonymous(t)
+        .get('/public/storefronts/alpha-shop/collections/winter-edit')
+        .expect(200);
+      expect(c.body.data.collection.name).toBe('Winter Edit');
+      expect(c.body.data.products.map((x: { slug: string }) => x.slug)).toEqual(
+        ['wool-scarf'],
+      );
+
+      // Drafts, unknown slugs and another store's catalogue are all "not found".
+      await anonymous(t)
+        .get(`/public/storefronts/alpha-shop/products/${draft.body.data.slug}`)
+        .expect(404);
+      await anonymous(t)
+        .get('/public/storefronts/beta-shop/products/wool-scarf')
+        .expect(404);
+      await anonymous(t)
+        .get('/public/storefronts/beta-shop/collections/winter-edit')
+        .expect(404);
+      await anonymous(t)
+        .get('/public/storefronts/nowhere-shop/products/wool-scarf')
+        .expect(404);
+    });
+
     it('lists collections without signing in', async () => {
       const { anonymous } = await import('./support/app.js');
       const res = await anonymous(t)
