@@ -21,6 +21,11 @@ export class StorefrontProductDto {
       'Where the image is stored in the public `products` storage bucket.',
   })
   imagePath!: string | null;
+  @ApiProperty({
+    description:
+      'Whether the product can be bought now. Stock counts are never shown.',
+  })
+  available!: boolean;
 }
 
 export class StorefrontDto {

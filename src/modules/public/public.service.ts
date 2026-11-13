@@ -22,6 +22,7 @@ interface StorefrontRaw {
     price_minor: number;
     compare_at_price_minor: number | null;
     image_path: string | null;
+    available?: boolean;
   }[];
   template?: Record<string, unknown> | null;
 }
@@ -86,6 +87,8 @@ export class PublicService {
         priceMinor: p.price_minor,
         compareAtPriceMinor: p.compare_at_price_minor,
         imagePath: p.image_path,
+        // Older database functions do not send the flag: such a product counts as available.
+        available: p.available ?? true,
       })),
       template: s.template ?? null,
     };
