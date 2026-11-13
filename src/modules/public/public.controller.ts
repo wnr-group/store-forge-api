@@ -1,8 +1,14 @@
-import { Controller, Get, Param } from '@nestjs/common';
-import { ApiParam, ApiTags } from '@nestjs/swagger';
+import { Controller, Get, Param, Query } from '@nestjs/common';
+import { ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { ApiEndpoint } from '../../common/decorators/api-endpoint.decorator.js';
 import { Public } from '../../common/decorators/decorators.js';
-import { PublicBrandingDto, StorefrontDto } from './public.dto.js';
+import { invalid } from '../../common/app.exception.js';
+import {
+  PublicBrandingDto,
+  PublicCollectionDto,
+  PublicLayoutDto,
+  StorefrontDto,
+} from './public.dto.js';
 import { PublicService } from './public.service.js';
 
 @ApiTags('public')
@@ -37,5 +43,55 @@ export class PublicController {
   })
   storefront(@Param('slug') slug: string) {
     return this.publicService.storefront(slug.toLowerCase());
+  }
+
+  @Get('storefronts/:slug/layout')
+  @ApiParam({ name: 'slug', example: 'acme-store' })
+  @ApiQuery({
+    name: 'kind',
+    enum: ['index', 'product', 'collection'],
+    required: false,
+  })
+  @ApiQuery({
+    name: 'resource',
+    required: false,
+    description: 'Product or collection slug, for the page assigned to it',
+  })
+  @ApiEndpoint({
+    summary: 'View the published design of a store page',
+    description:
+      'Get the design shoppers should see for a page: the published page, theme settings, header, footer and announcement. Only published work is returned, never drafts. Anything not published is null. Anyone can call it without signing in. Unknown, inactive or suspended stores give a 404.',
+    auth: 'public',
+    response: PublicLayoutDto,
+    message: 'Storefront design retrieved successfully',
+    errors: [400, 404],
+  })
+  layout(
+    @Param('slug') slug: string,
+    @Query('kind') kind = 'index',
+    @Query('resource') resource?: string,
+  ) {
+    if (!['index', 'product', 'collection'].includes(kind))
+      throw invalid('Choose a page: index, product or collection.');
+    return this.publicService.layout(
+      slug.toLowerCase(),
+      kind,
+      resource?.toLowerCase().slice(0, 100),
+    );
+  }
+
+  @Get('storefronts/:slug/collections')
+  @ApiParam({ name: 'slug', example: 'acme-store' })
+  @ApiEndpoint({
+    summary: 'List the collections of a public store',
+    description:
+      'Get the active collections a shopper can browse: name, address, description, picture and how many products each holds. Anyone can call it without signing in. Unknown, inactive or suspended stores give a 404.',
+    auth: 'public',
+    response: [PublicCollectionDto],
+    message: 'Collections retrieved successfully',
+    errors: [404],
+  })
+  collections(@Param('slug') slug: string) {
+    return this.publicService.collections(slug.toLowerCase());
   }
 }

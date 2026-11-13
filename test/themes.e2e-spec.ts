@@ -573,4 +573,46 @@ describe.skipIf(!migrationsAvailable)('themes and store design (e2e)', () => {
       await anonymous(t).get(`/store/templates/${bobIndex.id}`).expect(401);
     });
   });
+
+  describe('public storefront endpoints', () => {
+    it('shows only published work, and nothing for a store that has not published', async () => {
+      const { anonymous } = await import('./support/app.js');
+      const live = await anonymous(t)
+        .get('/public/storefronts/alpha-shop/layout?kind=index')
+        .expect(200);
+      expect(live.body.data.source).toBe('default');
+      expect(live.body.data.template.document.order).toEqual([
+        'intro',
+        'products',
+      ]);
+      expect(live.body.data.groups.header).not.toBeNull();
+
+      const none = await anonymous(t)
+        .get('/public/storefronts/beta-shop/layout')
+        .expect(200);
+      expect(none.body.data.template).toBeNull();
+      expect(none.body.data.theme).toBeNull();
+    });
+
+    it('rejects an unknown store and an unknown page kind', async () => {
+      const { anonymous } = await import('./support/app.js');
+      await anonymous(t)
+        .get('/public/storefronts/nowhere-shop/layout')
+        .expect(404);
+      await anonymous(t)
+        .get('/public/storefronts/alpha-shop/layout?kind=admin')
+        .expect(400);
+    });
+
+    it('lists collections without signing in', async () => {
+      const { anonymous } = await import('./support/app.js');
+      const res = await anonymous(t)
+        .get('/public/storefronts/alpha-shop/collections')
+        .expect(200);
+      expect(Array.isArray(res.body.data)).toBe(true);
+      await anonymous(t)
+        .get('/public/storefronts/nowhere-shop/collections')
+        .expect(404);
+    });
+  });
 });

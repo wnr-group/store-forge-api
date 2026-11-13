@@ -40,3 +40,44 @@ export class StorefrontDto {
   })
   template!: Record<string, unknown> | null;
 }
+
+export class PublicLayoutDto {
+  @ApiPropertyOptional({
+    nullable: true,
+    enum: ['assigned', 'default'],
+    description:
+      'Which step found the page design; null when none is published.',
+  })
+  source!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    type: 'object',
+    additionalProperties: true,
+    description:
+      'The published page: `{ name, version_number, document }`. Null when nothing is published yet.',
+  })
+  template!: Record<string, unknown> | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    type: 'object',
+    additionalProperties: true,
+    description: 'The published theme settings (colours, fonts, spacing).',
+  })
+  theme!: Record<string, unknown> | null;
+  @ApiProperty({
+    type: 'object',
+    additionalProperties: true,
+    description:
+      'Published header, footer and announcement documents (each may be null).',
+  })
+  groups!: Record<string, unknown>;
+}
+
+export class PublicCollectionDto {
+  @ApiProperty() id!: string;
+  @ApiProperty() name!: string;
+  @ApiProperty() slug!: string;
+  @ApiPropertyOptional({ nullable: true }) description!: string | null;
+  @ApiPropertyOptional({ nullable: true }) image_path!: string | null;
+  @ApiProperty() product_count!: number;
+}

@@ -90,4 +90,46 @@ export class PublicService {
       template: s.template ?? null,
     };
   }
+
+  /**
+   * The PUBLISHED design of a store page (what shoppers see), straight from the database function: the page document,
+   * the theme settings and the header, footer and announcement groups. Drafts are never returned. Anything not
+   * published is null, and the caller falls back to its built-in look. Unknown stores are not found.
+   */
+  async layout(
+    slug: string,
+    kind: string,
+    resourceSlug?: string,
+  ): Promise<Record<string, unknown>> {
+    const raw = await this.db.withPublic(
+      async (tx) =>
+        rowsOf<{ l: unknown }>(
+          await tx.execute(
+            sql`select public.get_public_template_layout(${slug}, ${kind}, ${resourceSlug ?? null}) as l`,
+          ),
+        )[0]?.l,
+    );
+    if (raw === null || raw === undefined)
+      throw notFound('Store not found.', 'STORE_NOT_FOUND');
+    return (typeof raw === 'string' ? JSON.parse(raw) : raw) as Record<
+      string,
+      unknown
+    >;
+  }
+
+  /** The store's active collections for the storefront (name, slug, image, product count). */
+  async collections(slug: string): Promise<Record<string, unknown>[]> {
+    const raw = await this.db.withPublic(
+      async (tx) =>
+        rowsOf<{ c: unknown }>(
+          await tx.execute(
+            sql`select public.get_public_collections(${slug}) as c`,
+          ),
+        )[0]?.c,
+    );
+    if (raw === null || raw === undefined)
+      throw notFound('Store not found.', 'STORE_NOT_FOUND');
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    return Array.isArray(parsed) ? parsed : [];
+  }
 }
