@@ -63,12 +63,8 @@
           "name": "memberships_tenant_id_tenants_id_fk",
           "tableFrom": "memberships",
           "tableTo": "tenants",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -77,12 +73,8 @@
           "tableFrom": "memberships",
           "tableTo": "users",
           "schemaTo": "auth",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -92,10 +84,7 @@
         "memberships_tenant_id_user_id_key": {
           "name": "memberships_tenant_id_user_id_key",
           "nullsNotDistinct": false,
-          "columns": [
-            "tenant_id",
-            "user_id"
-          ]
+          "columns": ["tenant_id", "user_id"]
         }
       },
       "policies": {},
@@ -151,12 +140,8 @@
           "tableFrom": "profiles",
           "tableTo": "users",
           "schemaTo": "auth",
-          "columnsFrom": [
-            "id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -271,12 +256,8 @@
           "name": "stores_tenant_id_tenants_id_fk",
           "tableFrom": "stores",
           "tableTo": "tenants",
-          "columnsFrom": [
-            "tenant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tenant_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -286,9 +267,7 @@
         "stores_slug_key": {
           "name": "stores_slug_key",
           "nullsNotDistinct": false,
-          "columns": [
-            "slug"
-          ]
+          "columns": ["slug"]
         }
       },
       "policies": {},
@@ -383,12 +362,8 @@
           "tableFrom": "tenants",
           "tableTo": "users",
           "schemaTo": "auth",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -398,9 +373,7 @@
         "tenants_slug_key": {
           "name": "tenants_slug_key",
           "nullsNotDistinct": false,
-          "columns": [
-            "slug"
-          ]
+          "columns": ["slug"]
         }
       },
       "policies": {},

@@ -29,6 +29,7 @@
     "db:state": "tsx scripts/db-state.ts",
     "admin:create": "tsx scripts/create-platform-admin.ts",
     "db:seed:demo": "tsx scripts/seed-demo-data.ts",
+    "db:seed:themes": "tsx scripts/seed-themes.ts",
     "test:int": "vitest run --config ./vitest.config.integration.ts",
     "auth:token": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/get-access-token.ps1"
   },

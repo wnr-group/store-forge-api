@@ -128,3 +128,22 @@ All: Auth `JWT+Org`, permission `members:manage`. DB `memberships`, `profiles`, 
 | 73 | New-org series `?from&to` | GET `/platform/usage/new-organizations` | admin | - | bucket from `resolveSeriesRange` |
 
 **Total identified: 78** (the 73 migrated features + the readiness probe + the 4 cookie-session routes below). See [COOKIE_SESSION_AUTH.md](COOKIE_SESSION_AUTH.md). Intentionally absent: sign in/out/refresh (Supabase SDK), anything template-related, orders CRUD, billing/subscriptions/integrations.
+
+## Theme Store and store design
+
+Built on the template engine tables (migrations 0010-0016) plus the theme catalogue (0025). Reading needs `dashboard:view`; changing anything needs `store:manage`. A page is always the caller's own store; ids from other organizations answer 404. Drafts carry a `revision` for optimistic concurrency (409 `TEMPLATE_REVISION_CONFLICT`).
+
+| # | Module | Feature | Method + endpoint | Auth | Permission | Request | Response | DB | Logic |
+|---|---|---|---|---|---|---|---|---|---|
+| 79 | themes | Browse the catalogue (paginated, filter, search) | GET `/themes` | JWT+Org | `dashboard:view` | `page,limit,search,industry` | theme summaries + `meta` | `themes`, `store_themes` | same list for every tenant; `isCurrent` marks the store's theme |
+| 80 | themes | One theme with its documents (preview) | GET `/themes/:slug` | JWT+Org | `dashboard:view` | slug | theme + documents | `themes` | read-only |
+| 81 | themes | Current theme | GET `/store/theme` | JWT+Org | `dashboard:view` | - | `{theme, appliedVersion, appliedAt, updateAvailable}` | `store_themes` | - |
+| 82 | themes | Apply a theme | POST `/store/theme` | JWT+Org | `store:manage` | `{themeSlug}` | `{theme, draftsWritten, draftsReplaced}` | `templates`, `store_themes` | copies documents into drafts; never publishes; no commerce data touched |
+| 83 | themes | Publish the whole theme | POST `/store/theme/publish` | JWT+Org | `store:manage` | `{label?}` | `{published[], unchanged, storeSlug, publishedAt}` | `template_versions`, `templates` | one transaction; validates everything first |
+| 84 | design | List pages and shared parts | GET `/store/templates` | JWT+Org | `dashboard:view` | - | summaries with publication state | `templates`, `template_versions` | one query, no N+1 |
+| 85 | design | Open one page | GET `/store/templates/:id` | JWT+Org | `dashboard:view` | id | draft + revision | `templates` | - |
+| 86 | design | Preview bundle | GET `/store/templates/:id/preview` | JWT+Org | `dashboard:view` | id | page + theme settings + groups (drafts) | `templates` | members only |
+| 87 | design | Save a draft | PUT `/store/templates/:id/draft` | JWT+Org | `store:manage` | `{document, expectedRevision}` | draft | `templates` | validated; 409 on stale revision; unchanged draft keeps the revision |
+| 88 | design | Publish one page | POST `/store/templates/:id/publish` | JWT+Org | `store:manage` | `{label?, expectedRevision?}` | `{published[], unchanged, ...}` | `template_versions`, `templates` | immutable numbered version |
+| 89 | design | Publishing history | GET `/store/templates/:id/versions` | JWT+Org | `dashboard:view` | id | last 100 versions, `isLive` | `template_versions` | - |
+| 90 | design | Restore a version | POST `/store/templates/:id/rollback` | JWT+Org | `store:manage` | `{versionId, label?}` | `{published[], ...}` | `template_versions`, `templates` | republished as a new version; history is append-only |

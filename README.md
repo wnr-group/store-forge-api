@@ -125,6 +125,7 @@ Base path `/api/v1`. The OpenAPI JSON is at `/api/docs-json`. Every endpoint wit
 | Store | `GET/PATCH /store`, `POST /uploads/signed-urls` |
 | Team (Owner) | `/team/members` (list, add, edit, remove, status, password reset) |
 | Catalog | `/categories`, `/collections`, `/products`, `/inventory`, `/inventory/adjustments` |
+| Theme Store and design | `GET /themes`, `GET /themes/:slug`, `GET/POST /store/theme`, `POST /store/theme/publish`, `/store/templates/*` (list, open, preview, save draft, publish, history, restore) |
 | Customers and analytics | `/customers`, `GET /analytics` |
 | Platform Admin | `/platform/*`: organizations, admins, settings, audit logs, usage |
 

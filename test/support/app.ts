@@ -295,6 +295,8 @@ export async function as(
       withHeaders(request(http()).post(`/api/v1${url}`)).send(body),
     patch: (url: string, body?: object) =>
       withHeaders(request(http()).patch(`/api/v1${url}`)).send(body),
+    put: (url: string, body?: object) =>
+      withHeaders(request(http()).put(`/api/v1${url}`)).send(body),
     delete: (url: string) =>
       withHeaders(request(http()).delete(`/api/v1${url}`)),
   };

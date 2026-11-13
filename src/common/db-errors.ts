@@ -96,6 +96,24 @@ const RULES: Rule[] = [
     match: /categories_parent_check/,
     error: () => invalid('A category cannot be its own parent.'),
   },
+  {
+    match: /THEME_NOT_AVAILABLE/,
+    error: () =>
+      conflict(
+        'That theme is not available any more. Please choose another.',
+        undefined,
+        'THEME_NOT_AVAILABLE',
+      ),
+  },
+  {
+    match: /templates_draft_check|template_versions_document_check/,
+    error: () =>
+      invalid(
+        'That design is too large or not in the expected format.',
+        undefined,
+        'TEMPLATE_DOCUMENT_INVALID',
+      ),
+  },
   { match: /row-level security|permission denied/, error: () => forbidden() },
 ];
 

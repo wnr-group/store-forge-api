@@ -23,6 +23,7 @@ import { ProductsModule } from './modules/products/products.module.js';
 import { PlatformAdminModule } from './modules/platform-admin/platform-admin.module.js';
 import { PublicModule } from './modules/public/public.module.js';
 import { TeamModule } from './modules/team/team.module.js';
+import { ThemesModule } from './modules/themes/themes.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { OrganizationsModule } from './modules/organizations/organizations.module.js';
 import { StorageModule } from './modules/storage/storage.module.js';
@@ -59,6 +60,7 @@ import { UsersModule } from './modules/users/users.module.js';
     CustomersModule,
     AnalyticsModule,
     TeamModule,
+    ThemesModule,
     PublicModule,
     PlatformAdminModule,
   ],

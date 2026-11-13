@@ -63,6 +63,15 @@ Done: CORS allowlist, helmet, request validation, safe error responses, no secre
 
 Not done, and required before exposing protected endpoints: authentication, tenant resolution, per-module authorization, rate limiting, audit logging. Existing RLS policies and tenant isolation in the database are untouched by this repository.
 
+## Theme Store (`src/modules/themes`)
+
+A theme is a set of starting documents (home, product, collection, theme settings, header, footer, announcement) in the global `themes` catalogue. **Applying** a theme copies those documents into the store's own `templates` drafts; a store never shares a mutable row with another tenant. Nothing is public until the merchant **publishes**, which writes an immutable numbered row to `template_versions` and moves `templates.published_version_id` in one transaction. **Rollback** republishes an older document as a new version. Shoppers read published documents through `get_public_template_layout()`; drafts are readable only by organization members (RLS plus the `store:manage` / `dashboard:view` permissions). Commerce tables are never read or written by any of this.
+
+- Draft saves use `revision` for optimistic concurrency (409 on a stale revision).
+- `validateTemplateDocument` (src/modules/themes/validation) is the API's gate for structure, limits, safe links and image references. The frontend template engine owns the per-setting rules; add new section types to both.
+- The catalogue is defined in code (`src/modules/themes/catalogue`) and written by `npm run db:seed:themes`.
+- Platform theme images are referenced as `{ "asset": "<theme>/<file>" }` and served by the storefront from `/themes/`. Tenant images stay `{ "path": "<tenantId>/store/<file>" }`.
+
 ## Database layer and schema ownership (D-004, D-018)
 
 `src/database` is the only database implementation. `AppModule` imports its `DatabaseModule`, and auth and every feature module (including `StorefrontModule`) use its `DatabaseService`, which runs each request in a transaction as the verified user (`withUser`) or with no identity (`withPublic`).

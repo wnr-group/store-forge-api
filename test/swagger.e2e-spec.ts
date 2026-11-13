@@ -73,8 +73,8 @@ describe('OpenAPI coverage (e2e)', () => {
     await app.close();
   });
 
-  it('documents every endpoint listed in docs/API_ENDPOINT_INVENTORY.md (74 migrated + the 4 cookie-session routes)', () => {
-    expect(operations.length).toBe(78);
+  it('documents every endpoint listed in docs/API_ENDPOINT_INVENTORY.md (74 migrated + 4 cookie-session + 12 theme store routes)', () => {
+    expect(operations.length).toBe(90);
   });
 
   it('gives every operation a summary, a description, a tag, a success and an error response', () => {
@@ -178,13 +178,24 @@ describe('OpenAPI coverage (e2e)', () => {
     ).toBe(true);
   });
 
-  it('contains no template-customization endpoints', () => {
-    expect(Object.keys(doc.paths).filter((p) => /template/i.test(p))).toEqual(
-      [],
-    );
+  it('exposes template routes only for the Theme Store (an exact allowlist)', () => {
     expect(
-      Object.keys(doc.components.schemas).filter((s) => /template/i.test(s)),
-    ).toEqual([]);
+      Object.keys(doc.paths)
+        .filter((p) => /template|theme/i.test(p))
+        .sort(),
+    ).toEqual([
+      '/api/v1/store/templates',
+      '/api/v1/store/templates/{id}',
+      '/api/v1/store/templates/{id}/draft',
+      '/api/v1/store/templates/{id}/preview',
+      '/api/v1/store/templates/{id}/publish',
+      '/api/v1/store/templates/{id}/rollback',
+      '/api/v1/store/templates/{id}/versions',
+      '/api/v1/store/theme',
+      '/api/v1/store/theme/publish',
+      '/api/v1/themes',
+      '/api/v1/themes/{slug}',
+    ]);
   });
 
   it('does not expose orders create / update / delete', () => {

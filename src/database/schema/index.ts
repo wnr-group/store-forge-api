@@ -1,5 +1,4 @@
-// Template-customization tables (templates, template_versions, store_template_settings, engine cutover) are
-// intentionally NOT modelled: see docs/EXCLUDED_FEATURES.md.
+// store_template_settings and the engine cutover marker are still not modelled (docs/EXCLUDED_FEATURES.md).
 export * from './enums.js';
 export * from './memberships.js';
 export * from './platform-admins.js';
@@ -11,3 +10,4 @@ export * from './customers.js';
 export * from './admin-audit.js';
 export * from './platform-settings.js';
 export * from './rate-limits.js';
+export * from './templates.js';

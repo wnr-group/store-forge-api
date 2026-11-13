@@ -62,27 +62,19 @@
         "memberships_tenant_id_tenants_id_fk": {
           "name": "memberships_tenant_id_tenants_id_fk",
           "tableFrom": "memberships",
-          "columnsFrom": [
-            "tenant_id"
-          ],
+          "columnsFrom": ["tenant_id"],
           "tableTo": "tenants",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         },
         "memberships_user_id_users_id_fk": {
           "name": "memberships_user_id_users_id_fk",
           "tableFrom": "memberships",
-          "columnsFrom": [
-            "user_id"
-          ],
+          "columnsFrom": ["user_id"],
           "tableTo": "users",
           "schemaTo": "auth",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -91,10 +83,7 @@
       "uniqueConstraints": {
         "memberships_tenant_id_user_id_key": {
           "name": "memberships_tenant_id_user_id_key",
-          "columns": [
-            "tenant_id",
-            "user_id"
-          ],
+          "columns": ["tenant_id", "user_id"],
           "nullsNotDistinct": false
         }
       },
@@ -149,14 +138,10 @@
         "profiles_id_users_id_fk": {
           "name": "profiles_id_users_id_fk",
           "tableFrom": "profiles",
-          "columnsFrom": [
-            "id"
-          ],
+          "columnsFrom": ["id"],
           "tableTo": "users",
           "schemaTo": "auth",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -282,13 +267,9 @@
         "stores_tenant_id_tenants_id_fk": {
           "name": "stores_tenant_id_tenants_id_fk",
           "tableFrom": "stores",
-          "columnsFrom": [
-            "tenant_id"
-          ],
+          "columnsFrom": ["tenant_id"],
           "tableTo": "tenants",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -297,9 +278,7 @@
       "uniqueConstraints": {
         "stores_slug_key": {
           "name": "stores_slug_key",
-          "columns": [
-            "slug"
-          ],
+          "columns": ["slug"],
           "nullsNotDistinct": false
         }
       },
@@ -405,14 +384,10 @@
         "tenants_created_by_users_id_fk": {
           "name": "tenants_created_by_users_id_fk",
           "tableFrom": "tenants",
-          "columnsFrom": [
-            "created_by"
-          ],
+          "columnsFrom": ["created_by"],
           "tableTo": "users",
           "schemaTo": "auth",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "set null"
         }
@@ -421,9 +396,7 @@
       "uniqueConstraints": {
         "tenants_slug_key": {
           "name": "tenants_slug_key",
-          "columns": [
-            "slug"
-          ],
+          "columns": ["slug"],
           "nullsNotDistinct": false
         }
       },
@@ -517,26 +490,18 @@
         "categories_tenant_id_tenants_id_fk": {
           "name": "categories_tenant_id_tenants_id_fk",
           "tableFrom": "categories",
-          "columnsFrom": [
-            "tenant_id"
-          ],
+          "columnsFrom": ["tenant_id"],
           "tableTo": "tenants",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         },
         "categories_parent_id_categories_id_fk": {
           "name": "categories_parent_id_categories_id_fk",
           "tableFrom": "categories",
-          "columnsFrom": [
-            "parent_id"
-          ],
+          "columnsFrom": ["parent_id"],
           "tableTo": "categories",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "set null"
         }
@@ -545,18 +510,12 @@
       "uniqueConstraints": {
         "categories_tenant_id_id_key": {
           "name": "categories_tenant_id_id_key",
-          "columns": [
-            "tenant_id",
-            "id"
-          ],
+          "columns": ["tenant_id", "id"],
           "nullsNotDistinct": false
         },
         "categories_tenant_id_slug_key": {
           "name": "categories_tenant_id_slug_key",
-          "columns": [
-            "tenant_id",
-            "slug"
-          ],
+          "columns": ["tenant_id", "slug"],
           "nullsNotDistinct": false
         }
       },
@@ -639,43 +598,27 @@
         "collection_products_tenant_id_tenants_id_fk": {
           "name": "collection_products_tenant_id_tenants_id_fk",
           "tableFrom": "collection_products",
-          "columnsFrom": [
-            "tenant_id"
-          ],
+          "columnsFrom": ["tenant_id"],
           "tableTo": "tenants",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         },
         "collection_products_collection_fk": {
           "name": "collection_products_collection_fk",
           "tableFrom": "collection_products",
-          "columnsFrom": [
-            "tenant_id",
-            "collection_id"
-          ],
+          "columnsFrom": ["tenant_id", "collection_id"],
           "tableTo": "collections",
-          "columnsTo": [
-            "tenant_id",
-            "id"
-          ],
+          "columnsTo": ["tenant_id", "id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         },
         "collection_products_product_fk": {
           "name": "collection_products_product_fk",
           "tableFrom": "collection_products",
-          "columnsFrom": [
-            "tenant_id",
-            "product_id"
-          ],
+          "columnsFrom": ["tenant_id", "product_id"],
           "tableTo": "products",
-          "columnsTo": [
-            "tenant_id",
-            "id"
-          ],
+          "columnsTo": ["tenant_id", "id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -683,10 +626,7 @@
       "compositePrimaryKeys": {
         "collection_products_pkey": {
           "name": "collection_products_pkey",
-          "columns": [
-            "collection_id",
-            "product_id"
-          ]
+          "columns": ["collection_id", "product_id"]
         }
       },
       "uniqueConstraints": {},
@@ -762,13 +702,9 @@
         "collections_tenant_id_tenants_id_fk": {
           "name": "collections_tenant_id_tenants_id_fk",
           "tableFrom": "collections",
-          "columnsFrom": [
-            "tenant_id"
-          ],
+          "columnsFrom": ["tenant_id"],
           "tableTo": "tenants",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -777,18 +713,12 @@
       "uniqueConstraints": {
         "collections_tenant_id_id_key": {
           "name": "collections_tenant_id_id_key",
-          "columns": [
-            "tenant_id",
-            "id"
-          ],
+          "columns": ["tenant_id", "id"],
           "nullsNotDistinct": false
         },
         "collections_tenant_id_slug_key": {
           "name": "collections_tenant_id_slug_key",
-          "columns": [
-            "tenant_id",
-            "slug"
-          ],
+          "columns": ["tenant_id", "slug"],
           "nullsNotDistinct": false
         }
       },
@@ -932,57 +862,37 @@
         "inventory_adjustments_tenant_id_tenants_id_fk": {
           "name": "inventory_adjustments_tenant_id_tenants_id_fk",
           "tableFrom": "inventory_adjustments",
-          "columnsFrom": [
-            "tenant_id"
-          ],
+          "columnsFrom": ["tenant_id"],
           "tableTo": "tenants",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         },
         "inventory_adjustments_created_by_users_id_fk": {
           "name": "inventory_adjustments_created_by_users_id_fk",
           "tableFrom": "inventory_adjustments",
-          "columnsFrom": [
-            "created_by"
-          ],
+          "columnsFrom": ["created_by"],
           "tableTo": "users",
           "schemaTo": "auth",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "set null"
         },
         "inventory_adjustments_product_fk": {
           "name": "inventory_adjustments_product_fk",
           "tableFrom": "inventory_adjustments",
-          "columnsFrom": [
-            "tenant_id",
-            "product_id"
-          ],
+          "columnsFrom": ["tenant_id", "product_id"],
           "tableTo": "products",
-          "columnsTo": [
-            "tenant_id",
-            "id"
-          ],
+          "columnsTo": ["tenant_id", "id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         },
         "inventory_adjustments_variant_fk": {
           "name": "inventory_adjustments_variant_fk",
           "tableFrom": "inventory_adjustments",
-          "columnsFrom": [
-            "tenant_id",
-            "variant_id"
-          ],
+          "columnsFrom": ["tenant_id", "variant_id"],
           "tableTo": "product_variants",
-          "columnsTo": [
-            "tenant_id",
-            "id"
-          ],
+          "columnsTo": ["tenant_id", "id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -1122,28 +1032,18 @@
         "product_images_tenant_id_tenants_id_fk": {
           "name": "product_images_tenant_id_tenants_id_fk",
           "tableFrom": "product_images",
-          "columnsFrom": [
-            "tenant_id"
-          ],
+          "columnsFrom": ["tenant_id"],
           "tableTo": "tenants",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         },
         "product_images_product_fk": {
           "name": "product_images_product_fk",
           "tableFrom": "product_images",
-          "columnsFrom": [
-            "tenant_id",
-            "product_id"
-          ],
+          "columnsFrom": ["tenant_id", "product_id"],
           "tableTo": "products",
-          "columnsTo": [
-            "tenant_id",
-            "id"
-          ],
+          "columnsTo": ["tenant_id", "id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -1152,17 +1052,12 @@
       "uniqueConstraints": {
         "product_images_storage_path_key": {
           "name": "product_images_storage_path_key",
-          "columns": [
-            "storage_path"
-          ],
+          "columns": ["storage_path"],
           "nullsNotDistinct": false
         },
         "product_images_tenant_id_id_key": {
           "name": "product_images_tenant_id_id_key",
-          "columns": [
-            "tenant_id",
-            "id"
-          ],
+          "columns": ["tenant_id", "id"],
           "nullsNotDistinct": false
         }
       },
@@ -1251,28 +1146,18 @@
         "product_options_tenant_id_tenants_id_fk": {
           "name": "product_options_tenant_id_tenants_id_fk",
           "tableFrom": "product_options",
-          "columnsFrom": [
-            "tenant_id"
-          ],
+          "columnsFrom": ["tenant_id"],
           "tableTo": "tenants",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         },
         "product_options_product_fk": {
           "name": "product_options_product_fk",
           "tableFrom": "product_options",
-          "columnsFrom": [
-            "tenant_id",
-            "product_id"
-          ],
+          "columnsFrom": ["tenant_id", "product_id"],
           "tableTo": "products",
-          "columnsTo": [
-            "tenant_id",
-            "id"
-          ],
+          "columnsTo": ["tenant_id", "id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -1281,10 +1166,7 @@
       "uniqueConstraints": {
         "product_options_product_id_name_key": {
           "name": "product_options_product_id_name_key",
-          "columns": [
-            "product_id",
-            "name"
-          ],
+          "columns": ["product_id", "name"],
           "nullsNotDistinct": false
         }
       },
@@ -1446,41 +1328,27 @@
         "product_variants_tenant_id_tenants_id_fk": {
           "name": "product_variants_tenant_id_tenants_id_fk",
           "tableFrom": "product_variants",
-          "columnsFrom": [
-            "tenant_id"
-          ],
+          "columnsFrom": ["tenant_id"],
           "tableTo": "tenants",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         },
         "product_variants_image_id_product_images_id_fk": {
           "name": "product_variants_image_id_product_images_id_fk",
           "tableFrom": "product_variants",
-          "columnsFrom": [
-            "image_id"
-          ],
+          "columnsFrom": ["image_id"],
           "tableTo": "product_images",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "set null"
         },
         "product_variants_product_fk": {
           "name": "product_variants_product_fk",
           "tableFrom": "product_variants",
-          "columnsFrom": [
-            "tenant_id",
-            "product_id"
-          ],
+          "columnsFrom": ["tenant_id", "product_id"],
           "tableTo": "products",
-          "columnsTo": [
-            "tenant_id",
-            "id"
-          ],
+          "columnsTo": ["tenant_id", "id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -1489,18 +1357,12 @@
       "uniqueConstraints": {
         "product_variants_tenant_id_id_key": {
           "name": "product_variants_tenant_id_id_key",
-          "columns": [
-            "tenant_id",
-            "id"
-          ],
+          "columns": ["tenant_id", "id"],
           "nullsNotDistinct": false
         },
         "product_variants_product_id_options_key": {
           "name": "product_variants_product_id_options_key",
-          "columns": [
-            "product_id",
-            "options"
-          ],
+          "columns": ["product_id", "options"],
           "nullsNotDistinct": false
         }
       },
@@ -1742,26 +1604,18 @@
         "products_tenant_id_tenants_id_fk": {
           "name": "products_tenant_id_tenants_id_fk",
           "tableFrom": "products",
-          "columnsFrom": [
-            "tenant_id"
-          ],
+          "columnsFrom": ["tenant_id"],
           "tableTo": "tenants",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         },
         "products_category_id_categories_id_fk": {
           "name": "products_category_id_categories_id_fk",
           "tableFrom": "products",
-          "columnsFrom": [
-            "category_id"
-          ],
+          "columnsFrom": ["category_id"],
           "tableTo": "categories",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "set null"
         }
@@ -1770,18 +1624,12 @@
       "uniqueConstraints": {
         "products_tenant_id_id_key": {
           "name": "products_tenant_id_id_key",
-          "columns": [
-            "tenant_id",
-            "id"
-          ],
+          "columns": ["tenant_id", "id"],
           "nullsNotDistinct": false
         },
         "products_tenant_id_slug_key": {
           "name": "products_tenant_id_slug_key",
-          "columns": [
-            "tenant_id",
-            "slug"
-          ],
+          "columns": ["tenant_id", "slug"],
           "nullsNotDistinct": false
         }
       },
@@ -1942,13 +1790,9 @@
         "customers_tenant_id_tenants_id_fk": {
           "name": "customers_tenant_id_tenants_id_fk",
           "tableFrom": "customers",
-          "columnsFrom": [
-            "tenant_id"
-          ],
+          "columnsFrom": ["tenant_id"],
           "tableTo": "tenants",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -1957,10 +1801,7 @@
       "uniqueConstraints": {
         "customers_tenant_id_id_key": {
           "name": "customers_tenant_id_id_key",
-          "columns": [
-            "tenant_id",
-            "id"
-          ],
+          "columns": ["tenant_id", "id"],
           "nullsNotDistinct": false
         }
       },
@@ -2087,54 +1928,36 @@
         "order_items_tenant_id_tenants_id_fk": {
           "name": "order_items_tenant_id_tenants_id_fk",
           "tableFrom": "order_items",
-          "columnsFrom": [
-            "tenant_id"
-          ],
+          "columnsFrom": ["tenant_id"],
           "tableTo": "tenants",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         },
         "order_items_product_id_products_id_fk": {
           "name": "order_items_product_id_products_id_fk",
           "tableFrom": "order_items",
-          "columnsFrom": [
-            "product_id"
-          ],
+          "columnsFrom": ["product_id"],
           "tableTo": "products",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "set null"
         },
         "order_items_variant_id_product_variants_id_fk": {
           "name": "order_items_variant_id_product_variants_id_fk",
           "tableFrom": "order_items",
-          "columnsFrom": [
-            "variant_id"
-          ],
+          "columnsFrom": ["variant_id"],
           "tableTo": "product_variants",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "set null"
         },
         "order_items_order_fk": {
           "name": "order_items_order_fk",
           "tableFrom": "order_items",
-          "columnsFrom": [
-            "tenant_id",
-            "order_id"
-          ],
+          "columnsFrom": ["tenant_id", "order_id"],
           "tableTo": "orders",
-          "columnsTo": [
-            "tenant_id",
-            "id"
-          ],
+          "columnsTo": ["tenant_id", "id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         }
@@ -2265,26 +2088,18 @@
         "orders_tenant_id_tenants_id_fk": {
           "name": "orders_tenant_id_tenants_id_fk",
           "tableFrom": "orders",
-          "columnsFrom": [
-            "tenant_id"
-          ],
+          "columnsFrom": ["tenant_id"],
           "tableTo": "tenants",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "cascade"
         },
         "orders_customer_id_customers_id_fk": {
           "name": "orders_customer_id_customers_id_fk",
           "tableFrom": "orders",
-          "columnsFrom": [
-            "customer_id"
-          ],
+          "columnsFrom": ["customer_id"],
           "tableTo": "customers",
-          "columnsTo": [
-            "id"
-          ],
+          "columnsTo": ["id"],
           "onUpdate": "no action",
           "onDelete": "set null"
         }
@@ -2293,18 +2108,12 @@
       "uniqueConstraints": {
         "orders_tenant_id_id_key": {
           "name": "orders_tenant_id_id_key",
-          "columns": [
-            "tenant_id",
-            "id"
-          ],
+          "columns": ["tenant_id", "id"],
           "nullsNotDistinct": false
         },
         "orders_tenant_id_order_number_key": {
           "name": "orders_tenant_id_order_number_key",
-          "columns": [
-            "tenant_id",
-            "order_number"
-          ],
+          "columns": ["tenant_id", "order_number"],
           "nullsNotDistinct": false
         }
       },

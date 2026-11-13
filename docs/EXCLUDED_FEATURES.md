@@ -1,8 +1,8 @@
 # Excluded Features
 
-## 1. Template customization (excluded by instruction)
+## 1. Template customization (now implemented: see `src/modules/themes`)
 
-Not implemented, not modelled, not exposed:
+The Theme Store, drafts, publishing and rollback are built on the existing template tables (migrations 0010-0016 and 0025): endpoints under `/themes`, `/store/theme` and `/store/templates`. Still **not** modelled: `store_template_settings` (the legacy per-store accent/hero settings) and the engine cutover marker. The original list of what this section covered:
 
 | Area | Existing source |
 |---|---|
