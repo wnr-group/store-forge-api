@@ -62,3 +62,66 @@ The frontend uses cookies; a separate API will most likely take a Supabase acces
 Done: CORS allowlist, helmet, request validation, safe error responses, no secrets in the repo, fail-fast config.
 
 Not done, and required before exposing protected endpoints: authentication, tenant resolution, per-module authorization, rate limiting, audit logging. Existing RLS policies and tenant isolation in the database are untouched by this repository.
+
+## Merge note: schema ownership is unresolved
+
+The `main` branch documents the frontend repository (`wnr-group/store-forge`) as the only owner of migrations, with a read-only schema mirror in `src/infrastructure/database/` kept by `scripts/sync-schema.mjs` and no `drizzle-kit` in this repo (D-004, D-018). This branch instead owns its schema and migrations in `src/database/` and generates them with `drizzle-kit`. Both layers currently exist side by side; only `src/database` is wired into `AppModule`. Which one wins is an open team decision.
+
+## Next.js caller limitation (D-003, D-009)
+
+> **Important architectural boundary:**
+> Next.js is the intended caller; direct API access is not technically prevented; valid user tokens work from any client; user authentication, authorization and RLS are the real security boundaries; public endpoints need separate abuse protection.
+
+### Local testing and PGlite limits (D-018, D-025)
+
+The database test kit runs tests using PGlite (`@electric-sql/pglite`) and an ephemeral socket server (`@electric-sql/pglite-socket`), applying snapshot migrations over a Supabase stub.
+
+> **PGlite limits:**
+> Tests using PGlite have limitations: no real pooler behaviour, no multi-instance rate limiting, and no genuine concurrent isolation. PGlite results do not prove hosted-Supabase compatibility. Hosted Supabase verification is tracked via Gate G-LIVE.
+
+## Decision register (D-001 to D-025)
+
+| ID | Decision | Owner / Target | Status |
+|---|---|---|---|
+| D-001 | Use NestJS 12 (ESM) | Eshwar / PR-A | APPROVED |
+| D-002 | Foundation-first architecture | Eshwar / PR-A | APPROVED |
+| D-003 | Next.js sole intended caller (boundary convention) | Architecture / PR-A | APPROVED |
+| D-004 | Schema and migration ownership in frontend with drift check | Eshwar / PR-A | APPROVED |
+| D-005 | Template engine sharing mechanism | Architecture | OPEN |
+| D-006 | Responsibility split between API and Next.js server actions | Architecture | OPEN |
+| D-007 | Frontend baseline branch alignment | Architecture | OPEN |
+| D-008 | ES256 JWKS authentication and live auth check | Eshwar / PR-B | APPROVED |
+| D-009 | Public endpoint abuse protection | Architecture / PR-A | OPEN |
+| D-010 | Shared Supabase project (`xrkwyjnjemyxrbdbfmcn`) & `storeforge_app` role | Eshwar / PR-A, PR-B | APPROVED |
+| D-011 | Drizzle ORM and `withUserContext` RLS pattern | Eshwar / PR-A | APPROVED |
+| D-012 | Module ownership split | Eshwar & Santu / PR-A | APPROVED |
+| D-013 | Five public storefront operations | Eshwar / PR-D | APPROVED |
+| D-014 | Isolated `ProvisioningModule` with four admin auth methods | Eshwar / PR-C | APPROVED |
+| D-015 | Swagger OpenAPI documentation and decorators | Eshwar / PR-B | APPROVED |
+| D-016 | Env loading (`.env.local` before `.env`) and validation | Eshwar / PR-A | APPROVED |
+| D-017 | PR workflow, CI verification and CODEOWNERS | Eshwar / PR-A | APPROVED |
+| D-018 | CI drift check, PGlite integration tests, token secret | Eshwar / PR-A | APPROVED |
+| D-019 | Public rate limiting (60/min) and `TRUST_PROXY` | Eshwar / PR-B | APPROVED |
+| D-020 | Strict `X-Tenant-Id` header and permission guard | Eshwar / PR-B | APPROVED |
+| D-021 | Standard error contract with `code` and `fieldErrors` | Eshwar / PR-B | APPROVED |
+| D-022 | Bare DTO responses, pagination query and envelope contract | Eshwar / PR-B | APPROVED |
+| D-023 | Health liveness and readiness endpoints | Eshwar / PR-A, PR-B | APPROVED |
+| D-024 | Platform-admin safeguard primitives, rate limits and audit | Eshwar / PR-B | APPROVED |
+| D-025 | Database test kit (PGlite) and auth test kit | Eshwar / PR-A, PR-B | APPROVED |
+
+## Module ownership split (D-012)
+
+- **Foundation & Shared Infrastructure (PR-A, PR-B, PR-C):** Eshwar
+  - Database layer, `withUserContext`, `withPublicContext`
+  - Authentication (JWKS ES256, LiveAuth)
+  - Security, tenant guard, permission guard, rate limits
+  - API contracts, pagination, error filter, Swagger
+  - Admin auth `ProvisioningModule`
+- **Platform & Public Storefront (PR-D, PR-E):** Eshwar
+  - Public storefront 5 operations (D-013)
+  - Platform admin operations (companies, settings, platform team, audit)
+- **Feature Modules (to be built independently after foundation):** Santu
+  - Catalog (products, categories, collections, inventory)
+  - Customers and orders
+  - Store settings and profile
+  - Team management (consuming `ProvisioningModule` after permissions)

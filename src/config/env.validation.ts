@@ -112,6 +112,28 @@ export class EnvironmentVariables {
   })
   DATABASE_URL!: string;
 
+  @IsOptional()
+  @Transform(({ value }) =>
+    value === '' || value === undefined ? undefined : Number(value),
+  )
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  DB_POOL_MAX: number = 5;
+
+  @IsOptional()
+  @Transform(toBoolean)
+  @IsBoolean()
+  DB_PREPARE: boolean = false;
+
+  @IsOptional()
+  @Transform(({ value }) =>
+    value === '' || value === undefined ? undefined : Number(value),
+  )
+  @IsInt()
+  @Min(1)
+  DB_CONNECT_TIMEOUT_SECONDS: number = 10;
+
   // --- Rate limiting (global default; sensitive routes set their own) -------------------------
   @Transform(({ value }) => (value === '' ? undefined : Number(value)))
   @IsInt()

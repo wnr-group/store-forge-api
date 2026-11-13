@@ -1,0 +1,28 @@
+AC-D-05: Indistinguishability & Security Scan
+Status: PASS (Database integration suite)
+
+Verified Criteria:
+1. Indistinguishable States:
+   Across all five operations, the following slug scenarios yield an identical `NULL` response:
+   - Unknown slug (`'unknown-store-xyz'`) -> returns NULL
+   - Inactive store slug (`'store-inactive'`, status='inactive') -> returns NULL
+   - Suspended tenant store slug (`'store-suspended'`, tenants.status='suspended') -> returns NULL
+   - Malformed slug (`'INVALID_SLUG_UPPERCASE!'`, `'slug with spaces'`, `''`, `'..'`) -> returns NULL
+   Proves zero information leakage regarding store existence or status.
+
+2. Forbidden-Key & Private Field Scan:
+   All five success payloads serialized and scanned for prohibited internal fields:
+   - No `tenant_id`
+   - No `store_id`
+   - No `user_id`
+   - No `owner`
+   - No `email`
+   - No `cost_minor` or `cost`
+   - No `track_inventory` or `low_stock_threshold`
+   - No draft products (`alpha-secret-draft` absent)
+   - No draft collections (`draft-collection` absent)
+
+Execution Evidence:
+- Integration Test: src/modules/storefront/storefront.int-spec.ts > "AC-D-05: unknown, inactive, suspended, and malformed slugs return identical NULL across all 5 functions" (PASS)
+- Integration Test: src/modules/storefront/storefront.int-spec.ts > "AC-D-05: security scan: no response contains private tenant, store, user, cost, or inventory fields" (PASS)
+- Runner JSON: screenshots/store-forge-api/PR-D/test-output/storefront-int.json

@@ -20,6 +20,12 @@ export interface AppConfig {
   };
   auth: { bffSecret?: string; rateLimitSecret?: string };
   databaseUrl: string;
+  database: {
+    url: string;
+    poolMax: number;
+    prepare: boolean;
+    connectTimeoutSeconds: number;
+  };
   throttle: { ttlMs: number; limit: number };
 }
 
@@ -46,6 +52,12 @@ export function buildConfig(env: EnvironmentVariables): AppConfig {
       rateLimitSecret: env.RATE_LIMIT_SECRET,
     },
     databaseUrl: env.DATABASE_URL,
+    database: {
+      url: env.DATABASE_URL,
+      poolMax: env.DB_POOL_MAX,
+      prepare: env.DB_PREPARE,
+      connectTimeoutSeconds: env.DB_CONNECT_TIMEOUT_SECONDS,
+    },
     throttle: {
       ttlMs: env.THROTTLE_TTL_SECONDS * 1000,
       limit: env.THROTTLE_LIMIT,

@@ -29,6 +29,7 @@
     "db:state": "tsx scripts/db-state.ts",
     "admin:create": "tsx scripts/create-platform-admin.ts",
     "db:seed:demo": "tsx scripts/seed-demo-data.ts",
+    "test:int": "vitest run --config ./vitest.config.integration.ts",
     "auth:token": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/get-access-token.ps1"
   },
   "dependencies": {
@@ -51,6 +52,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.16",
+    "@electric-sql/pglite-socket": "^0.2.19",
     "@nestjs/cli": "^12.0.0",
     "@nestjs/schematics": "^12.0.0",
     "@nestjs/testing": "^12.0.1",
@@ -67,6 +69,7 @@
     "tsx": "^4.23.15",
     "typescript": "^6.0.2",
     "vite": "^8.0.0",
-    "vitest": "^4.1.2"
+    "vitest": "^4.1.2",
+    "zod": "^4.6.7"
   }
 }

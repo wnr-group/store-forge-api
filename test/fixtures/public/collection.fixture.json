@@ -1,0 +1,26 @@
+{
+  "store": {
+    "name": "Acme Store",
+    "slug": "acme-store",
+    "description": "Premium handcrafted goods",
+    "logo_path": "https://cdn.example.com/logo.png",
+    "currency": "INR"
+  },
+  "collection": {
+    "id": "44444444-4444-4444-8444-444444444444",
+    "name": "Summer Essentials",
+    "slug": "summer-essentials",
+    "description": "Curated pieces for hot summer days",
+    "image_path": "t1/collections/c1/banner.jpg"
+  },
+  "products": [
+    {
+      "name": "Classic Cotton T-Shirt",
+      "slug": "classic-cotton-tshirt",
+      "short_description": "Breathable 100% organic cotton",
+      "price_minor": 149900,
+      "compare_at_price_minor": 199900,
+      "image_path": "t1/p1/front.jpg"
+    }
+  ]
+}

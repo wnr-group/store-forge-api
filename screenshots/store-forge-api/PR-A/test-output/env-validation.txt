@@ -1,0 +1,29 @@
+﻿
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.12 [39m[90mC:/Users/Eshwar/WNR/store-forge-api[39m
+
+ [32m✓[39m src/config/env.validation.spec.ts[2m > [22mvalidateEnv[2m > [22mapplies local-development defaults when valid DATABASE_URL is provided[32m 5[2mms[22m[39m
+ [32m✓[39m src/config/env.validation.spec.ts[2m > [22mvalidateEnv[2m > [22mallows empty environment under NODE_ENV=test without DATABASE_URL[32m 1[2mms[22m[39m
+ [32m✓[39m src/config/env.validation.spec.ts[2m > [22mvalidateEnv[2m > [22mconverts PORT from a string to a number[32m 0[2mms[22m[39m
+ [32m✓[39m src/config/env.validation.spec.ts[2m > [22mvalidateEnv[2m > [22mrejects an invalid NODE_ENV, naming the variable[32m 1[2mms[22m[39m
+ [32m✓[39m src/config/env.validation.spec.ts[2m > [22mvalidateEnv[2m > [22mrejects a non-numeric or out-of-range PORT[32m 1[2mms[22m[39m
+ [32m✓[39m src/config/env.validation.spec.ts[2m > [22mvalidateEnv[2m > [22mrejects an API_PREFIX with leading or trailing slashes[32m 1[2mms[22m[39m
+ [32m✓[39m src/config/env.validation.spec.ts[2m > [22mvalidateEnv[2m > [22mrejects a wildcard CORS origin in production[32m 0[2mms[22m[39m
+ [32m✓[39m src/config/env.validation.spec.ts[2m > [22mvalidateEnv[2m > [22mnever includes the offending value in the error message[32m 0[2mms[22m[39m
+ [32m✓[39m src/config/env.validation.spec.ts[2m > [22mvalidateEnv[2m > [22mDATABASE_URL validation (D-010, D-011, D-016)[2m > [22mAC-A-06: accepts storeforge_app and storeforge_app.<ref>[32m 1[2mms[22m[39m
+ [32m✓[39m src/config/env.validation.spec.ts[2m > [22mvalidateEnv[2m > [22mDATABASE_URL validation (D-010, D-011, D-016)[2m > [22mAC-A-07: rejects postgres, postgres.<ref>, non-postgres scheme, missing (non-test)[32m 2[2mms[22m[39m
+ [32m✓[39m src/config/env.validation.spec.ts[2m > [22mvalidateEnv[2m > [22mDATABASE_URL validation (D-010, D-011, D-016)[2m > [22mAC-A-08: validation errors name the variable and never contain the value[32m 0[2mms[22m[39m
+ [32m✓[39m src/config/env.validation.spec.ts[2m > [22mvalidateEnv[2m > [22mDATABASE_URL validation (D-010, D-011, D-016)[2m > [22mhandles encoded characters in password correctly[32m 0[2mms[22m[39m
+ [32m✓[39m src/config/env.validation.spec.ts[2m > [22mvalidateEnv[2m > [22mDATABASE_URL validation (D-010, D-011, D-016)[2m > [22mrejects case mismatch like STOREFORGE_APP[32m 0[2mms[22m[39m
+ [32m✓[39m src/config/env.validation.spec.ts[2m > [22mvalidateEnv[2m > [22mDB pool configuration[2m > [22maccepts valid pool parameters and transforms correctly[32m 0[2mms[22m[39m
+ [32m✓[39m src/config/env.validation.spec.ts[2m > [22mvalidateEnv[2m > [22mDB pool configuration[2m > [22mrejects DB_POOL_MAX of 0 or > 100[32m 2[2mms[22m[39m
+ [32m✓[39m src/config/env.validation.spec.ts[2m > [22mbuildConfig[2m > [22msplits and trims CORS origins[32m 1[2mms[22m[39m
+ [32m✓[39m src/config/env.validation.spec.ts[2m > [22mbuildConfig[2m > [22menables Swagger outside production and disables it in production by default[32m 0[2mms[22m[39m
+ [32m✓[39m src/config/env.validation.spec.ts[2m > [22mbuildConfig[2m > [22mlets SWAGGER_ENABLED override the default[32m 0[2mms[22m[39m
+ [32m✓[39m src/config/env.validation.spec.ts[2m > [22mbuildConfig[2m > [22mmaps database configuration correctly[32m 0[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m19 passed[39m[22m[90m (19)[39m
+[2m   Start at [22m 16:11:31
+[2m   Duration [22m 820ms[2m (transform 73ms, setup 0ms, import 380ms, tests 19ms, environment 0ms)[22m
+
+JSON report written to C:/Users/Eshwar/WNR/store-forge-api/screenshots/store-forge-api/PR-A/test-output/env-validation.json

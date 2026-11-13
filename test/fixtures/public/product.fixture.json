@@ -1,0 +1,71 @@
+{
+  "store": {
+    "name": "Acme Store",
+    "slug": "acme-store",
+    "description": "Premium handcrafted goods",
+    "logo_path": "https://cdn.example.com/logo.png",
+    "currency": "INR"
+  },
+  "product": {
+    "name": "Classic Cotton T-Shirt",
+    "slug": "classic-cotton-tshirt",
+    "description": "Our timeless classic tee made from 100% certified combed cotton.",
+    "short_description": "Breathable 100% organic cotton",
+    "product_type": "Apparel",
+    "sku": "TEE-COT-001",
+    "price_minor": 149900,
+    "compare_at_price_minor": 199900,
+    "has_variants": true,
+    "category_name": "Clothing"
+  },
+  "images": [
+    {
+      "id": "11111111-1111-4111-8111-111111111111",
+      "path": "t1/p1/front.jpg",
+      "alt": "Front view of white cotton tee",
+      "position": 0,
+      "is_primary": true
+    },
+    {
+      "id": "22222222-2222-4222-8222-222222222222",
+      "path": "t1/p1/back.jpg",
+      "alt": "Back view",
+      "position": 1,
+      "is_primary": false
+    }
+  ],
+  "options": [
+    {
+      "name": "Size",
+      "values": ["S", "M", "L", "XL"]
+    },
+    {
+      "name": "Color",
+      "values": ["White", "Black"]
+    }
+  ],
+  "variants": [
+    {
+      "id": "33333333-3333-4333-8333-333333333333",
+      "title": "S / White",
+      "options": {
+        "Size": "S",
+        "Color": "White"
+      },
+      "sku": "TEE-COT-001-S-WHT",
+      "price_minor": 149900,
+      "compare_at_price_minor": 199900,
+      "image_id": "11111111-1111-4111-8111-111111111111"
+    }
+  ],
+  "related": [
+    {
+      "name": "Linen Chino Shorts",
+      "slug": "linen-chino-shorts",
+      "short_description": "Lightweight breathable shorts",
+      "price_minor": 249900,
+      "compare_at_price_minor": 299900,
+      "image_path": "t1/p2/shorts.jpg"
+    }
+  ]
+}

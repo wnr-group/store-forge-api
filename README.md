@@ -64,6 +64,8 @@ Optional, development projects only: `SEED_DEMO_DATA=true npm run db:seed:demo` 
 
 ## Environment variables
 
+Environment files are loaded in order: `.env.local` first (preferred for local overrides), then `.env`. Neither is committed.
+
 `.env.example` lists every variable. They are validated at startup ([src/config/env.validation.ts](src/config/env.validation.ts)); a bad value stops the app with an error that names the variable but never shows its value.
 
 | Variable | Required | Meaning |

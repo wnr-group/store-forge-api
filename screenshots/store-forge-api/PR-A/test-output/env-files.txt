@@ -1,0 +1,17 @@
+﻿
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.12 [39m[90mC:/Users/Eshwar/WNR/store-forge-api[39m
+
+ [32m✓[39m src/config/env-files.spec.ts[2m > [22menvFilePaths and environment precedence (D-016)[2m > [22mresolves .env.local before .env[32m 5[2mms[22m[39m
+ [32m✓[39m src/config/env-files.spec.ts[2m > [22menvFilePaths and environment precedence (D-016)[2m > [22mAC-A-01: .env.local values override .env[32m 178[2mms[22m[39m
+ [32m✓[39m src/config/env-files.spec.ts[2m > [22menvFilePaths and environment precedence (D-016)[2m > [22mAC-A-02: .env supplies keys absent from .env.local[32m 17[2mms[22m[39m
+ [32m✓[39m src/config/env-files.spec.ts[2m > [22menvFilePaths and environment precedence (D-016)[2m > [22mAC-A-03: real process.env wins over both files (documented behaviour)[32m 13[2mms[22m[39m
+ [32m✓[39m src/config/env-files.spec.ts[2m > [22menvFilePaths and environment precedence (D-016)[2m > [22mallows startup when neither .env.local nor .env is present[32m 7[2mms[22m[39m
+ [32m✓[39m src/config/env-files.spec.ts[2m > [22menvFilePaths and environment precedence (D-016)[2m > [22mAC-A-04: .env.local and .env stay git-ignored[32m 158[2mms[22m[39m
+ [32m✓[39m src/config/env-files.spec.ts[2m > [22menvFilePaths and environment precedence (D-016)[2m > [22mAC-A-05: .env.example and README name .env.local[32m 2[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m7 passed[39m[22m[90m (7)[39m
+[2m   Start at [22m 16:08:42
+[2m   Duration [22m 1.28s[2m (transform 40ms, setup 0ms, import 574ms, tests 383ms, environment 0ms)[22m
+
+JSON report written to C:/Users/Eshwar/WNR/store-forge-api/screenshots/store-forge-api/PR-A/test-output/env-files.json

@@ -10,6 +10,7 @@ import { PermissionsGuard } from './common/guards/permissions.guard.js';
 import { PlatformAdminGuard } from './common/guards/platform-admin.guard.js';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor.js';
 import configuration, { type AppConfig } from './config/configuration.js';
+import { envFilePaths } from './config/env-files.js';
 import { validateEnv } from './config/env.validation.js';
 import { DatabaseModule } from './database/database.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
@@ -33,6 +34,7 @@ import { UsersModule } from './modules/users/users.module.js';
     ConfigModule.forRoot({
       isGlobal: true,
       cache: true,
+      envFilePath: envFilePaths(),
       load: [configuration],
       validate: validateEnv,
     }),
