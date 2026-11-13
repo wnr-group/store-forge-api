@@ -88,6 +88,7 @@ export const fashion: ThemeDefinition = {
         'categories',
         node('collection-list', {
           title: 'Shop by category',
+          layout: 'editorial',
           columns: 3,
           showProductCount: false,
         }),
