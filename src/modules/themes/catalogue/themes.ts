@@ -40,7 +40,7 @@ export const fashion: ThemeDefinition = {
   description:
     'Editorial fashion theme with a full-bleed campaign hero, serif headlines, square corners and a brand story.',
   industry: 'fashion',
-  version: 1,
+  version: 2,
   previewImage: '/themes/atelier/preview.svg',
   documents: {
     theme_settings: themeSettings({
@@ -71,7 +71,10 @@ export const fashion: ThemeDefinition = {
         node(
           'hero',
           {
-            variant: 'spotlight',
+            variant: 'banner',
+            alignment: 'left',
+            height: 'large',
+            overlay: 30,
             heading: 'The Autumn Edit',
             subheading:
               'Considered pieces in natural fabrics, made to be worn for years.',
@@ -211,7 +214,7 @@ export const electronics: ThemeDefinition = {
   description:
     'Technology-focused theme: product hero, spec highlights, best sellers, promo banners and a brand strip.',
   industry: 'electronics',
-  version: 1,
+  version: 2,
   previewImage: '/themes/voltage/preview.svg',
   documents: {
     theme_settings: themeSettings({
@@ -242,7 +245,9 @@ export const electronics: ThemeDefinition = {
         node(
           'hero',
           {
-            variant: 'classic',
+            variant: 'split',
+            alignment: 'left',
+            height: 'medium',
             heading: 'Built for what is next',
             subheading:
               'Phones, audio and smart-home essentials, tested and ready to ship.',
@@ -308,14 +313,6 @@ export const electronics: ThemeDefinition = {
             ['b', button('See specs', '/#products', 'secondary')],
           ],
         ),
-      ],
-      [
-        'brands',
-        node('logo-list', {
-          title: 'Brands we stock',
-          columns: 5,
-          grayscale: true,
-        }),
       ],
       [
         'faq',
@@ -397,7 +394,7 @@ export const beauty: ThemeDefinition = {
   description:
     'Premium beauty theme with soft tones, rounded buttons, category tiles, a ritual story and reviews.',
   industry: 'beauty',
-  version: 1,
+  version: 2,
   previewImage: '/themes/lumiere/preview.svg',
   documents: {
     theme_settings: themeSettings({
@@ -428,7 +425,11 @@ export const beauty: ThemeDefinition = {
         node(
           'hero',
           {
-            variant: 'spotlight',
+            variant: 'banner',
+            alignment: 'center',
+            height: 'medium',
+            textTone: 'dark',
+            overlay: 0,
             heading: 'Skin that feels like you',
             subheading: 'Gentle formulas for a calm, glowing routine.',
             accentColor: '#9d4a5b',
@@ -508,8 +509,8 @@ export const beauty: ThemeDefinition = {
           title: 'Welcome gift',
           highlightText: 'Free mini with your first order',
           link: '/#products',
-          backgroundColor: '#f3dfd9',
-          textColor: '#3b2a2a',
+          backgroundColor: '#9d4a5b',
+          textColor: '#ffffff',
         }),
       ],
     ]),
@@ -529,7 +530,7 @@ export const beauty: ThemeDefinition = {
       separator: false,
     }),
     group_footer: footerGroup({
-      backgroundColor: '#f3dfd9',
+      backgroundColor: '#9d4a5b',
       textColor: '#3b2a2a',
       blurb: 'Gentle skincare and cosmetics, made with care.',
       columns: [
@@ -568,7 +569,7 @@ export const furniture: ThemeDefinition = {
   description:
     'Lifestyle furniture theme with a large room banner, shop-by-room tiles and alternating editorial blocks.',
   industry: 'home',
-  version: 1,
+  version: 2,
   previewImage: '/themes/haven/preview.svg',
   documents: {
     theme_settings: themeSettings({
@@ -597,18 +598,18 @@ export const furniture: ThemeDefinition = {
       [
         'banner',
         node(
-          'image-banner',
+          'hero',
           {
-            image: asset('haven', 'living-room.svg'),
+            variant: 'banner',
+            alignment: 'left',
             height: 'large',
-            overlayOpacity: 30,
-            textAlignment: 'left',
+            overlay: 35,
+            heading: 'Rooms made to be lived in',
+            subheading: 'Solid wood furniture, delivered and assembled.',
+            accentColor: '#c08552',
+            image: asset('haven', 'living-room.svg'),
           },
-          [
-            ['h', heading('Rooms made to be lived in', 'h1')],
-            ['t', text('Solid wood furniture, delivered and assembled.')],
-            ['b', button('Shop the collection', '/#products')],
-          ],
+          [['cta', button('Shop the collection', '/#products')]],
         ),
       ],
       [
@@ -762,7 +763,7 @@ export const grocery: ThemeDefinition = {
   description:
     'Fast-scanning grocery theme: many category tiles, offers up front, dense product grids and delivery promises.',
   industry: 'grocery',
-  version: 1,
+  version: 2,
   previewImage: '/themes/freshly/preview.svg',
   documents: {
     theme_settings: themeSettings({
@@ -789,6 +790,22 @@ export const grocery: ThemeDefinition = {
     }),
     index: page('classic', [
       [
+        'hero',
+        node(
+          'hero',
+          {
+            variant: 'split',
+            alignment: 'left',
+            height: 'medium',
+            heading: 'Groceries, delivered fresh',
+            subheading: 'Order before 6pm and get it the same evening.',
+            accentColor: '#15803d',
+            image: asset('freshly', 'hero.svg'),
+          },
+          [['cta', button('Start shopping', '/#products')]],
+        ),
+      ],
+      [
         'offers',
         node('promotional-banner', {
           title: 'Fresh deals today',
@@ -805,20 +822,6 @@ export const grocery: ThemeDefinition = {
           columns: 6,
           showProductCount: true,
         }),
-      ],
-      [
-        'hero',
-        node(
-          'hero',
-          {
-            variant: 'classic',
-            heading: 'Groceries, delivered fresh',
-            subheading: 'Order before 6pm and get it the same evening.',
-            accentColor: '#15803d',
-            image: asset('freshly', 'hero.svg'),
-          },
-          [['cta', button('Start shopping', '/#products')]],
-        ),
       ],
       [
         'popular',

@@ -158,7 +158,7 @@ describe.skipIf(!migrationsAvailable)('themes and store design (e2e)', () => {
       const current = await alice.get('/store/theme').expect(200);
       expect(current.body.data).toMatchObject({
         theme: { slug: 'atelier' },
-        appliedVersion: 1,
+        appliedVersion: 2,
         updateAvailable: false,
       });
       const catalogue = await alice.get('/themes').expect(200);
