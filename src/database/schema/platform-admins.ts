@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { check, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
-import { authUsers } from 'drizzle-orm/supabase';
+import { authUsers } from './auth-users.js';
 import { PLATFORM_ADMIN_ROLES } from './enums.js';
 
 /**

@@ -1,5 +1,5 @@
 import { check, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
-import { authUsers } from 'drizzle-orm/supabase';
+import { authUsers } from './auth-users.js';
 import { sql } from 'drizzle-orm';
 
 /**

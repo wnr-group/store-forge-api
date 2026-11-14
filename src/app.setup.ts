@@ -6,11 +6,16 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import type { NextFunction, Request, Response } from 'express';
-import helmet from 'helmet';
+import type { NextFunction, Request, RequestHandler, Response } from 'express';
+import helmetModule, { type HelmetOptions } from 'helmet';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
 import type { AppConfig } from './config/configuration.js';
 import { NodeEnv } from './config/env.validation.js';
+
+/** helmet's default export is callable under ESM but a namespace under CommonJS typings (Vercel's build), so resolve both. */
+type HelmetFn = (options?: Readonly<HelmetOptions>) => RequestHandler;
+const helmet = ((helmetModule as unknown as { default?: HelmetFn }).default ??
+  helmetModule) as unknown as HelmetFn;
 
 export const SWAGGER_PATH = 'api/docs';
 

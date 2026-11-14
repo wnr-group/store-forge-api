@@ -8,7 +8,7 @@ import {
   unique,
   uuid,
 } from 'drizzle-orm/pg-core';
-import { authUsers } from 'drizzle-orm/supabase';
+import { authUsers } from './auth-users.js';
 import { SLUG_PATTERN, TENANT_STATUSES } from './enums.js';
 
 /** A merchant organisation. Created only by a Platform Admin through platform_provision_tenant(). */

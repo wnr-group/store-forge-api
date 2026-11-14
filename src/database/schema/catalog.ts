@@ -16,7 +16,7 @@ import {
   uuid,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
-import { authUsers } from 'drizzle-orm/supabase';
+import { authUsers } from './auth-users.js';
 import {
   CATALOG_SLUG_PATTERN,
   COLLECTION_STATUSES,
