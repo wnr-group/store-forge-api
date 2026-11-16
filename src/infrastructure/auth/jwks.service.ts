@@ -135,12 +135,9 @@ export class JwksService {
     // AC-B-11, AC-B-12, AC-B-15: unknown kid triggers refetch respecting cooldown
     if (!cached) {
       const now = Date.now();
-      const diff = now - this.lastUnknownKidRefetchTime;
-      console.log(`[DEBUG verifyToken] kid: ${header.kid}, lastRefetch: ${this.lastUnknownKidRefetchTime}, now: ${now}, diff: ${diff}, COOLDOWN: ${COOLDOWN_MS}`);
-      if (diff >= COOLDOWN_MS) {
+      if (now - this.lastUnknownKidRefetchTime >= COOLDOWN_MS) {
         this.lastUnknownKidRefetchTime = now;
         try {
-          console.log(`[DEBUG verifyToken] Calling fetchJwks(true) for kid: ${header.kid}`);
           await this.fetchJwks(true);
         } catch {
           // fetchJwks logs error; check if key was found

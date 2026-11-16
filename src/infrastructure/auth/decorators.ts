@@ -31,3 +31,5 @@ export const CurrentUser = createParamDecorator(
     return data ? user[data] : user;
   },
 );
+
+export { expectLiveAuthRequired } from './live-auth.helper.js';

@@ -293,6 +293,7 @@ describe('JWKS Service and Auth Guard (AC-B-01 to AC-B-15, JWT)', () => {
   });
 
   it('AC-B-13: JWKS unreachable and nothing cached: rejected (fail closed)', async () => {
+    app.get(JwksService).resetCooldown();
     const newPair = await generateTestKeyPair('outage-key');
     const token = await signTestToken({
       userId: validUserId,
