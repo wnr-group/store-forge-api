@@ -40,7 +40,13 @@ describe('API foundation (e2e)', () => {
     const res = await request(app.getHttpServer())
       .get('/api/v1/nope')
       .expect(404);
-    expect(res.body).toMatchObject({ statusCode: 404, path: '/api/v1/nope' });
+    expect(res.body).toMatchObject({
+      statusCode: 404,
+      error: 'Not Found',
+      message: 'Cannot GET /api/v1/nope',
+      path: '/api/v1/nope',
+      code: 'NOT_FOUND',
+    });
     expect(typeof res.body.timestamp).toBe('string');
   });
 

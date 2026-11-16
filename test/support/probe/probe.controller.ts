@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Delete,
   Get,
@@ -9,7 +10,11 @@ import {
   Query,
   Req,
 } from '@nestjs/common';
+import { Type } from 'class-transformer';
+import { IsNotEmpty, ValidateNested } from 'class-validator';
 import type { Request } from 'express';
+import { PaginationQueryDto } from '../../../src/common/dto/pagination-query.dto.js';
+import { conflict } from '../../../src/common/errors/app-exception.js';
 import {
   NoTenant,
   Public,
@@ -18,6 +23,20 @@ import {
   RequirePlatformAdmin,
   RequireSuperAdmin,
 } from './probe.decorators.js';
+
+export class NestedProfileDto {
+  @IsNotEmpty()
+  bio!: string;
+}
+
+export class TestValidationDto {
+  @IsNotEmpty()
+  name!: string;
+
+  @ValidateNested()
+  @Type(() => NestedProfileDto)
+  profile!: NestedProfileDto;
+}
 
 export const probeSpies = {
   defaultHandler: 0,
@@ -131,22 +150,43 @@ export class ProbeController {
     throw new Error('database connection exploded');
   }
 
+  @Public()
+  @Get('error/conflict')
+  getConflictError() {
+    throw conflict('Resource already exists');
+  }
+
+  @Public()
+  @Post('validate')
+  postValidate(@Body() _body: TestValidationDto) {
+    return { ok: true };
+  }
+
+  @Public()
   @Get('items')
-  getItems(@Query('page') page = '1', @Query('pageSize') pageSize = '20') {
+  getItems(@Query() query: PaginationQueryDto) {
     return {
-      items: [{ id: 'item-1', name: 'Item 1' }],
+      items: [
+        {
+          id: 'item-1',
+          name: 'Item 1',
+          createdAt: '2026-11-16T12:00:00.000Z',
+        },
+      ],
       total: 1,
-      page: Number(page),
-      pageSize: Number(pageSize),
+      page: query.page,
+      pageSize: query.pageSize,
     };
   }
 
+  @Public()
   @Post('items')
   @HttpCode(HttpStatus.CREATED)
   createItem() {
     return { id: 'new-item-1', name: 'Created' };
   }
 
+  @Public()
   @Delete('items/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
   deleteItem(@Param('id') _id: string) {

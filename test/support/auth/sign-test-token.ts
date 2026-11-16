@@ -103,9 +103,9 @@ export async function signTestToken(
 
   if (options.tamper) {
     const parts = token.split('.');
-    const lastChar = parts[2].slice(-1);
-    const replacement = lastChar === 'a' ? 'b' : 'a';
-    parts[2] = parts[2].slice(0, -1) + replacement;
+    const firstChar = parts[2][0];
+    const replacement = firstChar === 'a' ? 'b' : 'a';
+    parts[2] = replacement + parts[2].slice(1);
     return parts.join('.');
   }
 
