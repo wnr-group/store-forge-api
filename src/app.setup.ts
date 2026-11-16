@@ -51,6 +51,16 @@ export function configureApp(app: INestApplication): void {
   const apiPrefix = config.get('apiPrefix', { infer: true });
   const swaggerEnabled = config.get('swaggerEnabled', { infer: true });
 
+  const trustProxy = config.get('rateLimit.trustProxy', { infer: true });
+  const expressApp = app.getHttpAdapter()?.getInstance?.();
+  if (expressApp && typeof expressApp.set === 'function') {
+    if (typeof trustProxy === 'number' && trustProxy > 0) {
+      expressApp.set('trust proxy', trustProxy);
+    } else {
+      expressApp.set('trust proxy', false);
+    }
+  }
+
   app.setGlobalPrefix(apiPrefix);
 
   // Security headers. Swagger UI needs inline scripts/styles, so only its path gets a relaxed CSP.

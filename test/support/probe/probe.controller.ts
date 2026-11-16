@@ -9,12 +9,17 @@ import {
   Post,
   Query,
   Req,
+  UseGuards,
 } from '@nestjs/common';
 import { Type } from 'class-transformer';
 import { IsNotEmpty, ValidateNested } from 'class-validator';
 import type { Request } from 'express';
 import { PaginationQueryDto } from '../../../src/common/dto/pagination-query.dto.js';
 import { conflict } from '../../../src/common/errors/app-exception.js';
+import {
+  PublicRateLimitGuard,
+  ReadyRateLimitGuard,
+} from '../../../src/common/rate-limit/index.js';
 import {
   NoTenant,
   Public,
@@ -62,33 +67,45 @@ export class ProbeController {
   }
 
   @Public()
+  @UseGuards(PublicRateLimitGuard)
   @Get('public-1')
   getPublic1() {
     return { probe: 1 };
   }
 
   @Public()
+  @UseGuards(PublicRateLimitGuard)
   @Get('public-2')
   getPublic2() {
     return { probe: 2 };
   }
 
   @Public()
+  @UseGuards(PublicRateLimitGuard)
   @Get('public-3')
   getPublic3() {
     return { probe: 3 };
   }
 
   @Public()
+  @UseGuards(PublicRateLimitGuard)
   @Get('public-4')
   getPublic4() {
     return { probe: 4 };
   }
 
   @Public()
+  @UseGuards(PublicRateLimitGuard)
   @Get('public-5')
   getPublic5() {
     return { probe: 5 };
+  }
+
+  @Public()
+  @UseGuards(ReadyRateLimitGuard)
+  @Get('ready-probe')
+  getReadyProbe() {
+    return { status: 'ready-probe-ok' };
   }
 
   @Get('default')

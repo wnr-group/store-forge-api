@@ -5,6 +5,7 @@ import { envFilePaths } from './config/env-files.js';
 import { validateEnv } from './config/env.validation.js';
 import { DatabaseModule } from './infrastructure/database/database.module.js';
 import { AuthModule } from './infrastructure/auth/auth.module.js';
+import { RateLimitModule } from './common/rate-limit/rate-limit.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 
 @Module({
@@ -18,6 +19,7 @@ import { HealthModule } from './modules/health/health.module.js';
     }),
     DatabaseModule,
     AuthModule,
+    RateLimitModule,
     HealthModule,
   ],
 })
