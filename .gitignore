@@ -150,4 +150,4 @@ vite.config.ts.timestamp-*
 
 .vercel
 .env*
-vercel.json
+
