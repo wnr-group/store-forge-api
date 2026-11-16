@@ -44,3 +44,56 @@ describe('Documentation integrity and compliance (D-001, D-002, D-003, D-009, D-
     );
   });
 });
+
+describe('Documentation Contracts (AC-B-72, AC-B-98, AC-B-99, DOC)', () => {
+  const overviewPath = resolve(ROOT_DIR, 'docs/architecture/overview.md');
+  const onboardingPath = resolve(
+    ROOT_DIR,
+    'docs/development/santu-onboarding.md',
+  );
+
+  const overviewContent = readFileSync(overviewPath, 'utf8');
+  const onboardingContent = readFileSync(onboardingPath, 'utf8');
+
+  it('AC-B-72: documentation states limiter limitations and the OPEN topology', () => {
+    // 1. Limitation text: per instance
+    expect(overviewContent.toLowerCase()).toContain('per instance');
+
+    // 2. Limitation text: resets
+    expect(overviewContent.toLowerCase()).toContain('resets');
+
+    // 3. Limitation text: grows with instances
+    expect(overviewContent.toLowerCase()).toContain('grows with');
+
+    // 4. Limitation text: edge/CDN recommendation
+    expect(overviewContent).toMatch(/edge|cdn/i);
+
+    // 5. With TRUST_PROXY=0 all requests behind Next.js share one observed IP and bucket
+    expect(overviewContent).toContain('TRUST_PROXY');
+    expect(overviewContent).toMatch(/share one observed IP and bucket/i);
+
+    // 6. TRUST_PROXY stays 0 until deployment topology is confirmed (OPEN)
+    expect(overviewContent).toMatch(/OPEN/i);
+    expect(overviewContent).toMatch(/stays 0/i);
+  });
+
+  it('AC-B-98: documentation states Next.js forwarding requirements', () => {
+    // Next.js must forward Authorization Bearer token and X-Tenant-Id header
+    const combined = overviewContent + '\n' + onboardingContent;
+
+    expect(combined).toMatch(/Authorization:\s*Bearer/i);
+    expect(combined).toMatch(/X-Tenant-Id/i);
+    expect(combined).toMatch(/Next\.js/i);
+  });
+
+  it('AC-B-99: documentation records the deliberate pageSize difference from the frontend', () => {
+    const combined = overviewContent + '\n' + onboardingContent;
+
+    // Must document the allowed page sizes [10, 20, 50, 100]
+    expect(combined).toContain('10, 20, 50, 100');
+    // Must document default 20
+    expect(combined).toMatch(/default\s*(`?20`?|20)/i);
+    // Must document frontend sizes (12, 24, 48)
+    expect(combined).toMatch(/12,\s*24,\s*48/);
+  });
+});
