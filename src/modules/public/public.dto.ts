@@ -31,6 +31,12 @@ export class StorefrontProductDto {
 export class StorefrontDto {
   @ApiProperty() name!: string;
   @ApiProperty() slug!: string;
+  @ApiProperty({
+    example: 'zqkod2',
+    description:
+      "The organization's read-only public identifier. A storefront address is {slug}-{publicId}, so a host whose public id does not match can be rejected.",
+  })
+  publicId!: string;
   @ApiPropertyOptional({ nullable: true }) description!: string | null;
   @ApiPropertyOptional({ nullable: true }) logoPath!: string | null;
   @ApiProperty({ example: 'INR' }) currency!: string;

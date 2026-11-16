@@ -8,6 +8,7 @@ import {
 } from '../../../common/app.exception.js';
 import { errorChain } from '../../../common/db-errors.js';
 import { Paginated } from '../../../common/dto/api-response.dto.js';
+import { generatePublicId } from '../../../common/utils/public-id.js';
 import {
   DatabaseService,
   rowsOf,
@@ -38,10 +39,14 @@ import type {
   UpdateOrganizationStoreDto,
 } from './organizations.dto.js';
 
+/** Attempts at a free public id before giving up (a collision among 36^6 values is already very unlikely). */
+const PUBLIC_ID_ATTEMPTS = 5;
+
 type CompanyRaw = {
   id: string;
   name: string;
   slug: string;
+  public_id?: string;
   status: string;
   contact_phone: string | null;
   address: string | null;
@@ -68,10 +73,30 @@ type StoreRaw = {
   has_money_data: boolean;
 };
 
+/** Adds tenants.public_id to organization rows (the list functions return fixed columns). Read-only lookup. */
+async function withPublicIds<T extends { id: string }>(
+  tx: DbTx,
+  rows: T[],
+): Promise<(T & { public_id?: string })[]> {
+  if (rows.length === 0) return rows;
+  const ids = rows.map((r) => r.id);
+  const found = rowsOf<{ tenant_id: string; public_id: string }>(
+    await tx.execute(
+      sql`select * from public.platform_tenant_public_ids(ARRAY[${sql.join(
+        ids.map((i) => sql`${i}::uuid`),
+        sql`, `,
+      )}]::uuid[])`,
+    ),
+  );
+  const byId = new Map(found.map((f) => [f.tenant_id, f.public_id]));
+  return rows.map((r) => ({ ...r, public_id: byId.get(r.id) }));
+}
+
 const toCompany = (r: CompanyRaw): CompanyDto => ({
   id: r.id,
   name: r.name,
   slug: r.slug,
+  publicId: r.public_id ?? '',
   status: r.status === 'suspended' ? 'suspended' : 'active',
   contactPhone: r.contact_phone,
   address: r.address,
@@ -153,7 +178,7 @@ export class PlatformOrganizationsService {
         sql`select * from public.platform_list_tenants_page(
           ${q.search || null}, ${q.status === 'all' ? null : q.status}, ${`${q.sortBy}_${q.sortOrder}`}, ${q.limit}, ${(page - 1) * q.limit})`,
       )
-      .then((r) => rowsOf<CompanyPageRaw>(r));
+      .then((r) => withPublicIds(tx, rowsOf<CompanyPageRaw>(r)));
   }
 
   /** One page of organizations. Search, filter, sorting and paging all run in PostgreSQL. */
@@ -227,11 +252,12 @@ export class PlatformOrganizationsService {
     tx: DbTx,
     tenantId: string,
   ): Promise<CompanyRaw | undefined> {
-    return rowsOf<CompanyRaw>(
+    const rows = rowsOf<CompanyRaw>(
       await tx.execute(
         sql`select * from public.platform_list_tenants(${tenantId}::uuid)`,
       ),
-    )[0];
+    );
+    return (await withPublicIds(tx, rows))[0];
   }
 
   /** Organization, its primary store and its team, in one transaction. */
@@ -263,44 +289,66 @@ export class PlatformOrganizationsService {
     v: CreateOrganizationDto,
     ownerEmail: string,
   ) {
-    try {
-      return await this.db.withUser(adminId, async (tx) => {
-        const rows = rowsOf<{
-          result: {
-            tenant_id: string;
-            store_id: string;
-            store_slug: string;
-            created: boolean;
-          };
-        }>(
-          await tx.execute(sql`select public.platform_provision_tenant(
-            ${ownerId}::uuid, ${v.companyName}, ${v.storeName}, ${v.storeSlug},
-            ${v.storeDescription ?? null}, ${v.contactPhone ?? null}, ${v.address ?? null}) as result`),
-        );
-        const result = rows[0]?.result;
-        if (!result?.tenant_id)
-          throw new Error('platform_provision_tenant returned no result');
-        // Logged in the same transaction. A retry of an already created company (created = false) adds no second entry.
-        if (result.created) {
-          await recordAudit(tx, {
-            action: 'organization.created',
-            entityType: 'organization',
-            entityId: result.tenant_id,
-            organizationId: result.tenant_id,
-            description: `Created organization "${v.companyName}" with store "${v.storeName}"`,
-            next: {
-              name: v.companyName,
-              storeName: v.storeName,
-              storeSlug: result.store_slug,
-              ownerEmail,
-            },
-          });
-        }
-        return result;
-      });
-    } catch (error) {
-      return mapProvisioningError(error);
+    // The public id is generated here (Node crypto), never taken from the request. A collision rolls the transaction
+    // back with 'public_id_taken'; a fresh id is tried (each attempt is a new transaction, so nothing is half-written).
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return await this.provisionTenant(adminId, ownerId, v, ownerEmail);
+      } catch (error) {
+        if (
+          errorChain(error).includes('public_id_taken') &&
+          attempt < PUBLIC_ID_ATTEMPTS
+        )
+          continue;
+        return mapProvisioningError(error);
+      }
     }
+  }
+
+  private provisionTenant(
+    adminId: string,
+    ownerId: string,
+    v: CreateOrganizationDto,
+    ownerEmail: string,
+  ) {
+    return this.db.withUser(adminId, async (tx) => {
+      const rows = rowsOf<{
+        result: {
+          tenant_id: string;
+          store_id: string;
+          store_slug: string;
+          created: boolean;
+        };
+      }>(
+        await tx.execute(sql`select public.platform_provision_tenant(
+          ${ownerId}::uuid, ${v.companyName}, ${v.storeName}, ${v.storeSlug},
+          ${v.storeDescription ?? null}, ${v.contactPhone ?? null}, ${v.address ?? null}, ${generatePublicId()}) as result`),
+      );
+      const provisioned = rows[0]?.result;
+      if (!provisioned?.tenant_id)
+        throw new Error('platform_provision_tenant returned no result');
+      const [{ public_id: publicId }] = await withPublicIds(tx, [
+        { id: provisioned.tenant_id },
+      ]);
+      const result = { ...provisioned, public_id: publicId ?? '' };
+      // Logged in the same transaction. A retry of an already created company (created = false) adds no second entry.
+      if (result.created) {
+        await recordAudit(tx, {
+          action: 'organization.created',
+          entityType: 'organization',
+          entityId: result.tenant_id,
+          organizationId: result.tenant_id,
+          description: `Created organization "${v.companyName}" with store "${v.storeName}"`,
+          next: {
+            name: v.companyName,
+            storeName: v.storeName,
+            storeSlug: result.store_slug,
+            ownerEmail,
+          },
+        });
+      }
+      return result;
+    });
   }
 
   /**
@@ -368,6 +416,7 @@ export class PlatformOrganizationsService {
     }
     return {
       tenantId: records.tenant_id,
+      publicId: records.public_id,
       storeId: records.store_id,
       ownerId: owner.id,
       ownerEmail: owner.email,

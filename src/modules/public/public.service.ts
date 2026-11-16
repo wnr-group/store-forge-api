@@ -61,15 +61,19 @@ export class PublicService {
 
   /** Unknown, inactive and suspended stores look identical: not found. */
   async storefront(slug: string): Promise<StorefrontDto> {
-    const raw = await this.db.withPublic(
-      async (tx) =>
-        rowsOf<{ s: unknown }>(
-          await tx.execute(
-            sql`select public.get_public_storefront(${slug}) as s`,
-          ),
-        )[0]?.s,
-    );
-    if (raw === null || raw === undefined)
+    const { raw, publicId } = await this.db.withPublic(async (tx) => ({
+      raw: rowsOf<{ s: unknown }>(
+        await tx.execute(
+          sql`select public.get_public_storefront(${slug}) as s`,
+        ),
+      )[0]?.s,
+      publicId: rowsOf<{ p: string | null }>(
+        await tx.execute(
+          sql`select public.get_public_store_public_id(${slug}) as p`,
+        ),
+      )[0]?.p,
+    }));
+    if (raw === null || raw === undefined || !publicId)
       throw notFound('Store not found.', 'STORE_NOT_FOUND');
     const s = (
       typeof raw === 'string' ? JSON.parse(raw) : raw
@@ -77,6 +81,7 @@ export class PublicService {
     return {
       name: s.name,
       slug: s.slug,
+      publicId,
       description: s.description,
       logoPath: s.logo_path,
       currency: s.currency,

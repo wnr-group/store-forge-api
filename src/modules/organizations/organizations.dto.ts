@@ -5,6 +5,11 @@ export class OrganizationSummaryDto {
   @ApiProperty({ format: 'uuid' }) id!: string;
   @ApiProperty() name!: string;
   @ApiProperty() slug!: string;
+  @ApiProperty({
+    example: 'zqkod2',
+    description: 'Read-only random public identifier.',
+  })
+  publicId!: string;
   @ApiProperty({ enum: ['owner', 'admin', 'staff'] }) role!: string;
   @ApiProperty({
     example: {
@@ -29,6 +34,11 @@ export class OrganizationRefDto {
   @ApiProperty({ format: 'uuid' }) id!: string;
   @ApiProperty() name!: string;
   @ApiProperty() slug!: string;
+  @ApiProperty({
+    example: 'zqkod2',
+    description: 'Read-only random public identifier.',
+  })
+  publicId!: string;
 }
 
 export class CurrentOrganizationDto {

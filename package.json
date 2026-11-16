@@ -26,7 +26,7 @@
     "db:verify-schema": "tsx scripts/verify-schema.ts",
     "test:all": "vitest run && vitest run --config ./vitest.config.e2e.ts",
     "coverage:routes": "tsx scripts/route-coverage.ts",
-    "db:migrate": "tsx scripts/db-migrate.ts",
+    "db:migrate": "tsx --env-file-if-exists=.env scripts/db-migrate.ts",
     "db:state": "tsx scripts/db-state.ts",
     "admin:create": "tsx scripts/create-platform-admin.ts",
     "db:seed:demo": "tsx scripts/seed-demo-data.ts",

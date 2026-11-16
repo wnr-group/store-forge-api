@@ -18,6 +18,8 @@ export const tenants = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     name: text('name').notNull(),
     slug: text('slug').notNull(),
+    /** Random public identifier (5-8 of a-z0-9), set once at creation and never edited; future address {slug}-{publicId}. */
+    publicId: text('public_id').notNull(),
     status: text('status', { enum: TENANT_STATUSES })
       .notNull()
       .default('active'),
@@ -35,6 +37,7 @@ export const tenants = pgTable(
   },
   (t) => [
     unique('tenants_slug_key').on(t.slug),
+    unique('tenants_public_id_key').on(t.publicId),
     check(
       'tenants_name_check',
       sql`char_length(btrim(${t.name})) between 2 and 80`,
@@ -43,6 +46,7 @@ export const tenants = pgTable(
       'tenants_slug_check',
       sql`${t.slug} ~ ${sql.raw(`'${SLUG_PATTERN}'`)}`,
     ),
+    check('tenants_public_id_check', sql`${t.publicId} ~ '^[a-z0-9]{5,8}$'`),
     check('tenants_status_check', sql`${t.status} in ('active', 'suspended')`),
     check(
       'tenants_contact_phone_check',

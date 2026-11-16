@@ -10,7 +10,12 @@ const m = (
   id: string,
   role: OrgMembership['role'] = 'owner',
 ): OrgMembership => ({
-  tenant: { id, name: `Org ${id[0]}`, slug: `org-${id[0]}` },
+  tenant: {
+    id,
+    name: `Org ${id[0]}`,
+    slug: `org-${id[0]}`,
+    publicId: `pub${id[0]}abc`,
+  },
   role,
   permissions: {},
   joinedAt: new Date(0),

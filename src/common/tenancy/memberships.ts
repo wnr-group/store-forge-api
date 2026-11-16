@@ -9,7 +9,12 @@ import type { OrgContext } from '../interfaces/request-context.js';
 
 export { ORGANIZATION_HEADER };
 
-export type TenantSummary = { id: string; name: string; slug: string };
+export type TenantSummary = {
+  id: string;
+  name: string;
+  slug: string;
+  publicId: string;
+};
 export type OrgMembership = {
   tenant: TenantSummary;
   role: Role;
@@ -33,7 +38,12 @@ export async function listActiveMemberships(
       role: memberships.role,
       permissions: memberships.permissions,
       joinedAt: memberships.createdAt,
-      tenant: { id: tenants.id, name: tenants.name, slug: tenants.slug },
+      tenant: {
+        id: tenants.id,
+        name: tenants.name,
+        slug: tenants.slug,
+        publicId: tenants.publicId,
+      },
     })
     .from(memberships)
     .innerJoin(tenants, eq(tenants.id, memberships.tenantId))
@@ -83,6 +93,7 @@ export function resolveOrganization(
     tenantId: chosen.tenant.id,
     tenantName: chosen.tenant.name,
     tenantSlug: chosen.tenant.slug,
+    tenantPublicId: chosen.tenant.publicId,
     role: chosen.role,
     permissions: chosen.permissions,
   };

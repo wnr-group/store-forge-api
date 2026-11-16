@@ -23,6 +23,11 @@ export class CompanyDto {
   @ApiProperty({ format: 'uuid' }) id!: string;
   @ApiProperty() name!: string;
   @ApiProperty() slug!: string;
+  @ApiProperty({
+    example: 'zqkod2',
+    description: 'Read-only random public identifier.',
+  })
+  publicId!: string;
   @ApiProperty({ enum: ['active', 'suspended'] }) status!: string;
   @ApiPropertyOptional({ nullable: true }) contactPhone!: string | null;
   @ApiPropertyOptional({ nullable: true }) address!: string | null;
@@ -76,6 +81,7 @@ export class CompanyDetailDto {
 
 export class CreatedCompanyDto {
   @ApiProperty({ format: 'uuid' }) tenantId!: string;
+  @ApiProperty({ example: 'zqkod2' }) publicId!: string;
   @ApiProperty({ format: 'uuid' }) storeId!: string;
   @ApiProperty({ format: 'uuid' }) ownerId!: string;
   @ApiProperty() ownerEmail!: string;

@@ -21,6 +21,7 @@ export interface OrgContext {
   tenantId: string;
   tenantName: string;
   tenantSlug: string;
+  tenantPublicId: string;
   role: MembershipRole;
   permissions: MemberPermissions;
 }
