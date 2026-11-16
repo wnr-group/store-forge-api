@@ -33,7 +33,10 @@ describe('API foundation (e2e)', () => {
     const res = await request(app.getHttpServer())
       .get('/api/docs-json')
       .expect(200);
-    expect(Object.keys(res.body.paths)).toEqual(['/api/v1/health']);
+    expect(Object.keys(res.body.paths)).toEqual([
+      '/api/v1/health',
+      '/api/v1/health/ready',
+    ]);
   });
 
   it('returns the shared error shape for unknown routes', async () => {
