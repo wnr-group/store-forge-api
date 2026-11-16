@@ -200,6 +200,14 @@ function buildExpectedFiles() {
     '# Migrations Snapshot\n\nThis directory contains a read-only mirror of frontend migrations for test environments (PGlite).\nTest-only. Never executed against Supabase.\n'
   );
 
+  // 6. lib/auth/permissions.ts
+  const permissionsPath = resolve(sourceDir, 'lib/auth/permissions.ts');
+  if (existsSync(permissionsPath)) {
+    const content = readFileSync(permissionsPath, 'utf-8');
+    const transformed = transformTs(content, 'lib/auth/permissions.ts');
+    expected['src/infrastructure/auth/generated/permissions.ts'] = transformed;
+  }
+
   return expected;
 }
 
@@ -232,6 +240,7 @@ const MANAGED_DIRS = [
   'src/infrastructure/database/schema',
   'src/infrastructure/database/template-deps',
   'src/infrastructure/database/migrations-snapshot',
+  'src/infrastructure/auth/generated',
 ];
 const MANAGED_FILES = [
   'src/infrastructure/database/relations.ts',

@@ -12,6 +12,7 @@
     "src/infrastructure/database/relations.ts",
     "src/infrastructure/database/template-deps/**",
     "src/infrastructure/database/migrations-snapshot/**",
+    "src/infrastructure/auth/generated/**",
     "test/fixtures/**"
   ]
 }

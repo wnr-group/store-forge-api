@@ -132,6 +132,16 @@ describe('sync-schema script (D-004, D-018)', () => {
         ),
       ),
     ).toBe(true);
+
+    // Verify generated permissions
+    expect(
+      existsSync(
+        resolve(
+          tempTargetDir,
+          'src/infrastructure/auth/generated/permissions.ts',
+        ),
+      ),
+    ).toBe(true);
   });
 
   it('AC-A-10: sync is idempotent (second run changes nothing)', () => {
@@ -312,6 +322,81 @@ describe('sync-schema script (D-004, D-018)', () => {
     const extraPath = resolve(
       tempTargetDir,
       'src/infrastructure/database/schema/unexpected.ts',
+    );
+    writeFileSync(extraPath, 'export const unexpected = true;\n');
+    checkRes = runScript([
+      'check',
+      '--source',
+      FIXTURE_DIR,
+      '--target',
+      tempTargetDir,
+    ]);
+    expect(checkRes.status).toBe(1);
+    expect(checkRes.stderr).toContain('Unexpected');
+    expect(checkRes.stderr).toContain('unexpected.ts');
+  });
+
+  it('AC-B-36: sync syncs lib/auth/permissions.ts with banner and rewritten import; check validates clean, modified, missing, and unexpected files in generated/', () => {
+    runScript(['sync', '--source', FIXTURE_DIR, '--target', tempTargetDir]);
+
+    const permPath = resolve(
+      tempTargetDir,
+      'src/infrastructure/auth/generated/permissions.ts',
+    );
+    expect(existsSync(permPath)).toBe(true);
+    const content = readFileSync(permPath, 'utf-8');
+    expect(content).toContain(
+      '// GENERATED from wnr-group/store-forge lib/auth/permissions.ts. DO NOT EDIT.',
+    );
+    expect(content).toContain('from "../../database/schema/enums.js"');
+
+    // Clean check passes
+    let checkRes = runScript([
+      'check',
+      '--source',
+      FIXTURE_DIR,
+      '--target',
+      tempTargetDir,
+    ]);
+    expect(checkRes.status).toBe(0);
+    expect(checkRes.stdout).toContain('PASS');
+
+    // Modified
+    writeFileSync(permPath, content + '\n// modified\n');
+    checkRes = runScript([
+      'check',
+      '--source',
+      FIXTURE_DIR,
+      '--target',
+      tempTargetDir,
+    ]);
+    expect(checkRes.status).toBe(1);
+    expect(checkRes.stderr).toContain('Modified');
+    expect(checkRes.stderr).toContain('permissions.ts');
+
+    // Restore
+    writeFileSync(permPath, content);
+
+    // Missing
+    rmSync(permPath);
+    checkRes = runScript([
+      'check',
+      '--source',
+      FIXTURE_DIR,
+      '--target',
+      tempTargetDir,
+    ]);
+    expect(checkRes.status).toBe(1);
+    expect(checkRes.stderr).toContain('Missing');
+    expect(checkRes.stderr).toContain('permissions.ts');
+
+    // Re-sync
+    runScript(['sync', '--source', FIXTURE_DIR, '--target', tempTargetDir]);
+
+    // Unexpected
+    const extraPath = resolve(
+      tempTargetDir,
+      'src/infrastructure/auth/generated/unexpected.ts',
     );
     writeFileSync(extraPath, 'export const unexpected = true;\n');
     checkRes = runScript([
