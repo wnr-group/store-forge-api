@@ -7,6 +7,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import type { Response } from 'express';
+import { ApiPublic } from '../../common/swagger/index.js';
 import { ReadyRateLimitGuard } from '../../common/rate-limit/ready-rate-limit.guard.js';
 import { Public } from '../../infrastructure/auth/decorators.js';
 import {
@@ -35,6 +36,7 @@ export class HealthController {
 
   @Get()
   @Public()
+  @ApiPublic()
   @ApiOperation({
     summary: 'Application liveness check',
     description:
@@ -47,6 +49,7 @@ export class HealthController {
 
   @Get('ready')
   @Public()
+  @ApiPublic()
   @UseGuards(ReadyRateLimitGuard)
   @ApiOperation({
     summary: 'Application readiness check',

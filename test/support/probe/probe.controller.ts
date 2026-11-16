@@ -11,6 +11,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { ApiProperty, ApiTags } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsNotEmpty, ValidateNested } from 'class-validator';
 import type { Request } from 'express';
@@ -20,6 +21,13 @@ import {
   PublicRateLimitGuard,
   ReadyRateLimitGuard,
 } from '../../../src/common/rate-limit/index.js';
+import {
+  ApiAuth,
+  ApiPagedResponse,
+  ApiPublic,
+  ApiStandardErrors,
+  ApiTenantAuth,
+} from '../../../src/common/swagger/index.js';
 import {
   NoTenant,
   Public,
@@ -43,6 +51,17 @@ export class TestValidationDto {
   profile!: NestedProfileDto;
 }
 
+export class ProbeItemDto {
+  @ApiProperty({ example: 'item-1' })
+  id!: string;
+
+  @ApiProperty({ example: 'Item 1' })
+  name!: string;
+
+  @ApiProperty({ example: '2026-11-16T12:00:00.000Z' })
+  createdAt!: string;
+}
+
 export const probeSpies = {
   defaultHandler: 0,
   liveHandler: 0,
@@ -58,15 +77,18 @@ export const probeSpies = {
   },
 };
 
+@ApiTags('probe')
 @Controller('probe')
 export class ProbeController {
   @Public()
+  @ApiPublic()
   @Get('public')
   getPublic() {
     return { status: 'public-ok' };
   }
 
   @Public()
+  @ApiPublic()
   @UseGuards(PublicRateLimitGuard)
   @Get('public-1')
   getPublic1() {
@@ -74,6 +96,7 @@ export class ProbeController {
   }
 
   @Public()
+  @ApiPublic()
   @UseGuards(PublicRateLimitGuard)
   @Get('public-2')
   getPublic2() {
@@ -81,6 +104,7 @@ export class ProbeController {
   }
 
   @Public()
+  @ApiPublic()
   @UseGuards(PublicRateLimitGuard)
   @Get('public-3')
   getPublic3() {
@@ -88,6 +112,7 @@ export class ProbeController {
   }
 
   @Public()
+  @ApiPublic()
   @UseGuards(PublicRateLimitGuard)
   @Get('public-4')
   getPublic4() {
@@ -95,6 +120,7 @@ export class ProbeController {
   }
 
   @Public()
+  @ApiPublic()
   @UseGuards(PublicRateLimitGuard)
   @Get('public-5')
   getPublic5() {
@@ -102,12 +128,15 @@ export class ProbeController {
   }
 
   @Public()
+  @ApiPublic()
   @UseGuards(ReadyRateLimitGuard)
   @Get('ready-probe')
   getReadyProbe() {
     return { status: 'ready-probe-ok' };
   }
 
+  @ApiTenantAuth()
+  @ApiStandardErrors()
   @Get('default')
   getDefault(@Req() req: Request) {
     probeSpies.defaultHandler++;
@@ -120,6 +149,8 @@ export class ProbeController {
   }
 
   @NoTenant()
+  @ApiAuth()
+  @ApiStandardErrors()
   @Get('no-tenant')
   getNoTenant(@Req() req: Request) {
     const r = req as unknown as Record<string, unknown>;
@@ -131,6 +162,8 @@ export class ProbeController {
 
   @NoTenant()
   @RequirePlatformAdmin()
+  @ApiAuth()
+  @ApiStandardErrors()
   @Get('platform-admin')
   getPlatformAdmin() {
     probeSpies.platformAdminHandler++;
@@ -139,6 +172,8 @@ export class ProbeController {
 
   @NoTenant()
   @RequireSuperAdmin()
+  @ApiAuth()
+  @ApiStandardErrors()
   @Get('super-admin')
   getSuperAdmin() {
     probeSpies.superAdminHandler++;
@@ -146,6 +181,8 @@ export class ProbeController {
   }
 
   @RequirePermission('catalog:view')
+  @ApiTenantAuth('catalog:view')
+  @ApiStandardErrors()
   @Get('permission')
   getPermission() {
     probeSpies.permissionHandler++;
@@ -153,12 +190,16 @@ export class ProbeController {
   }
 
   @RequirePermission('catalog:manage')
+  @ApiTenantAuth('catalog:manage')
+  @ApiStandardErrors()
   @Post('permission/manage')
   postPermissionManage() {
     return { status: 'catalog-manage-ok' };
   }
 
   @RequirePermission('members:manage')
+  @ApiTenantAuth('members:manage')
+  @ApiStandardErrors()
   @Post('permission/members')
   postPermissionMembers() {
     return { status: 'members-manage-ok' };
@@ -167,6 +208,8 @@ export class ProbeController {
   @NoTenant()
   @RequirePlatformAdmin()
   @RequireLiveAuth()
+  @ApiAuth()
+  @ApiStandardErrors()
   @Post('live')
   postLive() {
     probeSpies.liveHandler++;
@@ -174,24 +217,30 @@ export class ProbeController {
   }
 
   @Public()
+  @ApiPublic()
   @Get('error/unexpected')
   getUnexpectedError() {
     throw new Error('database connection exploded');
   }
 
   @Public()
+  @ApiPublic()
   @Get('error/conflict')
   getConflictError() {
     throw conflict('Resource already exists');
   }
 
   @Public()
+  @ApiPublic()
   @Post('validate')
   postValidate(@Body() _body: TestValidationDto) {
     return { ok: true };
   }
 
   @Public()
+  @ApiPublic()
+  @ApiPagedResponse(ProbeItemDto)
+  @ApiStandardErrors()
   @Get('items')
   getItems(@Query() query: PaginationQueryDto) {
     return {
@@ -209,6 +258,7 @@ export class ProbeController {
   }
 
   @Public()
+  @ApiPublic()
   @Post('items')
   @HttpCode(HttpStatus.CREATED)
   createItem() {
@@ -216,6 +266,7 @@ export class ProbeController {
   }
 
   @Public()
+  @ApiPublic()
   @Delete('items/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
   deleteItem(@Param('id') _id: string) {

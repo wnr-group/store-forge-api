@@ -51,11 +51,12 @@ describe('HealthController', () => {
       .useValue({ canActivate: () => true })
       .compile();
 
-    const mockRes = { status: vi.fn() } as unknown as Response;
+    const statusSpy = vi.fn();
+    const mockRes = { status: statusSpy } as unknown as Response;
     const result = await moduleRef.get(HealthController).ready(mockRes);
 
     expect(result).toEqual({ status: 'ok' });
-    expect(mockRes.status).not.toHaveBeenCalled();
+    expect(statusSpy).not.toHaveBeenCalled();
   });
 
   it('reports readiness as unavailable and sets status 503 when database is down', async () => {
@@ -75,10 +76,11 @@ describe('HealthController', () => {
       .useValue({ canActivate: () => true })
       .compile();
 
-    const mockRes = { status: vi.fn() } as unknown as Response;
+    const statusSpy = vi.fn();
+    const mockRes = { status: statusSpy } as unknown as Response;
     const result = await moduleRef.get(HealthController).ready(mockRes);
 
     expect(result).toEqual({ status: 'unavailable' });
-    expect(mockRes.status).toHaveBeenCalledWith(HttpStatus.SERVICE_UNAVAILABLE);
+    expect(statusSpy).toHaveBeenCalledWith(HttpStatus.SERVICE_UNAVAILABLE);
   });
 });

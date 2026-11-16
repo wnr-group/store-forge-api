@@ -6,15 +6,15 @@ import {
   type ValidationError,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import type { NextFunction, Request, Response } from 'express';
 import helmet from 'helmet';
 import { AppException, ErrorCode } from './common/errors/index.js';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
+import { setupSwagger, SWAGGER_PATH } from './common/swagger/index.js';
 import type { AppConfig } from './config/configuration.js';
 import { NodeEnv } from './config/env.validation.js';
 
-export const SWAGGER_PATH = 'api/docs';
+export { SWAGGER_PATH };
 
 /** Structured logs: one JSON line per event in production, readable text otherwise. */
 export function createLogger(nodeEnv: string): ConsoleLogger {
@@ -92,21 +92,6 @@ export function configureApp(app: INestApplication): void {
   app.useGlobalFilters(new AllExceptionsFilter());
 
   if (swaggerEnabled) {
-    const document = SwaggerModule.createDocument(
-      app,
-      new DocumentBuilder()
-        .setTitle('Store Forge API')
-        .setDescription(
-          [
-            'Dedicated NestJS backend for the Store Forge e-commerce template engine.',
-            `All routes are served under /${apiPrefix}.`,
-            'Errors share one shape: { statusCode, error, message, path, timestamp }.',
-            'Authentication is not implemented yet; only public endpoints exist.',
-          ].join('\n\n'),
-        )
-        .setVersion('0.1.0')
-        .build(),
-    );
-    SwaggerModule.setup(SWAGGER_PATH, app, document);
+    setupSwagger(app);
   }
 }
