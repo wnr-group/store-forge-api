@@ -54,10 +54,10 @@ export const fashion: ThemeDefinition = {
         border: '#e7e0d6',
       },
       typography: {
-        headingFont: 'system-serif',
-        bodyFont: 'inter',
+        headingFont: 'manrope',
+        bodyFont: 'dm-sans',
         baseSize: 16,
-        headingWeight: 400,
+        headingWeight: 600,
         bodyWeight: 400,
         lineHeight: 1.6,
       },
@@ -79,7 +79,7 @@ export const fashion: ThemeDefinition = {
             subheading:
               'Considered pieces in natural fabrics, made to be worn for years.',
             accentColor: '#9a3412',
-            image: asset('atelier', 'hero.svg'),
+            image: asset('atelier', 'hero.jpg'),
           },
           [['cta', button('Shop the edit', '/#products')]],
         ),
