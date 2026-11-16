@@ -11,6 +11,11 @@ import {
   Min,
   validateSync,
 } from 'class-validator';
+import {
+  compareProjectRefs,
+  databaseProjectRef,
+  supabaseProjectRef,
+} from './project-ref.js';
 
 export enum NodeEnv {
   Development = 'development',
@@ -76,6 +81,67 @@ export class EnvironmentVariables {
   @IsInt()
   @Min(1)
   DB_CONNECT_TIMEOUT_SECONDS: number = 10;
+
+  @IsOptional()
+  @IsString()
+  SUPABASE_URL?: string;
+
+  @IsOptional()
+  @IsString()
+  SUPABASE_ANON_KEY?: string;
+
+  @IsOptional()
+  @Transform(({ value }) =>
+    value === '' || value === undefined ? undefined : Number(value),
+  )
+  @IsInt()
+  @Min(0)
+  @Max(10)
+  TRUST_PROXY: number = 0;
+
+  @IsOptional()
+  @Transform(({ value }) =>
+    value === '' || value === undefined ? undefined : Number(value),
+  )
+  @IsInt()
+  @Min(1)
+  PUBLIC_RATE_LIMIT: number = 60;
+
+  @IsOptional()
+  @Transform(({ value }) =>
+    value === '' || value === undefined ? undefined : Number(value),
+  )
+  @IsInt()
+  @Min(1)
+  PUBLIC_RATE_WINDOW_SECONDS: number = 60;
+
+  @IsOptional()
+  @Transform(({ value }) =>
+    value === '' || value === undefined ? undefined : Number(value),
+  )
+  @IsInt()
+  @Min(1)
+  READY_RATE_LIMIT: number = 30;
+
+  @IsOptional()
+  @Transform(({ value }) =>
+    value === '' || value === undefined ? undefined : Number(value),
+  )
+  @IsInt()
+  @Min(1)
+  READY_RATE_WINDOW_SECONDS: number = 60;
+
+  @IsOptional()
+  @Transform(({ value }) =>
+    value === '' || value === undefined ? undefined : Number(value),
+  )
+  @IsInt()
+  @Min(1)
+  HEALTH_DB_TIMEOUT_MS: number = 3000;
+
+  @IsOptional()
+  @IsString()
+  AUTH_TEST_JWKS?: string;
 }
 
 /**
@@ -97,6 +163,7 @@ export function validateEnv(
       `Invalid environment configuration - ${details.join('; ')}. See .env.example.`,
     );
   }
+
   if (
     validated.NODE_ENV === NodeEnv.Production &&
     validated.CORS_ORIGINS.split(',').some((o) => o.trim() === '*')
@@ -112,6 +179,39 @@ export function validateEnv(
         'Invalid environment configuration - DATABASE_URL is required when NODE_ENV is not test. See .env.example.',
       );
     }
+    if (!validated.SUPABASE_URL || validated.SUPABASE_URL.trim() === '') {
+      throw new Error(
+        'Invalid environment configuration - SUPABASE_URL is required when NODE_ENV is not test. See .env.example.',
+      );
+    }
+    if (
+      !validated.SUPABASE_ANON_KEY ||
+      validated.SUPABASE_ANON_KEY.trim() === ''
+    ) {
+      throw new Error(
+        'Invalid environment configuration - SUPABASE_ANON_KEY is required when NODE_ENV is not test. See .env.example.',
+      );
+    }
+  }
+
+  if (validated.SUPABASE_URL && validated.SUPABASE_URL.trim() !== '') {
+    try {
+      new URL(validated.SUPABASE_URL);
+    } catch {
+      throw new Error(
+        'Invalid environment configuration - SUPABASE_URL is not a valid URL. See .env.example.',
+      );
+    }
+  }
+
+  if (
+    validated.AUTH_TEST_JWKS &&
+    validated.AUTH_TEST_JWKS.trim() !== '' &&
+    validated.NODE_ENV !== NodeEnv.Test
+  ) {
+    throw new Error(
+      'Invalid environment configuration - AUTH_TEST_JWKS is only allowed when NODE_ENV is test. See .env.example.',
+    );
   }
 
   if (validated.DATABASE_URL && validated.DATABASE_URL.trim() !== '') {
@@ -137,6 +237,27 @@ export function validateEnv(
     if (!/^storeforge_app(\..+)?$/.test(username)) {
       throw new Error(
         'Invalid environment configuration - DATABASE_URL username must match /^storeforge_app(\\..+)?$/ (must be storeforge_app or storeforge_app.<ref>). See .env.example.',
+      );
+    }
+  }
+
+  if (
+    validated.DATABASE_URL &&
+    validated.DATABASE_URL.trim() !== '' &&
+    validated.SUPABASE_URL &&
+    validated.SUPABASE_URL.trim() !== ''
+  ) {
+    const dbRef = databaseProjectRef(validated.DATABASE_URL);
+    const sbRef = supabaseProjectRef(validated.SUPABASE_URL);
+    const comparison = compareProjectRefs(dbRef, sbRef);
+    if (comparison === 'mismatch') {
+      throw new Error(
+        'Invalid environment configuration - DATABASE_URL and SUPABASE_URL refer to different Supabase projects. See .env.example.',
+      );
+    }
+    if (comparison === 'skipped') {
+      console.warn(
+        'Warning: Project reference cross-check skipped: unable to derive project ref from DATABASE_URL and/or SUPABASE_URL',
       );
     }
   }
