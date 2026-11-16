@@ -12,6 +12,8 @@ export interface FakeSupabaseServer {
   jwksUrl: string;
   userCalls: () => number;
   resetUserCalls: () => void;
+  jwksCalls: () => number;
+  resetJwksCalls: () => void;
   setJwks: (keys: jose.JWK[]) => void;
   setJwksResponse: (status: number, body?: unknown) => void;
   setUserResponse: (
@@ -32,6 +34,7 @@ export async function createFakeSupabase(
 ): Promise<FakeSupabaseServer> {
   let jwksKeys: jose.JWK[] = options.keys ?? [];
   let userCallCount = 0;
+  let jwksCallCount = 0;
   let customJwksResponse: { status: number; body?: unknown } | undefined;
   let customUserResponse:
     | { status: number; body?: unknown; headers?: Record<string, string> }
@@ -52,6 +55,7 @@ export async function createFakeSupabase(
         req.method === 'GET' &&
         pathname === '/auth/v1/.well-known/jwks.json'
       ) {
+        jwksCallCount++;
         if (customJwksResponse) {
           res.writeHead(customJwksResponse.status, {
             'Content-Type': 'application/json',
@@ -145,6 +149,10 @@ export async function createFakeSupabase(
     userCalls: () => userCallCount,
     resetUserCalls: () => {
       userCallCount = 0;
+    },
+    jwksCalls: () => jwksCallCount,
+    resetJwksCalls: () => {
+      jwksCallCount = 0;
     },
     setJwks: (keys: jose.JWK[]) => {
       jwksKeys = keys;
