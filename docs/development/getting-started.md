@@ -52,4 +52,4 @@ All five must pass on a clean checkout.
 
 ## Next
 
-Read [santu-onboarding.md](santu-onboarding.md) and [../architecture/overview.md](../architecture/overview.md).
+Read [../architecture/overview.md](../architecture/overview.md).

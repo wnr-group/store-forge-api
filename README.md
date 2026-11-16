@@ -37,21 +37,9 @@ Swagger UI is at http://localhost:4000/api/docs when the API is running.
 
 3. In Supabase, go to **Auth > Providers > Email** and turn **"Confirm email" off**. StoreForge has no email verification, and provisioned accounts are created already confirmed.
 
-4. Create the database schema. The `storeforge_app` role is created by migration `0004_app_role.sql`:
+4. Set up the database (see [Database setup](#database-setup) below).
 
-   ```bash
-   npm run db:migrate
-   ```
-
-5. Create the first Platform Admin:
-
-   ```bash
-   npm run admin:create -- --email you@example.com --name "Your Name"
-   ```
-
-   This needs `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `DIRECT_URL` and `PLATFORM_ADMIN_PASSWORD` in the environment.
-
-6. Start the API and check it:
+5. Start the API and check it:
 
    ```bash
    npm run start:dev
@@ -60,7 +48,53 @@ Swagger UI is at http://localhost:4000/api/docs when the API is running.
 
 For a production-style run use `npm run build && npm run start:prod`.
 
-Optional, development projects only: `SEED_DEMO_DATA=true npm run db:seed:demo` adds a demo organization with sample data. It creates dummy logins with a public password and refuses to run in production.
+Then set up the [Next.js frontend](https://github.com/wnr-group/store-forge), which needs this API running and the same `AUTH_BFF_SECRET`.
+
+## Database setup
+
+The API owns the schema, migrations and database scripts. The frontend has none of them. Do these steps in order.
+
+**Step 1. Apply migrations.** This creates the tables, RLS policies, functions, storage bucket and the `storeforge_app` role (migration `0004_app_role.sql`). It uses `DIRECT_URL`.
+
+```bash
+npm run db:migrate
+```
+
+If it fails on `GRANT authenticated TO storeforge_app`, run that one statement in the Supabase SQL Editor as the project owner, then run `npm run db:migrate` again.
+
+**Step 2. Set the app role's password.** The migration creates `storeforge_app` without a password. In the Supabase SQL Editor run:
+
+```sql
+ALTER ROLE storeforge_app WITH PASSWORD '<long random password>';
+```
+
+Put that password into `DATABASE_URL` in `.env`. The API refuses to start as `postgres`, because that role bypasses RLS.
+
+**Step 3. Verify.** Check the Drizzle schema against the live database (read-only). Run it with `DATABASE_URL` pointing at the owner connection:
+
+```bash
+npm run db:state           # show database state (read-only)
+DATABASE_URL=$DIRECT_URL npm run db:verify-schema
+# PowerShell: $env:DATABASE_URL=$env:DIRECT_URL; npm run db:verify-schema
+```
+
+Re-run it after any migration, policy or grant change.
+
+**Step 4. Create the first Platform Admin.** This is the only way to create one: there is no web flow, API or policy that can promote a user, so nobody can make themselves an admin. Run it from a trusted machine. The password is read from the environment, not the command line, so it stays out of shell history:
+
+```bash
+PLATFORM_ADMIN_PASSWORD='<at least 12 characters>' npm run admin:create -- --email you@yourcompany.com --name "Your Name"
+# PowerShell: $env:PLATFORM_ADMIN_PASSWORD='<password>'; npm run admin:create -- --email you@yourcompany.com --name "Your Name"
+```
+
+It uses `SUPABASE_SERVICE_ROLE_KEY` to create a confirmed Auth user and `DIRECT_URL` to add it to `platform_admins`. If the email already has an Auth account, that account is promoted instead (unless it is already a company member: use a separate account). Sign in at the frontend's `/login`; Platform Admins land on `/admin`. Change the password afterwards under **Change password** in the account menu.
+
+**Step 5 (optional). Seed demo data.** Development projects only. It creates one demo store, Urban Nest (slug `urban-nest-demo`), with 26 products (57 variants), 8 categories, 6 collections, 28 customers, 46 orders over the last 90 days and an inventory ledger, plus four dummy logins (company Owner, Manager and Staff, and a Platform Admin). The passwords are public, so never run it against a real project. It refuses to run when `NODE_ENV` or `VERCEL_ENV` is `production`, needs `SEED_DEMO_DATA=true`, and is safe to re-run (existing rows are skipped).
+
+```bash
+SEED_DEMO_DATA=true npm run db:seed:demo
+# PowerShell: $env:SEED_DEMO_DATA='true'; npm run db:seed:demo
+```
 
 ## Environment variables
 
@@ -193,6 +227,11 @@ docs/                     Design notes, schema, permission matrix, endpoint inve
 
 ## Known gaps
 
-See [docs/API_READINESS_REPORT.md](docs/API_READINESS_REPORT.md). In short: who owns the database schema and the final split of work with the Next.js server actions still need a team decision, no CI or deployment is set up, and the tests have not been run against a real Supabase project.
+- **Schema ownership is settled.** This repository owns the schema and migrations, and the Next.js app has no database access. Its older copy of the migrations has been removed.
+- **CI exists** ([.github/workflows/ci.yml](.github/workflows/ci.yml)). Deployment to Vercel is configured in `vercel.json`.
+- **Live checks are still pending.** The automated tests use fakes at the Supabase boundary (JWKS, Auth Admin API, Storage) and PGlite for the database. Most frontend features are marked "Migrated, live check pending" in the frontend's `docs/migration-status.md`. Run the smoke checklist in [docs/API_READINESS_REPORT.md](docs/API_READINESS_REPORT.md) against a real Supabase project before relying on a release.
+- **Latency.** Each request uses two transactions, so a remote pooler adds round trips. See the readiness report for the cheap fixes.
 
-New developers: start with [docs/development/santu-onboarding.md](docs/development/santu-onboarding.md) and [docs/architecture/overview.md](docs/architecture/overview.md).
+[docs/API_READINESS_REPORT.md](docs/API_READINESS_REPORT.md) was written on 2026-11-10 and its "Remaining issues" list is partly out of date (CI, frontend integration and schema ownership have all moved on).
+
+New developers: start with [docs/development/getting-started.md](docs/development/getting-started.md) and [docs/architecture/overview.md](docs/architecture/overview.md).
