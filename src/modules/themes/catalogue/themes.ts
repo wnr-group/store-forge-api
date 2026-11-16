@@ -801,7 +801,7 @@ export const grocery: ThemeDefinition = {
             heading: 'Groceries, delivered fresh',
             subheading: 'Order before 6pm and get it the same evening.',
             accentColor: '#15803d',
-            image: asset('freshly', 'hero.svg'),
+            image: asset('freshly', 'hero.jpg'),
           },
           [['cta', button('Start shopping', '/#products')]],
         ),
