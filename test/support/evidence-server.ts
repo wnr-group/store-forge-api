@@ -1,4 +1,5 @@
 import type { INestApplication } from '@nestjs/common';
+import { fileURLToPath } from 'node:url';
 import { createTestApp } from './create-test-app.js';
 import {
   createTestDatabase,
@@ -25,7 +26,14 @@ export async function startEvidenceServer(
   process.env.NODE_ENV = 'test';
   process.env.SWAGGER_ENABLED = 'true';
 
-  testDb = await createTestDatabase();
+  const migrationsFolder = fileURLToPath(
+    new URL(
+      '../../src/infrastructure/database/migrations-snapshot',
+      import.meta.url,
+    ),
+  );
+
+  testDb = await createTestDatabase({ migrationsFolder });
   process.env.DATABASE_URL = testDb.url;
   process.env.DB_POOL_MAX = '1';
   process.env.DB_PREPARE = 'false';
