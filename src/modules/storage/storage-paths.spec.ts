@@ -42,6 +42,8 @@ describe('storage paths', () => {
     expect(newObjectName('image/png')).toMatch(/^[0-9a-f-]{36}\.png$/);
     expect(newObjectName('image/jpeg')).toMatch(/\.jpg$/);
     expect(newObjectName('image/webp')).toMatch(/\.webp$/);
+    expect(newObjectName('video/mp4')).toMatch(/\.mp4$/);
+    expect(newObjectName('video/webm')).toMatch(/\.webm$/);
     expect(newObjectName('image/gif')).toBeNull();
     expect(newObjectName('text/html')).toBeNull();
     expect(newObjectName('image/png')).not.toBe(newObjectName('image/png'));

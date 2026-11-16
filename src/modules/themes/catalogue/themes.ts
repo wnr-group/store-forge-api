@@ -570,7 +570,7 @@ export const furniture: ThemeDefinition = {
   description:
     'Lifestyle furniture theme with a large room banner, shop-by-room tiles and alternating editorial blocks.',
   industry: 'home',
-  version: 2,
+  version: 3,
   previewImage: '/themes/haven/preview.svg',
   documents: {
     theme_settings: themeSettings({
@@ -608,9 +608,43 @@ export const furniture: ThemeDefinition = {
             heading: 'Rooms made to be lived in',
             subheading: 'Solid wood furniture, delivered and assembled.',
             accentColor: '#c08552',
-            image: asset('haven', 'living-room.svg'),
+            image: asset('haven', 'hero-1.jpg'),
           },
-          [['cta', button('Shop the collection', '/#products')]],
+          [
+            [
+              'slide1',
+              node('hero-slide', {
+                mediaType: 'image',
+                image: asset('haven', 'hero-1.jpg'),
+                heading: 'Rooms made to be lived in',
+                subheading: 'Solid wood furniture, delivered and assembled.',
+                buttonLabel: 'Shop the collection',
+                link: '/#products',
+              }),
+            ],
+            [
+              'slide2',
+              node('hero-slide', {
+                mediaType: 'image',
+                image: asset('haven', 'hero-2.jpg'),
+                heading: 'Natural materials, calm spaces',
+                subheading: 'Oak, linen and stone, chosen to age beautifully.',
+                buttonLabel: 'Explore the rooms',
+                link: '/collections',
+              }),
+            ],
+            [
+              'slide3',
+              node('hero-slide', {
+                mediaType: 'image',
+                image: asset('haven', 'hero-3.jpg'),
+                heading: 'Furniture with room to breathe',
+                subheading: 'Considered pieces for every corner of the home.',
+                buttonLabel: 'Browse everything',
+                link: '/products',
+              }),
+            ],
+          ],
         ),
       ],
       [

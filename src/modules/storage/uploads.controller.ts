@@ -30,15 +30,22 @@ import {
   MAX_IMAGES_PER_PRODUCT,
   productFolder,
   storeFolder,
+  VIDEO_TYPES,
 } from './storage-paths.js';
 import { StorageService } from './storage.service.js';
 
 class UploadFileDto {
-  @ApiProperty({ enum: IMAGE_TYPES })
-  @IsIn(IMAGE_TYPES, { message: 'Only JPEG, PNG and WebP images are allowed.' })
-  type!: (typeof IMAGE_TYPES)[number];
+  @ApiProperty({ enum: [...IMAGE_TYPES, ...VIDEO_TYPES] })
+  @IsIn([...IMAGE_TYPES, ...VIDEO_TYPES], {
+    message:
+      'Only JPEG, PNG and WebP images or MP4 and WebM videos are allowed.',
+  })
+  type!: (typeof IMAGE_TYPES)[number] | (typeof VIDEO_TYPES)[number];
 
-  @ApiProperty({ description: 'File size in bytes. It can be at most 5 MB.' })
+  @ApiProperty({
+    description:
+      'File size in bytes. Images can be at most 5 MB; videos (store scope only) at most 50 MB.',
+  })
   @IsInt()
   @Min(1)
   size!: number;
@@ -122,6 +129,11 @@ export class UploadsController {
         : dto.scope === 'collection'
           ? collectionFolder(org.tenantId, dto.ownerId!)
           : productFolder(org.tenantId, dto.ownerId!);
-    return this.storage.createUploadTargets(user.token, folder, dto.files);
+    return this.storage.createUploadTargets(
+      user.token,
+      folder,
+      dto.files,
+      dto.scope === 'store',
+    );
   }
 }

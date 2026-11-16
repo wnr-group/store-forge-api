@@ -13,6 +13,8 @@ import {
   isDirectChild,
   newObjectName,
   PRODUCT_BUCKET,
+  VIDEO_MAX_BYTES,
+  VIDEO_TYPES,
 } from './storage-paths.js';
 
 export type UploadTarget = { path: string; token: string; signedUrl: string };
@@ -50,10 +52,24 @@ export class StorageService {
     token: string,
     folder: string,
     files: FileMeta[],
+    /** True only for the store folder: hero slides may be MP4 or WebM videos there. */
+    allowVideo = false,
   ): Promise<UploadTarget[]> {
     for (const f of files) {
+      const isVideo = (VIDEO_TYPES as readonly string[]).includes(f.type);
+      if (isVideo) {
+        if (!allowVideo)
+          throw invalid('Videos can only be uploaded for the store itself.');
+        if (f.size <= 0 || f.size > VIDEO_MAX_BYTES)
+          throw invalid('Each video must be 50 MB or smaller.');
+        continue;
+      }
       if (!(IMAGE_TYPES as readonly string[]).includes(f.type))
-        throw invalid('Only JPEG, PNG and WebP images are allowed.');
+        throw invalid(
+          allowVideo
+            ? 'Only JPEG, PNG and WebP images or MP4 and WebM videos are allowed.'
+            : 'Only JPEG, PNG and WebP images are allowed.',
+        );
       if (f.size <= 0 || f.size > IMAGE_MAX_BYTES)
         throw invalid('Each image must be 5 MB or smaller.');
     }

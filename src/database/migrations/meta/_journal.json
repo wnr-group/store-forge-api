@@ -218,6 +218,13 @@
       "when": 1794300013000,
       "tag": "0030_public_storefront_public_id",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1794300014000,
+      "tag": "0031_store_video_uploads",
+      "breakpoints": true
     }
   ]
 }

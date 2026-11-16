@@ -10,12 +10,17 @@ export const PRODUCT_BUCKET = 'products';
 
 export const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 export const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+/** Videos are only allowed in the store folder (hero slides), never on products or collections. */
+export const VIDEO_TYPES = ['video/mp4', 'video/webm'] as const;
+export const VIDEO_MAX_BYTES = 50 * 1024 * 1024;
 export const MAX_IMAGES_PER_PRODUCT = 10;
 
 export const EXTENSIONS: Record<string, string> = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
   'image/webp': 'webp',
+  'video/mp4': 'mp4',
+  'video/webm': 'webm',
 };
 
 export const productFolder = (tenantId: string, productId: string) =>
