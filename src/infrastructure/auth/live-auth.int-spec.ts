@@ -12,6 +12,11 @@ import {
 } from '../../../test/support/auth/test-keys.js';
 import { createTestApp } from '../../../test/support/create-test-app.js';
 import {
+  createTestDatabase,
+  type TestDatabase,
+} from '../../../test/support/database/create-test-database.js';
+import { createPlatformAdmin } from '../../../test/support/database/fixtures.js';
+import {
   ProbeController,
   probeSpies,
 } from '../../../test/support/probe/probe.controller.js';
@@ -22,13 +27,24 @@ import { LiveAuthService } from './live-auth.service.js';
 
 describe('Live Auth Guard and Service (AC-B-16 to AC-B-21, LIVE)', () => {
   let app: INestApplication;
+  let testDb: TestDatabase;
   let fakeSupabase: FakeSupabaseServer;
   let keyPair: TestKeyPair;
   let liveAuthService: LiveAuthService;
-  const validUserId = '22222222-2222-2222-2222-222222222222';
+  let validUserId: string;
   let validToken: string;
 
   beforeAll(async () => {
+    testDb = await createTestDatabase();
+    process.env.DATABASE_URL = testDb.url;
+    process.env.DB_POOL_MAX = '1';
+    process.env.DB_PREPARE = 'false';
+
+    validUserId = await createPlatformAdmin(testDb.pg, {
+      email: 'liveadmin@example.test',
+      role: 'super_admin',
+    });
+
     keyPair = await generateTestKeyPair('live-key');
     fakeSupabase = await createFakeSupabase({ keys: [keyPair.publicJwk] });
 
@@ -51,6 +67,7 @@ describe('Live Auth Guard and Service (AC-B-16 to AC-B-21, LIVE)', () => {
   afterAll(async () => {
     await app.close();
     await fakeSupabase.close();
+    await testDb.close();
   });
 
   beforeEach(() => {

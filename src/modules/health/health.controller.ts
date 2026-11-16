@@ -5,6 +5,7 @@ import {
   ApiProperty,
   ApiTags,
 } from '@nestjs/swagger';
+import { Public } from '../../infrastructure/auth/decorators.js';
 import { HealthService } from './health.service.js';
 
 class HealthResponse {
@@ -21,6 +22,7 @@ export class HealthController {
   constructor(private readonly healthService: HealthService) {}
 
   @Get()
+  @Public()
   @ApiOperation({
     summary: 'Application liveness check',
     description:

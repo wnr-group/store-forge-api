@@ -4,6 +4,7 @@ import configuration from './config/configuration.js';
 import { envFilePaths } from './config/env-files.js';
 import { validateEnv } from './config/env.validation.js';
 import { DatabaseModule } from './infrastructure/database/database.module.js';
+import { AuthModule } from './infrastructure/auth/auth.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 
 @Module({
@@ -16,6 +17,7 @@ import { HealthModule } from './modules/health/health.module.js';
       validate: validateEnv,
     }),
     DatabaseModule,
+    AuthModule,
     HealthModule,
   ],
 })
