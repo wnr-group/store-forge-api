@@ -5,10 +5,15 @@ import {
   type OnModuleInit,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { and, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
+import { forbidden } from '../../common/errors/app-exception.js';
 import type { AppConfig } from '../../config/configuration.js';
+import type { Role } from '../auth/generated/permissions.js';
 import { dbSchema, type Database, type DbTx } from './database.types.js';
+import { memberships } from './schema/memberships.js';
+import { tenants } from './schema/tenants.js';
 import { withPublicContext, withUserContext } from './user-context.js';
 
 @Injectable()
@@ -108,6 +113,82 @@ export class DatabaseService implements OnModuleInit, OnApplicationShutdown {
   async withUser<T>(userId: string, fn: (tx: DbTx) => Promise<T>): Promise<T> {
     const db = this.getDatabase();
     return withUserContext(db, userId, fn);
+  }
+
+  /**
+   * Runs `fn` inside a transaction as the verified user `userId` within the verified active `tenantId`.
+   * Re-resolves the caller's active membership inside the transaction (AC-B-34, AC-B-35).
+   * Throws 403 FORBIDDEN if the membership vanished, is disabled, or the tenant is suspended.
+   */
+  async withTenant<T>(
+    ctx: { tenantId: string; userId: string },
+    fn: (
+      tx: DbTx,
+      tenantCtx: { tenantId: string; userId: string; role: Role },
+    ) => Promise<T>,
+  ): Promise<T>;
+  async withTenant<T>(
+    tenantId: string,
+    userId: string,
+    fn: (
+      tx: DbTx,
+      tenantCtx: { tenantId: string; userId: string; role: Role },
+    ) => Promise<T>,
+  ): Promise<T>;
+  async withTenant<T>(
+    ctxOrTenantId: { tenantId: string; userId: string } | string,
+    secondArg:
+      | string
+      | ((
+          tx: DbTx,
+          tenantCtx: { tenantId: string; userId: string; role: Role },
+        ) => Promise<T>),
+    thirdArg?: (
+      tx: DbTx,
+      tenantCtx: { tenantId: string; userId: string; role: Role },
+    ) => Promise<T>,
+  ): Promise<T> {
+    const tenantId =
+      typeof ctxOrTenantId === 'string'
+        ? ctxOrTenantId
+        : ctxOrTenantId.tenantId;
+    const userId =
+      typeof ctxOrTenantId === 'string'
+        ? (secondArg as string)
+        : ctxOrTenantId.userId;
+    const fn =
+      typeof ctxOrTenantId === 'string'
+        ? thirdArg!
+        : (secondArg as (
+            tx: DbTx,
+            tenantCtx: { tenantId: string; userId: string; role: Role },
+          ) => Promise<T>);
+
+    return this.withUser(userId, async (tx) => {
+      const rows = await tx
+        .select({
+          tenantId: memberships.tenantId,
+          userId: memberships.userId,
+          role: memberships.role,
+        })
+        .from(memberships)
+        .innerJoin(tenants, eq(memberships.tenantId, tenants.id))
+        .where(
+          and(
+            eq(memberships.userId, userId),
+            eq(memberships.tenantId, tenantId),
+            eq(memberships.status, 'active'),
+            eq(tenants.status, 'active'),
+          ),
+        );
+
+      if (rows.length === 0) {
+        throw forbidden('Access to the requested tenant was denied.');
+      }
+
+      const role = rows[0].role as Role;
+      return fn(tx, { tenantId, userId, role });
+    });
   }
 
   /**

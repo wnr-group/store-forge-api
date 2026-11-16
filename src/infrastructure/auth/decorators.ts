@@ -4,7 +4,7 @@ import {
   type ExecutionContext,
 } from '@nestjs/common';
 import type { Request } from 'express';
-import type { AuthenticatedUser } from './auth.types.js';
+import type { AuthenticatedUser, TenantContext } from './auth.types.js';
 
 export const IS_PUBLIC_KEY = 'isPublic';
 export const NO_TENANT_KEY = 'noTenant';
@@ -29,6 +29,15 @@ export const CurrentUser = createParamDecorator(
     const user = request.auth;
     if (!user) return undefined;
     return data ? user[data] : user;
+  },
+);
+
+export const CurrentTenant = createParamDecorator(
+  (data: keyof TenantContext | undefined, ctx: ExecutionContext) => {
+    const request = ctx.switchToHttp().getRequest<Request>();
+    const tenant = request.tenant;
+    if (!tenant) return undefined;
+    return data ? tenant[data] : tenant;
   },
 );
 

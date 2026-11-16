@@ -128,11 +128,23 @@ export class ProbeController {
     return { status: 'super-admin-ok' };
   }
 
-  @RequirePermission('products:read')
+  @RequirePermission('catalog:view')
   @Get('permission')
   getPermission() {
     probeSpies.permissionHandler++;
     return { status: 'permission-ok' };
+  }
+
+  @RequirePermission('catalog:manage')
+  @Post('permission/manage')
+  postPermissionManage() {
+    return { status: 'catalog-manage-ok' };
+  }
+
+  @RequirePermission('members:manage')
+  @Post('permission/members')
+  postPermissionMembers() {
+    return { status: 'members-manage-ok' };
   }
 
   @NoTenant()
