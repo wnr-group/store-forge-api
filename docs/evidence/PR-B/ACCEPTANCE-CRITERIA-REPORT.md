@@ -12,10 +12,10 @@
 ## 2. Test Execution Summary
 | Suite | Files | Tests | Passed | Failed | Duration | Environment |
 |---|---|---|---|---|---|---|
-| Unit (`npm test`) | 8 | 96 | 96 | 0 | ~1.5s | Node v24.18.0 / Vitest 4.1.12 |
-| Integration (`npm run test:int`) | 6 | 80 | 80 | 0 | ~23s | PGlite 0.2.14 / Ephemeral DB |
-| E2E (`npm run test:e2e`) | 4 | 43 | 43 | 0 | ~8s | Supertest / Express / PGlite |
-| **Total** | **18** | **219** | **219** | **0** | **~33s** | **100% Green** |
+| Unit (`npm test`) | 11 | 96 | 96 | 0 | ~8.9s | Node v24.18.0 / Vitest 4.1.12 |
+| Integration (`npm run test:int`) | 8 | 80 | 80 | 0 | ~21.7s | PGlite 0.2.14 / Ephemeral DB |
+| E2E (`npm run test:e2e`) | 6 | 43 | 43 | 0 | ~12.2s | Supertest / Express / PGlite |
+| **Total** | **25** | **219** | **219** | **0** | **~43s** | **100% Green** |
 
 ## 3. Browser Screenshots (Category A)
 Real Swagger UI screenshots captured via headless Chromium without adding Playwright to `package.json`:
