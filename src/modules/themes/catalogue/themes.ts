@@ -17,6 +17,7 @@ import {
   productPage,
 } from './shared.js';
 import { karthika } from './karthika.js';
+import { marketplace } from './marketplace.js';
 import { stride } from './stride.js';
 
 const testimonial = (
@@ -1045,4 +1046,5 @@ export const THEME_CATALOGUE: readonly ThemeDefinition[] = [
   minimal,
   karthika,
   stride,
+  marketplace,
 ];

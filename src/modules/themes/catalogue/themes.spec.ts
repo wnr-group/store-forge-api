@@ -29,6 +29,21 @@ describe('theme catalogue', () => {
     expect(settings.typography.bodyFont).toBe('plus-jakarta-sans');
   });
 
+  it('Marketplace asks the storefront for the market look and uses its own fonts', () => {
+    const marketplace = THEME_CATALOGUE.find((t) => t.slug === 'marketplace')!;
+    const settings = (
+      marketplace.documents.theme_settings as unknown as {
+        settings: {
+          brand: { look: string };
+          typography: { headingFont: string; bodyFont: string };
+        };
+      }
+    ).settings;
+    expect(settings.brand.look).toBe('market');
+    expect(settings.typography.headingFont).toBe('plus-jakarta-sans');
+    expect(settings.typography.bodyFont).toBe('inter');
+  });
+
   it('Karthika asks the storefront for the boutique look and uses its own fonts', () => {
     const karthika = THEME_CATALOGUE.find((t) => t.slug === 'karthika')!;
     const settings = (
