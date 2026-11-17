@@ -17,6 +17,7 @@ import {
   productPage,
 } from './shared.js';
 import { karthika } from './karthika.js';
+import { stride } from './stride.js';
 
 const testimonial = (
   id: string,
@@ -1043,4 +1044,5 @@ export const THEME_CATALOGUE: readonly ThemeDefinition[] = [
   grocery,
   minimal,
   karthika,
+  stride,
 ];

@@ -14,6 +14,21 @@ describe('theme catalogue', () => {
     expect(new Set(slugs).size).toBe(slugs.length);
   });
 
+  it('Stride asks the storefront for the sport look and uses its own fonts', () => {
+    const stride = THEME_CATALOGUE.find((t) => t.slug === 'stride')!;
+    const settings = (
+      stride.documents.theme_settings as unknown as {
+        settings: {
+          brand: { look: string };
+          typography: { headingFont: string; bodyFont: string };
+        };
+      }
+    ).settings;
+    expect(settings.brand.look).toBe('sport');
+    expect(settings.typography.headingFont).toBe('archivo');
+    expect(settings.typography.bodyFont).toBe('plus-jakarta-sans');
+  });
+
   it('Karthika asks the storefront for the boutique look and uses its own fonts', () => {
     const karthika = THEME_CATALOGUE.find((t) => t.slug === 'karthika')!;
     const settings = (
