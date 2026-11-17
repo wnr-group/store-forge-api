@@ -166,6 +166,15 @@ export const karthika: ThemeDefinition = {
         ),
       ],
       [
+        'reviews',
+        node('testimonials', {
+          eyebrow: 'Reviews',
+          heading: 'What customers say',
+          subheading: '',
+          columns: 3,
+        }),
+      ],
+      [
         'all',
         node('product-grid', {
           columns: 4,
