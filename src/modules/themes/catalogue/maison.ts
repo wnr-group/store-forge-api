@@ -30,7 +30,7 @@ const NAV: Child[] = [
 ];
 
 /**
- * Karthika: a boutique theme for stores with several kinds of product. Ivory page, forest-green primary, bronze/gold
+ * Maison: a boutique theme for stores with several kinds of product. Ivory page, forest-green primary, bronze/gold
  * accents, Cormorant Garamond headlines with Jost body text, pill buttons and square 3:4 product cards.
  *
  * Everything written here is a neutral default the merchant replaces: no store name, no product names, no
@@ -38,14 +38,14 @@ const NAV: Child[] = [
  * `brand.look: 'boutique'` makes the storefront draw the sections with the Boutique look (see the frontend's
  * `components/storefront/engine/looks`).
  */
-export const karthika: ThemeDefinition = {
-  slug: 'karthika',
-  name: 'Karthika',
+export const maison: ThemeDefinition = {
+  slug: 'maison',
+  name: 'Maison',
   description:
     'Boutique theme for stores with a wide range: a forest-green hero panel, picture-led category tiles, refined serif headlines and square 3:4 product cards.',
   industry: 'general',
   version: 1,
-  previewImage: '/themes/karthika/preview.svg',
+  previewImage: '/themes/maison/preview.svg',
   documents: {
     theme_settings: themeSettings({
       brand: { look: 'boutique' },
@@ -82,7 +82,7 @@ export const karthika: ThemeDefinition = {
             heading: 'Chosen with care, made to last',
             subheading:
               'A considered selection from our shelves, put together season by season.',
-            image: asset('karthika', 'hero.jpg'),
+            image: asset('maison', 'hero.jpg'),
           },
           [
             ['shop', button('Shop the collection', '/#products')],

@@ -16,7 +16,7 @@ import {
   headerGroup,
   productPage,
 } from './shared.js';
-import { karthika } from './karthika.js';
+import { maison } from './maison.js';
 import { marketplace } from './marketplace.js';
 import { stride } from './stride.js';
 
@@ -1044,7 +1044,7 @@ export const THEME_CATALOGUE: readonly ThemeDefinition[] = [
   furniture,
   grocery,
   minimal,
-  karthika,
+  maison,
   stride,
   marketplace,
 ];

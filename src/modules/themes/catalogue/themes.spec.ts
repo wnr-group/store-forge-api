@@ -44,10 +44,10 @@ describe('theme catalogue', () => {
     expect(settings.typography.bodyFont).toBe('inter');
   });
 
-  it('Karthika asks the storefront for the boutique look and uses its own fonts', () => {
-    const karthika = THEME_CATALOGUE.find((t) => t.slug === 'karthika')!;
+  it('Maison asks the storefront for the boutique look and uses its own fonts', () => {
+    const maison = THEME_CATALOGUE.find((t) => t.slug === 'maison')!;
     const settings = (
-      karthika.documents.theme_settings as unknown as {
+      maison.documents.theme_settings as unknown as {
         settings: {
           brand: { look: string };
           typography: { headingFont: string; bodyFont: string };
