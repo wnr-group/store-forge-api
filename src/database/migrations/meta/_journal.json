@@ -225,6 +225,20 @@
       "when": 1794300014000,
       "tag": "0031_store_video_uploads",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1794300015000,
+      "tag": "0032_product_presentations",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1794300016000,
+      "tag": "0033_product_presentations_public_functions",
+      "breakpoints": true
     }
   ]
 }
