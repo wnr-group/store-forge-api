@@ -45,7 +45,11 @@ const NAV: Child[] = [
   ['nav_contact', link('Contact', '/contact')],
   [
     'nav_cta',
-    node('button', { label: "Today's picks", link: '/products', style: 'primary' }),
+    node('button', {
+      label: "Today's picks",
+      link: '/products',
+      style: 'primary',
+    }),
   ],
 ];
 
