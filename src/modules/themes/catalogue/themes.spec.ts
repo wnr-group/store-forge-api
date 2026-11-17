@@ -6,16 +6,27 @@ import { THEME_CATALOGUE } from './themes.js';
 const TENANT = '11111111-1111-4111-8111-111111111111';
 
 describe('theme catalogue', () => {
-  it('has the six required industries with unique slugs', () => {
-    expect(THEME_CATALOGUE.map((t) => t.industry).sort()).toEqual([
-      'beauty',
-      'electronics',
-      'fashion',
-      'general',
-      'grocery',
-      'home',
-    ]);
-    expect(new Set(THEME_CATALOGUE.map((t) => t.slug)).size).toBe(6);
+  it('covers the six required industries with unique slugs', () => {
+    expect([...new Set(THEME_CATALOGUE.map((t) => t.industry))].sort()).toEqual(
+      ['beauty', 'electronics', 'fashion', 'general', 'grocery', 'home'],
+    );
+    const slugs = THEME_CATALOGUE.map((t) => t.slug);
+    expect(new Set(slugs).size).toBe(slugs.length);
+  });
+
+  it('Karthika asks the storefront for the boutique look and uses its own fonts', () => {
+    const karthika = THEME_CATALOGUE.find((t) => t.slug === 'karthika')!;
+    const settings = (
+      karthika.documents.theme_settings as unknown as {
+        settings: {
+          brand: { look: string };
+          typography: { headingFont: string; bodyFont: string };
+        };
+      }
+    ).settings;
+    expect(settings.brand.look).toBe('boutique');
+    expect(settings.typography.headingFont).toBe('cormorant-garamond');
+    expect(settings.typography.bodyFont).toBe('jost');
   });
 
   for (const theme of THEME_CATALOGUE) {

@@ -16,6 +16,7 @@ import {
   headerGroup,
   productPage,
 } from './shared.js';
+import { karthika } from './karthika.js';
 
 const testimonial = (
   id: string,
@@ -1041,4 +1042,5 @@ export const THEME_CATALOGUE: readonly ThemeDefinition[] = [
   furniture,
   grocery,
   minimal,
+  karthika,
 ];
