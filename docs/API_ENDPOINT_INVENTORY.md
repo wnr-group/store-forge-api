@@ -79,6 +79,7 @@ All: Auth `JWT+Org`, permission `members:manage`. DB `memberships`, `profiles`, 
 | 34 | Bulk delete | POST `/products/bulk-delete` | `catalog:delete` | `{ids[1..100]}` | returns `{deleted}` |
 | 35 | Bulk status | POST `/products/bulk-status` | `catalog:manage` | `{ids[],status}` | returns `{updated}` |
 | 36 | Duplicate | POST `/products/:id/duplicate` | `catalog:manage` | - | draft copy "(copy)", `sku=null`, no images |
+| 36a | Import products | POST `/products/import` | `catalog:manage` | `{rows[1..500]}` (snake_case file headers, `row` number, optional `source_errors`) | `{count}`; every row validated first, all-or-nothing in one transaction; 2 MB body limit on this route only; 400 `PRODUCT_IMPORT_INVALID` with `{total, errors[<=500]}`; products of one import share one `created_at` |
 | 37 | Signed upload URLs | POST `/uploads/signed-urls` | `catalog:manage` (scope store: `store:manage`) | `{scope: product\|collection\|store, ownerId?, files:[{type,size}]}` 1-10 files, jpeg/png/webp, <=5 MB | folder derived from verified tenant, never from input; Storage called with caller's token |
 | 38 | Stock list | GET `/inventory?search&stock&page` | `catalog:view` | - | one row per sellable unit (simple product or active variant) |
 | 39 | Adjustment ledger | GET `/inventory/adjustments?limit` | `catalog:view` | - | newest first |
