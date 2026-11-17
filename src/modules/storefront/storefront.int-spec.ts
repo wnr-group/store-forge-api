@@ -11,9 +11,9 @@ import {
   createTenantWithOwner,
   withSuperuser,
 } from '../../../test/support/database/fixtures.js';
-import { DatabaseModule } from '../../infrastructure/database/database.module.js';
-import { DatabaseService } from '../../infrastructure/database/database.service.js';
-import { rowsOf } from '../../infrastructure/database/user-context.js';
+import { DatabaseModule } from '../../database/database.module.js';
+import { DatabaseService } from '../../database/database.service.js';
+import { rowsOf } from '../../database/user-context.js';
 import { StorefrontModule } from './storefront.module.js';
 import { StorefrontService } from './storefront.service.js';
 import {
@@ -275,12 +275,7 @@ describe('Public Storefront Database Contract Suite (PR-D, T-D1)', () => {
           isGlobal: true,
           load: [
             () => ({
-              database: {
-                url: testDb.url,
-                poolMax: 1,
-                prepare: false,
-                connectTimeoutSeconds: 5,
-              },
+              databaseUrl: testDb.url,
             }),
           ],
         }),

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
-import { DatabaseService } from '../../infrastructure/database/database.service.js';
-import { rowsOf } from '../../infrastructure/database/user-context.js';
+import { DatabaseService } from '../../database/database.service.js';
+import { rowsOf } from '../../database/user-context.js';
 import {
   layoutPayloadSchema,
   publicCollectionPayloadSchema,

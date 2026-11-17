@@ -1,15 +1,21 @@
 import {
   ConsoleLogger,
+  Logger,
   ValidationPipe,
   type INestApplication,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import type { NextFunction, Request, Response } from 'express';
-import helmet from 'helmet';
+import type { NextFunction, Request, RequestHandler, Response } from 'express';
+import helmetModule, { type HelmetOptions } from 'helmet';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
 import type { AppConfig } from './config/configuration.js';
 import { NodeEnv } from './config/env.validation.js';
+
+/** helmet's default export is callable under ESM but a namespace under CommonJS typings (Vercel's build), so resolve both. */
+type HelmetFn = (options?: Readonly<HelmetOptions>) => RequestHandler;
+const helmet = ((helmetModule as unknown as { default?: HelmetFn }).default ??
+  helmetModule) as unknown as HelmetFn;
 
 export const SWAGGER_PATH = 'api/docs';
 
@@ -19,6 +25,31 @@ export function createLogger(nodeEnv: string): ConsoleLogger {
     json: nodeEnv === NodeEnv.Production,
     colors: nodeEnv !== NodeEnv.Production,
   });
+}
+
+/** The OpenAPI document, generated from the controllers and DTOs. Also used by the coverage test. */
+export function buildOpenApiDocument(app: INestApplication, apiPrefix: string) {
+  return SwaggerModule.createDocument(
+    app,
+    new DocumentBuilder()
+      .setTitle('Store Forge API')
+      .setDescription(
+        [
+          `Every route starts with /${apiPrefix}.`,
+          'Signing in is handled by **Supabase Auth**. Sign in with the Supabase SDK and send your access token as `Authorization: Bearer <token>`. This API only checks that the token is genuine, it never creates tokens itself.',
+          'Routes that belong to an organization work on the organization named in the `X-Organization-Id` header. The header is checked against the organizations you belong to. If you leave it out, your first organization is used.',
+          'Every successful answer looks like this: `{ success, message, data, meta? }`. Every error looks like this: `{ success:false, message, error:{ code, details }, timestamp, path }`.',
+        ].join('\n\n'),
+      )
+      .setVersion('1.0.0')
+      .addBearerAuth({
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        description: 'Your Supabase access token',
+      })
+      .build(),
+  );
 }
 
 /**
@@ -31,6 +62,16 @@ export function configureApp(app: INestApplication): void {
   const apiPrefix = config.get('apiPrefix', { infer: true });
   const swaggerEnabled = config.get('swaggerEnabled', { infer: true });
 
+  // Behind a proxy (Vercel / Render / Fly) the client address is the first X-Forwarded-For hop;
+  // rate limiting keys on it.
+  if (config.get('env', { infer: true }) === NodeEnv.Production) {
+    (
+      app.getHttpAdapter().getInstance() as {
+        set: (key: string, value: unknown) => void;
+      }
+    ).set('trust proxy', 1);
+  }
+
   app.setGlobalPrefix(apiPrefix);
 
   // Security headers. Swagger UI needs inline scripts/styles, so only its path gets a relaxed CSP.
@@ -42,7 +83,27 @@ export function configureApp(app: INestApplication): void {
       : strict(req, res, next),
   );
 
-  app.enableCors({ origin: config.get('corsOrigins', { infer: true }) });
+  // One line per request once the response is sent. Skipped in tests to keep their output clean.
+  if (config.get('env', { infer: true }) !== NodeEnv.Test) {
+    const httpLogger = new Logger('HTTP');
+    app.use((req: Request, res: Response, next: NextFunction) => {
+      const started = Date.now();
+      res.on('finish', () => {
+        httpLogger.log(
+          `${req.method} ${req.originalUrl} ${res.statusCode} ${Date.now() - started}ms`,
+        );
+      });
+      next();
+    });
+  }
+
+  app.enableCors({
+    origin: config.get('corsOrigins', { infer: true }),
+    credentials: true,
+    methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Authorization', 'Content-Type', 'X-Organization-Id'],
+    maxAge: 600,
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -54,21 +115,13 @@ export function configureApp(app: INestApplication): void {
   app.useGlobalFilters(new AllExceptionsFilter());
 
   if (swaggerEnabled) {
-    const document = SwaggerModule.createDocument(
+    SwaggerModule.setup(
+      SWAGGER_PATH,
       app,
-      new DocumentBuilder()
-        .setTitle('Store Forge API')
-        .setDescription(
-          [
-            'Dedicated NestJS backend for the Store Forge e-commerce template engine.',
-            `All routes are served under /${apiPrefix}.`,
-            'Errors share one shape: { statusCode, error, message, path, timestamp }.',
-            'Authentication is not implemented yet; only public endpoints exist.',
-          ].join('\n\n'),
-        )
-        .setVersion('0.1.0')
-        .build(),
+      buildOpenApiDocument(app, apiPrefix),
+      {
+        swaggerOptions: { persistAuthorization: true },
+      },
     );
-    SwaggerModule.setup(SWAGGER_PATH, app, document);
   }
 }

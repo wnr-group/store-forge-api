@@ -43,8 +43,7 @@ export async function createTestDatabase(
 
   // 2. Apply snapshot migrations
   const migrationsFolder =
-    opts.migrationsFolder ??
-    resolve(process.cwd(), 'src/infrastructure/database/migrations-snapshot');
+    opts.migrationsFolder ?? resolve(process.cwd(), 'src/database/migrations');
   await migrate(drizzle(pg), { migrationsFolder });
 
   // 3. Set password for storeforge_app role inside ephemeral instance

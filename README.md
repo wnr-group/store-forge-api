@@ -1,164 +1,237 @@
 # store-forge-api
 
-Dedicated NestJS backend for the Store Forge e-commerce template engine. Provides scalable API services, business logic, authentication, database integration, and template management, independently maintained from the existing Next.js frontend.
+The NestJS REST API behind StoreForge. It owns the business logic, permissions and tenant isolation, and is the only service that talks to the database. Identity comes from Supabase Auth and data is stored in Supabase PostgreSQL through Drizzle ORM.
 
-> **Status: foundation only.** This repository currently contains the runnable NestJS skeleton (bootstrap, config, validation, error handling, security headers, Swagger, health check, tests). Authentication, database access and all business modules are **not implemented yet**. See [Current limitations](#current-limitations).
+The Next.js frontend lives in [`wnr-group/store-forge`](https://github.com/wnr-group/store-forge) and calls this API from its server.
 
-The existing Next.js app lives in a separate repository, [`wnr-group/store-forge`](https://github.com/wnr-group/store-forge), and keeps working independently. Nothing from it is copied here.
+Swagger UI is at http://localhost:4000/api/docs when the API is running.
 
-## Technology stack
-
-Versions are the ones actually installed (`package-lock.json`).
+## Tech stack
 
 | Area | Technology |
 |---|---|
-| Runtime | Node.js 24.18 (>= 22.12 required), ESM |
-| Framework | NestJS 12.4 (`@nestjs/common`, `core`, `platform-express`) |
-| Language | TypeScript 6.0 |
-| Config | `@nestjs/config` 12.1 with `class-validator` 0.15 / `class-transformer` 0.5 |
-| API docs | `@nestjs/swagger` 12.1 (OpenAPI + Swagger UI) |
-| Security headers | `helmet` 8.3 |
-| Tests | Vitest 4.1, `supertest` 7.3 |
-| Lint / format | `oxlint` 1.93 (type-aware), Prettier 3.9 |
-| Package manager | npm 11 |
+| Runtime | Node.js 22.12 or newer, ESM |
+| Framework | NestJS 12, TypeScript |
+| Auth | Supabase Auth; tokens verified with `jose` against the project's JWKS |
+| Database | Supabase PostgreSQL, Drizzle ORM, `postgres` driver (transaction pooler) |
+| Validation | `class-validator`, `class-transformer` |
+| API docs | `@nestjs/swagger` |
+| Security | `helmet`, CORS allowlist, `@nestjs/throttler`, Row Level Security |
+| Tests | Vitest, `supertest`, PGlite (real migrations, real RLS) |
+| Lint / format | `oxlint`, Prettier |
 
-## Prerequisites
+## Getting started
 
-- Node.js **>= 22.12** (the Next.js frontend uses 24.18.0; use the same if you can).
-- npm (bundled with Node).
-- Git.
+**You need:** Node.js 22.12 or newer, npm, and a Supabase project.
 
-## Installation
+1. Install:
+
+   ```bash
+   git clone https://github.com/wnr-group/store-forge-api.git
+   cd store-forge-api
+   npm install
+   cp .env.example .env     # Windows PowerShell: Copy-Item .env.example .env
+   ```
+
+2. Fill in `.env` (see [Environment variables](#environment-variables)). Never commit it.
+
+3. In Supabase, go to **Auth > Providers > Email** and turn **"Confirm email" off**. StoreForge has no email verification, and provisioned accounts are created already confirmed.
+
+4. Set up the database (see [Database setup](#database-setup) below).
+
+5. Start the API and check it:
+
+   ```bash
+   npm run start:dev
+   curl http://localhost:4000/api/v1/health
+   ```
+
+For a production-style run use `npm run build && npm run start:prod`.
+
+Then set up the [Next.js frontend](https://github.com/wnr-group/store-forge), which needs this API running and the same `AUTH_BFF_SECRET`.
+
+## Database setup
+
+The API owns the schema, migrations and database scripts. The frontend has none of them. Do these steps in order.
+
+**Step 1. Apply migrations.** This creates the tables, RLS policies, functions, storage bucket and the `storeforge_app` role (migration `0004_app_role.sql`). It uses `DIRECT_URL`.
 
 ```bash
-git clone https://github.com/wnr-group/store-forge-api.git
-cd store-forge-api
-npm install
-cp .env.example .env.local   # Windows PowerShell: Copy-Item .env.example .env.local
+npm run db:migrate
 ```
 
-## Environment configuration
+If it fails on `GRANT authenticated TO storeforge_app`, run that one statement in the Supabase SQL Editor as the project owner, then run `npm run db:migrate` again.
 
-`.env.example` documents every variable. `.env.local` and `.env` are git-ignored: never commit them.
-Environment files are loaded in order of precedence: `.env.local` first (for local developer overrides), then `.env`. Real `process.env` always takes precedence over both files.
+**Step 2. Set the app role's password.** The migration creates `storeforge_app` without a password. In the Supabase SQL Editor run:
 
-| Variable | Default | Meaning |
+```sql
+ALTER ROLE storeforge_app WITH PASSWORD '<long random password>';
+```
+
+Put that password into `DATABASE_URL` in `.env`. The API refuses to start as `postgres`, because that role bypasses RLS.
+
+**Step 3. Verify.** Check the Drizzle schema against the live database (read-only). Run it with `DATABASE_URL` pointing at the owner connection:
+
+```bash
+npm run db:state           # show database state (read-only)
+DATABASE_URL=$DIRECT_URL npm run db:verify-schema
+# PowerShell: $env:DATABASE_URL=$env:DIRECT_URL; npm run db:verify-schema
+```
+
+Re-run it after any migration, policy or grant change.
+
+**Step 4. Create the first Platform Admin.** This is the only way to create one: there is no web flow, API or policy that can promote a user, so nobody can make themselves an admin. Run it from a trusted machine. The password is read from the environment, not the command line, so it stays out of shell history:
+
+```bash
+PLATFORM_ADMIN_PASSWORD='<at least 12 characters>' npm run admin:create -- --email you@yourcompany.com --name "Your Name"
+# PowerShell: $env:PLATFORM_ADMIN_PASSWORD='<password>'; npm run admin:create -- --email you@yourcompany.com --name "Your Name"
+```
+
+It uses `SUPABASE_SERVICE_ROLE_KEY` to create a confirmed Auth user and `DIRECT_URL` to add it to `platform_admins`. If the email already has an Auth account, that account is promoted instead (unless it is already a company member: use a separate account). Sign in at the frontend's `/login`; Platform Admins land on `/admin`. Change the password afterwards under **Change password** in the account menu.
+
+**Step 5 (optional). Seed demo data.** Development projects only. It creates one demo store, Urban Nest (slug `urban-nest-demo`), with 26 products (57 variants), 8 categories, 6 collections, 28 customers, 46 orders over the last 90 days and an inventory ledger, plus four dummy logins (company Owner, Manager and Staff, and a Platform Admin). The passwords are public, so never run it against a real project. It refuses to run when `NODE_ENV` or `VERCEL_ENV` is `production`, needs `SEED_DEMO_DATA=true`, and is safe to re-run (existing rows are skipped).
+
+```bash
+SEED_DEMO_DATA=true npm run db:seed:demo
+# PowerShell: $env:SEED_DEMO_DATA='true'; npm run db:seed:demo
+```
+
+## Environment variables
+
+Environment files are loaded in order: `.env.local` first (preferred for local overrides), then `.env`. Neither is committed.
+
+`.env.example` lists every variable. They are validated at startup ([src/config/env.validation.ts](src/config/env.validation.ts)); a bad value stops the app with an error that names the variable but never shows its value.
+
+| Variable | Required | Meaning |
 |---|---|---|
-| `NODE_ENV` | `development` | `development`, `production` or `test` |
-| `PORT` | `4000` | Listen port (the frontend uses 3000) |
-| `API_PREFIX` | `api/v1` | Global route prefix |
-| `CORS_ORIGINS` | `http://localhost:3000` | Comma-separated exact origins; `*` is rejected in production |
-| `SWAGGER_ENABLED` | on outside production, off in production | Serve Swagger UI |
-| `DATABASE_URL` | none (required unless `NODE_ENV=test`) | PostgreSQL connection URL (role `storeforge_app` only) |
-| `DB_POOL_MAX` | `5` | Maximum database pool connections |
-| `DB_PREPARE` | `false` | Enable prepared statements (keep false for transaction poolers) |
-| `DB_CONNECT_TIMEOUT_SECONDS` | `10` | Database connection timeout in seconds |
+| `NODE_ENV` | no (`development`) | `development`, `production` or `test` |
+| `PORT` | no (`4000`) | Port to listen on |
+| `API_PREFIX` | no (`api/v1`) | Route prefix |
+| `CORS_ORIGINS` | no (`http://localhost:3000`) | Comma-separated browser origins allowed to call the API. `*` is rejected in production |
+| `SWAGGER_ENABLED` | no | Serve Swagger UI. On by default, off in production |
+| `SUPABASE_URL` | **yes** | `https://<ref>.supabase.co` |
+| `SUPABASE_ANON_KEY` | **yes** | Public anon key. Used to re-check a password on change, and for Storage calls made with the caller's own token |
+| `SUPABASE_SERVICE_ROLE_KEY` | **yes** | Server only. Used only for the Auth Admin API (create and delete users, set passwords), never for queries |
+| `DATABASE_URL` | **yes** | Transaction pooler URL for the `storeforge_app` role. The app refuses to start as `postgres`, because that role bypasses RLS |
+| `DIRECT_URL` | for scripts | Owner connection, used only by `db:migrate`, `admin:create` and `db:verify-schema` |
+| `AUTH_BFF_SECRET` | recommended | 32+ characters, the same value as in the Next.js app. Lets the frontend server pass the real visitor address and call the cookie routes without a browser Origin |
+| `SUPABASE_JWKS_URL` | no | Defaults to `${SUPABASE_URL}/auth/v1/.well-known/jwks.json` |
+| `SUPABASE_JWT_SECRET` | no | Only for legacy projects that sign tokens with a shared HS256 secret |
+| `RATE_LIMIT_SECRET` | no | Keys the login rate-limit hashes. Defaults to the service-role key |
+| `THROTTLE_TTL_SECONDS` / `THROTTLE_LIMIT` | no (`60` / `120`) | Global per-client rate limit. Sensitive routes use stricter limits |
 
-Variables are validated at startup ([src/config/env.validation.ts](src/config/env.validation.ts)). A bad value stops the app with an error that names the variable and the rule, never the value. To add a variable, add it to `EnvironmentVariables`, to `AppConfig` / `buildConfig` in [src/config/configuration.ts](src/config/configuration.ts), and to `.env.example`.
+## How authentication works
 
-Database access connects exclusively as `storeforge_app` to project `xrkwyjnjemyxrbdbfmcn` (see [docs/architecture/overview.md](docs/architecture/overview.md)).
+1. **Browsers** sign in through the API: `POST /auth/login` checks the credentials with Supabase Auth and sets HttpOnly session cookies. `/auth/logout`, `/auth/refresh` and `/auth/session` complete the flow. The Next.js server makes these calls and relays the cookies.
+2. **API clients and Swagger** can instead send `Authorization: Bearer <access_token>` with a Supabase access token.
+3. Tokens are checked for signature, issuer, audience, expiry and `role = authenticated`. The API issues no tokens and stores no passwords. There is no sign-up: only existing accounts can sign in.
+4. Roles are never read from the token. They are loaded from Postgres (`memberships`, `platform_admins`) on every request.
+5. Organization routes use the organization named in the `X-Organization-Id` header. It must match one of the caller's active memberships, or the API returns `403 ORGANIZATION_ACCESS_DENIED`. Without the header, the caller's first organization is used.
 
-## Database and schema ownership
+More detail: [Cookie session auth](docs/COOKIE_SESSION_AUTH.md), [Authentication analysis](docs/AUTHENTICATION_ANALYSIS.md), [Role and permission matrix](docs/ROLE_PERMISSION_MATRIX.md).
 
-The frontend (`wnr-group/store-forge`) is the single source of truth for migrations and schema.
-The backend maintains a read-only mirror and migration snapshot:
+## Trying the API in Swagger
 
-```bash
-# Sync from frontend repository:
-node scripts/sync-schema.mjs sync --source ../store-forge
-
-# Run schema drift check:
-node scripts/sync-schema.mjs check --source ../store-forge
+```powershell
+npm run start:dev      # Swagger at http://localhost:4000/api/docs
+npm run auth:token     # asks for email and password, copies an access token to the clipboard
 ```
 
-## Running locally
+In Swagger click **Authorize**, paste the token (without typing `Bearer`), then try `GET /api/v1/auth/me`. Full walkthrough: [Swagger authentication guide](docs/SWAGGER_AUTHENTICATION_GUIDE.md).
 
-```bash
-npm run start:dev        # watch mode, http://localhost:4000
-```
+## Tenant isolation
 
-Check it:
+Two independent layers protect each company's data:
 
-```bash
-curl http://localhost:4000/api/v1/health
-# {"status":"ok","service":"store-forge-api"}
-```
+1. **NestJS guards** (`JwtAuthGuard`, `OrganizationContextGuard`, `PermissionsGuard`, `PlatformAdminGuard`) resolve the organization from the database and check permissions.
+2. **PostgreSQL Row Level Security.** Every query runs in a transaction that sets the verified user id and switches to the `authenticated` role ([src/database/user-context.ts](src/database/user-context.ts)). The RLS policies therefore apply to every query, even if a service forgets a filter. The app fails closed if the connection could bypass RLS.
 
-Production-style run:
+The service-role key never touches the database layer.
 
-```bash
-npm run build
-npm run start:prod       # node dist/main
-```
+## API overview
 
-## Testing and quality checks
+Base path `/api/v1`. The OpenAPI JSON is at `/api/docs-json`. Every endpoint with its permissions and rules is listed in [docs/API_ENDPOINT_INVENTORY.md](docs/API_ENDPOINT_INVENTORY.md).
 
-| Command | What it does |
+| Area | Routes |
 |---|---|
-| `npm test` | Unit tests (`src/**/*.spec.ts`) |
-| `npm run test:e2e` | E2E tests (`test/**/*.e2e-spec.ts`), boots the app with the real bootstrap pipeline |
-| `npm run test:int` | PGlite database integration tests (`src/**/*.int-spec.ts`), applies snapshot migrations locally |
-| `npm run test:cov` | Unit tests with coverage |
-| `npm run lint` | oxlint, type-aware |
-| `npm run typecheck` | `tsc --noEmit` |
-| `npm run format` / `format:check` | Prettier write / check |
-| `npm run build` | Compile to `dist/` |
+| Health and public | `GET /health`, `GET /health/ready`, `GET /public/branding`, `GET /public/storefronts/:slug` |
+| Identity | `/auth/*`, `GET/PATCH /users/me`, `GET /organizations`, `GET /organizations/current` |
+| Store | `GET/PATCH /store`, `POST /uploads/signed-urls` |
+| Team (Owner) | `/team/members` (list, add, edit, remove, status, password reset) |
+| Catalog | `/categories`, `/collections`, `/products`, `/inventory`, `/inventory/adjustments` |
+| Theme Store and design | `GET /themes`, `GET /themes/:slug`, `GET/POST /store/theme`, `POST /store/theme/publish`, `/store/templates/*` (list, open, preview, save draft, publish, history, restore) |
+| Customers and analytics | `/customers`, `GET /analytics` |
+| Platform Admin | `/platform/*`: organizations, admins, settings, audit logs, usage |
 
-Run `npm run typecheck && npm run lint && npm test && npm run test:e2e && npm run build` before opening a PR.
+Every response uses one envelope.
 
-## Swagger
+```jsonc
+// success (meta only on paginated lists)
+{ "success": true, "message": "...", "data": {}, "meta": { "page": 1, "limit": 20, "total": 0, "totalPages": 0 } }
 
-With `SWAGGER_ENABLED` on (the default in development): **http://localhost:4000/api/docs** (JSON at `/api/docs-json`). Only implemented endpoints are documented; today that is the health check.
+// error
+{ "success": false, "message": "...", "error": { "code": "PRODUCT_NOT_FOUND", "details": null }, "timestamp": "...", "path": "/api/v1/products/123" }
+```
+
+Unknown and database errors become a generic 500. Details are logged on the server only.
+
+**Not included on purpose:** sign-up, email verification, invitations, creating or editing orders (orders are read-only), billing, subscriptions, integrations and template customization. See [docs/EXCLUDED_FEATURES.md](docs/EXCLUDED_FEATURES.md).
+
+## Commands
+
+| Command | Purpose |
+|---|---|
+| `npm run start:dev` | Start in watch mode |
+| `npm run build` / `npm run start:prod` | Compile / run the build |
+| `npm test` | Unit tests |
+| `npm run test:e2e` | Integration tests: full HTTP stack on an in-memory Postgres (PGlite) with the real migrations and RLS |
+| `npm run test:all` | Unit and e2e tests |
+| `npm run coverage:routes` | Run the e2e suite and report which routes a test exercised |
+| `npm run lint` / `typecheck` / `format:check` | oxlint / TypeScript / Prettier |
+| `npm run db:migrate` | Apply migrations (uses `DIRECT_URL`) |
+| `npm run db:state` | Show database state (read-only) |
+| `npm run db:verify-schema` | Compare the Drizzle schema with the live database (read-only). Run with `DATABASE_URL=$DIRECT_URL` |
+| `npm run admin:create` | Create the first Platform Admin |
+| `npm run db:seed:demo` | Add demo data (development only) |
+| `npm run auth:token` | Windows: copy a Supabase access token to the clipboard for Swagger |
+
+The e2e suites apply the migrations in `src/database/migrations`. Set `STOREFORGE_MIGRATIONS_DIR` to test another folder. If the folder is missing, those suites are skipped with a visible warning.
+
+Before opening a PR: `npm run typecheck && npm run lint && npm test && npm run test:e2e && npm run build`.
 
 ## Project structure
 
 ```text
 src/
-  main.ts              Starts the app (reads config, listens)
-  app.setup.ts         configureApp(): prefix, validation, error filter, helmet, CORS, Swagger
-                       (shared by main.ts and e2e tests so tests run the real pipeline)
-  app.module.ts        Root module: ConfigModule + feature modules
-  config/              Env validation and typed AppConfig
-  common/              Cross-cutting code shared by modules (filters now; guards, decorators, pipes as needed)
-  modules/             One folder per business capability (today: health)
-  infrastructure/      Technical adapters (database, storage, ...) - see its README
-test/                  E2E tests
-docs/                  Architecture overview and developer guides
+  main.ts, app.setup.ts   Startup and shared app configuration
+  app.module.ts           Root module; global guards run in a fixed order
+  config/                 Environment validation and typed config
+  database/               Drizzle schema, migrations, RLS transactions, schema drift check
+  common/                 Errors, exception filter, response envelope, guards, decorators, permission rules
+  modules/                One folder per feature:
+                          auth, users, organizations, store, storage, team, categories,
+                          collections, products, inventory, customers, analytics, public,
+                          health, platform-admin
+test/                     E2E suites and test support (PGlite harness, signed test tokens)
+scripts/                  Migration, admin creation, seeding, schema check, route coverage
+docs/                     Design notes, schema, permission matrix, endpoint inventory
 ```
 
-## Module development guide
+## Development rules
 
-Generate a module (the CLI registers it in `AppModule` and uses the `.js` import suffix this ESM project requires):
+- **ESM:** relative imports end in `.js`. Tests use Vitest (`vi.fn()`).
+- **Controllers** only turn HTTP into a service call. **Services** hold the rules and reach the database only through `DatabaseService.withUser(userId, tx => ...)`.
+- **Every new route** needs `@ApiTags`, `@ApiEndpoint({...})` Swagger metadata, a permission decorator (`@RequirePermission`, `@PlatformAccess` or `@Public`) and a test. `test/swagger.e2e-spec.ts` fails if a route is undocumented.
+- **Never** read `process.env` (use `ConfigService<AppConfig, true>`), log request bodies, headers or query strings, return internal error messages, or take a tenant id from the request without the guards.
+- **Schema changes:** add a migration in `src/database/migrations`, update `src/database/schema`, and run `npm run db:verify-schema`.
 
-```bash
-npx nest generate module modules/products
-npx nest generate controller modules/products
-npx nest generate service modules/products
-npm run format           # the generator's output is not Prettier-formatted
-```
+## Known gaps
 
-Then add DTOs in `modules/products/dto/`, Swagger decorators on the controller, and unit tests next to the code. [`src/modules/health`](src/modules/health) is the reference example.
+- **Schema ownership is settled.** This repository owns the schema and migrations, and the Next.js app has no database access. Its older copy of the migrations has been removed.
+- **CI exists** ([.github/workflows/ci.yml](.github/workflows/ci.yml)). Deployment to Vercel is configured in `vercel.json`.
+- **Live checks are still pending.** The automated tests use fakes at the Supabase boundary (JWKS, Auth Admin API, Storage) and PGlite for the database. Most frontend features are marked "Migrated, live check pending" in the frontend's `docs/migration-status.md`. Run the smoke checklist in [docs/API_READINESS_REPORT.md](docs/API_READINESS_REPORT.md) against a real Supabase project before relying on a release.
+- **Latency.** Each request uses two transactions, so a remote pooler adds round trips. See the readiness report for the cheap fixes.
 
-## Development conventions
+[docs/API_READINESS_REPORT.md](docs/API_READINESS_REPORT.md) was written on 2026-11-10 and its "Remaining issues" list is partly out of date (CI, frontend integration and schema ownership have all moved on).
 
-- **ESM project:** relative imports end in `.js` (`import { X } from './x.js'`), there is no `__dirname` (use `import.meta.dirname`), and tests use Vitest (`vi.fn()`, not `jest.fn()`).
-- **Module boundaries:** a module owns one business capability. Import another module only through its `exports`; never reach into another module's files or tables.
-- **Controllers** only translate HTTP to a service call: routing, DTOs, Swagger decorators. No business logic, no database access.
-- **Services** hold business rules and are the unit of dependency injection. Inject dependencies through constructors.
-- **DTOs** are classes with `class-validator` decorators. The global `ValidationPipe` strips unknown properties, rejects requests that contain them (`forbidNonWhitelisted`) and transforms payloads to DTO instances.
-- **Errors:** throw Nest `HttpException`s (`NotFoundException`, ...). The global filter returns `{ statusCode, error, message, path, timestamp }`; unknown errors become a generic 500 and are logged server-side only.
-- **Configuration:** read it through `ConfigService<AppConfig, true>`, never `process.env` directly.
-- **Tests:** unit-test services and pure functions in `*.spec.ts` next to the code; cover HTTP behaviour in `test/*.e2e-spec.ts`.
-- **Security:** never log request bodies, headers or query strings, and never return internal error messages.
-
-## Current limitations
-
-Not implemented yet (none of this is hidden or stubbed):
-
-- **Authentication and authorization.** There are no guards. Only the public health endpoint exists. Authentication, tenant resolution and per-module authorization must be built and tested **before any protected business endpoint is added**.
-- **Database access.** No driver, ORM or connection. The health check is application-level only and does not check any dependency.
-- **Business modules** (catalog, team, platform admin, templates, ...).
-- **Frontend integration.** The Next.js app does not call this API yet.
-- **Deployment, CI, rate limiting, observability beyond JSON logs in production.**
-
-Open architecture decisions are listed in [docs/architecture/overview.md](docs/architecture/overview.md). New developers: start with [docs/development/santu-onboarding.md](docs/development/santu-onboarding.md).
+New developers: start with [docs/development/getting-started.md](docs/development/getting-started.md) and [docs/architecture/overview.md](docs/architecture/overview.md).
