@@ -55,6 +55,16 @@ const SECTION_TYPES: Record<TemplateKind, readonly string[]> = {
   group_announcement: ['announcement-bar'],
 };
 
+/** Generated storefront pages a theme document may redesign. Keep in step with the frontend's lib/storefront/pages.ts. */
+const THEME_PAGE_KEYS = [
+  'products',
+  'collections',
+  'search',
+  'cart',
+  'wishlist',
+  'content',
+];
+
 /** Setting keys that hold a link. */
 const URL_KEYS = new Set(['link', 'url', 'linkUrl']);
 
@@ -142,7 +152,11 @@ class Walker {
   private components = 0;
   private readonly seenIds = new Set<string>(['__proto__']);
 
-  constructor(private readonly ctx: ValidationContext) {}
+  constructor(
+    private readonly ctx: ValidationContext,
+    /** Pages stored in the theme may use any section type (the cart and wishlist sections are not offered on page templates). */
+    private readonly anySection = false,
+  ) {}
 
   add(path: string, message: string) {
     if (this.issues.length < 50) this.issues.push({ path, message });
@@ -243,7 +257,11 @@ class Walker {
       !/^[a-z][a-z0-9-]{0,63}$/.test(node.type)
     )
       this.add(`${path}.type`, 'Type is required.');
-    else if (isSection && !SECTION_TYPES[this.ctx.kind].includes(node.type))
+    else if (
+      isSection &&
+      !this.anySection &&
+      !SECTION_TYPES[this.ctx.kind].includes(node.type)
+    )
       this.add(
         `${path}.type`,
         `A "${node.type}" section is not allowed on this page.`,
@@ -293,6 +311,26 @@ class Walker {
       this.node(`sections.${id}`, id, section, 1, true, { blocks: 0 });
   }
 
+  /** Storefront pages the theme overrides (all products, cart ...): each is a whole page document. */
+  private pages(values: Record<string, unknown>) {
+    for (const [key, doc] of Object.entries(values)) {
+      const at = `settings.pages.${key}`;
+      if (!THEME_PAGE_KEYS.includes(key)) {
+        this.add(at, 'Unknown page.');
+        continue;
+      }
+      if (!isRecord(doc)) {
+        this.add(at, 'Must be an object.');
+        continue;
+      }
+      // A fresh walker per page: ids only have to be unique inside one page.
+      const sub = new Walker(this.ctx, true);
+      sub.page(doc);
+      for (const issue of sub.issues)
+        this.add(`${at}.${issue.path}`, issue.message);
+    }
+  }
+
   themeSettings(doc: Record<string, unknown>) {
     if (!isRecord(doc.settings))
       return this.add('settings', 'Must be an object.');
@@ -305,6 +343,7 @@ class Walker {
       'productCards',
       'productPage',
       'social',
+      'pages',
     ];
     for (const [group, values] of Object.entries(doc.settings)) {
       if (!groups.includes(group)) {
@@ -313,6 +352,10 @@ class Walker {
       }
       if (!isRecord(values)) {
         this.add(`settings.${group}`, 'Must be an object.');
+        continue;
+      }
+      if (group === 'pages') {
+        this.pages(values);
         continue;
       }
       for (const [k, v] of Object.entries(values)) {
