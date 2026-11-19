@@ -69,7 +69,6 @@ export function usePaymentsDb() {
     ownerD: string;
     tenantD: string;
   };
-  let tenantD: string;
 
   const own = <T>(fn: (pg: PGlite) => Promise<T>) => t.asOwner(fn);
   const rowOf = async (tenantId: string) =>
