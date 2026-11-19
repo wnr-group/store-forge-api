@@ -21,6 +21,7 @@ import type {
   TemplateSummaryDto,
   TemplateVersionDto,
 } from './themes.dto.js';
+import { ProductPresentationsService } from './product-presentations.service.js';
 import { ThemesRepository, type TemplateRow } from './themes.repository.js';
 import {
   documentInvalid,
@@ -53,6 +54,7 @@ export class TemplatesService {
   constructor(
     private readonly db: DatabaseService,
     private readonly repo: ThemesRepository,
+    private readonly presentations: ProductPresentationsService,
   ) {}
 
   async list(ctx: OrgContext): Promise<TemplateSummaryDto[]> {
@@ -181,7 +183,8 @@ export class TemplatesService {
 
   /**
    * Publishes the whole theme in one transaction: every page and shared document whose draft differs from its live
-   * version. Either all of them go live or none do, so shoppers never see half a redesign.
+   * version, plus the draft settings of every customized product. Either all of them go live or none do, so shoppers
+   * never see half a redesign.
    */
   async publishTheme(
     ctx: OrgContext,
@@ -212,6 +215,13 @@ export class TemplatesService {
               }),
             ),
           );
+        // Product settings waiting to go live are locked and validated with the pages, still before any write.
+        const pending = await this.presentations.prepareThemePublish(
+          tx,
+          ctx,
+          store.id,
+        );
+        Object.assign(problems, pending.problems);
         if (Object.keys(problems).length)
           throw invalid(
             'This design has problems that must be fixed first.',
@@ -242,7 +252,20 @@ export class TemplatesService {
             at = outcome.at;
           } else unchanged += 1;
         }
-        return { published, unchanged, storeSlug: store.slug, publishedAt: at };
+        const presentationsLive = await this.presentations.publishCandidates(
+          tx,
+          ctx,
+          store.id,
+          pending.candidates,
+        );
+        if (presentationsLive && !published.length) at = new Date();
+        return {
+          published,
+          unchanged,
+          storeSlug: store.slug,
+          publishedAt: at,
+          productPresentations: { published: presentationsLive },
+        };
       }),
     );
   }

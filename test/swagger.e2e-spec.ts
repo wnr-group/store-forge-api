@@ -79,8 +79,8 @@ describe('OpenAPI coverage (e2e)', () => {
     await app.close();
   });
 
-  it('documents every endpoint listed in docs/API_ENDPOINT_INVENTORY.md (74 migrated + 1 bulk import + 4 cookie-session + 12 theme store + 4 public design routes + 5 store pages routes + 2 public page routes)', () => {
-    expect(operations.length).toBe(102);
+  it('documents every endpoint listed in docs/API_ENDPOINT_INVENTORY.md (74 migrated + 1 bulk import + 4 cookie-session + 12 theme store + 4 public design routes + 5 store pages routes + 2 public page routes + 5 product presentation routes)', () => {
+    expect(operations.length).toBe(107);
   });
 
   it('gives every operation a summary, a description, a tag, a success and an error response', () => {
