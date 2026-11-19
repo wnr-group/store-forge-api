@@ -14,6 +14,7 @@ import { drizzle } from 'drizzle-orm/pglite';
 import { migrate } from 'drizzle-orm/pglite/migrator';
 import { describe, expect, it } from 'vitest';
 import { isValidKeyId } from '../src/modules/payments/key-id.js';
+import { KEY_ID_CORPUS } from './support/key-id-corpus.js';
 import { SUPABASE_STUB } from './support/database/supabase-stub.js';
 import {
   asUser,
@@ -195,21 +196,10 @@ describe.skipIf(!migrationsAvailable)(
       });
 
       it('AC-DB-06: the database Key ID check and the API Key ID pattern accept and reject the same corpus', async () => {
-        const corpus = [
-          'rzp_test_abcdefgh',
-          'rzp_live_ABCDEFGH12',
-          'rzp_test_abcdefg',
-          'rzp_demo_abcdefgh',
-          'RZP_test_abcdefgh',
-          'rzp_test_abcd efgh',
-          'rzp_test_abcdefgh\n',
-          ' rzp_test_abcdefgh',
-          'rzp_test_abcdefg_',
-          'rzp_live_',
-          '',
-        ];
+        // The same list the unit spec checks the API pattern against (src/modules/payments/key-id-corpus.spec.ts).
+        const corpus = KEY_ID_CORPUS.map(([value]) => value);
         const disagreements: string[] = [];
-        for (const candidate of corpus) {
+        for (const [candidate, expected] of KEY_ID_CORPUS) {
           const db = await outcome(
             own((pg) =>
               pg.query(
@@ -219,7 +209,10 @@ describe.skipIf(!migrationsAvailable)(
             ),
           );
           await clear();
-          if ((db === 'ok') !== isValidKeyId(candidate))
+          if (
+            (db === 'ok') !== expected ||
+            isValidKeyId(candidate) !== expected
+          )
             disagreements.push(JSON.stringify(candidate));
         }
         await evidence(

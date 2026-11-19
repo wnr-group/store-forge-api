@@ -79,8 +79,10 @@ describe('OpenAPI coverage (e2e)', () => {
     await app.close();
   });
 
-  it('documents every endpoint listed in docs/API_ENDPOINT_INVENTORY.md (74 migrated + 4 cookie-session + 12 theme store + 4 public design routes + 5 store pages routes + 2 public page routes + 3 payments routes)', () => {
-    expect(operations.length).toBe(104);
+  it('documents every endpoint listed in docs/API_ENDPOINT_INVENTORY.md (74 migrated + 4 cookie-session + 12 theme store + 4 public design routes + 5 store pages routes + 2 public page routes)', () => {
+    // The title is the baseline test's name and is kept so the regression comparison can still find it. The 3 payments routes
+    // (inventory rows 102 to 104) are on top of the 101 the title lists.
+    expect(operations.length).toBe(101 + 3);
   });
 
   it('gives every operation a summary, a description, a tag, a success and an error response', () => {

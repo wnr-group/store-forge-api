@@ -584,6 +584,25 @@ describe.skipIf(!migrationsAvailable)(
     });
 
     describe('documentation', () => {
+      it('AC-REG-13: the OpenAPI document gained exactly the three payments operations and no other route changed', async () => {
+        const { default: request } = await import('supertest');
+        const doc = (
+          await request(h.t.app.getHttpServer()).get('/api/docs-json')
+        ).body as { paths: Record<string, Record<string, unknown>> };
+        const methods = ['get', 'post', 'patch', 'put', 'delete'];
+        const ops = Object.entries(doc.paths).flatMap(([path, item]) =>
+          methods.filter((m) => item[m]).map((m) => `${m} ${path}`),
+        );
+        const payments = ops.filter((o) => o.includes('/payments/'));
+        // 101 is the operation count of the baseline (origin/main) application.
+        expect(ops.length - payments.length).toBe(101);
+        expect(payments.sort()).toEqual([
+          'delete /api/v1/payments/razorpay',
+          'get /api/v1/payments/razorpay',
+          'put /api/v1/payments/razorpay',
+        ]);
+      });
+
       it('AC-API-16: Swagger documents all three routes with the header, bearer auth and error responses', async () => {
         const { default: request } = await import('supertest');
         const doc = (
