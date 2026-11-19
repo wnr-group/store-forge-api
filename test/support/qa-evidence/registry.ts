@@ -32,7 +32,22 @@ export interface AcRegistryEntry {
    * nothing that passed at the baseline may fail or disappear.
    */
   regressionSpecs: string[];
+  /** Other criteria that must be DONE before this one can be (the row's text asks for more than its test file shows). */
+  dependsOn: string[];
 }
+
+/**
+ * Where a matrix row's wording asks for something beyond what its named test files prove, the part that is proven
+ * elsewhere is listed here, so the row cannot be DONE while that criterion is not. Reviewed, not inferred.
+ */
+export const EXPLICIT_DEPENDENCIES: Readonly<
+  Record<string, readonly string[]>
+> = {
+  // "Existing tenant deletion works and now also removes the new row": the second half is the cascade criterion.
+  'AC-REG-09': ['AC-RLS-15'],
+  // "Existing tenant APIs unchanged; flag not exposed": the second half is the no-exposure criterion.
+  'AC-REG-08': ['AC-DB-11'],
+};
 
 const ID_CELL = /^AC-[A-Z]+-\d+[a-z]?$/;
 
@@ -114,6 +129,7 @@ export function parsePlanMatrix(markdown: string): AcRegistryEntry[] {
       blockedReason,
       initialStatus: blockedReason ? 'BLOCKED' : 'NOT RUN',
       regressionSpecs: acId.startsWith('AC-REG-') ? testFilesOf(method) : [],
+      dependsOn: [...(EXPLICIT_DEPENDENCIES[acId] ?? [])],
     });
   }
   return entries;

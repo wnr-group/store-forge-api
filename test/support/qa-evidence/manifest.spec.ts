@@ -39,6 +39,7 @@ const ac = (
   blockedReason: undefined,
   initialStatus: 'NOT RUN',
   regressionSpecs: [],
+  dependsOn: [],
   ...over,
 });
 
@@ -657,5 +658,84 @@ describe('regression criteria: nothing that passed at the baseline may stop pass
         tests: 3,
       },
     ]);
+  });
+});
+
+describe('explicit dependencies between criteria', () => {
+  const SPEC = 'test/platform.e2e-spec.ts';
+  const reg = ac('AC-REG-09', {
+    layers: ['HTTP'],
+    evidenceFiles: ['test-results/AC-REG-09.txt'],
+    regressionSpecs: [SPEC],
+    dependsOn: ['AC-RLS-15'],
+  });
+  const dep = (over: Partial<AcRegistryEntry> = {}) =>
+    ac('AC-RLS-15', { layers: ['PG'], evidenceFiles: [], ...over });
+  const http = (name: string, status: string) =>
+    test(name, status, 'HTTP', SPEC);
+  const baseline = report([http('deletes a tenant', 'passed')], {
+    path: 'test-results/baseline/api-e2e.json',
+  });
+  const current = report([http('deletes a tenant', 'passed')]);
+  const run = (registry: AcRegistryEntry[], extra: TestResult[] = []) =>
+    build({
+      registry,
+      reports: [current, report(extra, { path: 'test-results/db.json' })],
+      baselines: [baseline],
+      files: present({ 'test-results/AC-REG-09.txt': 100 }),
+      generated: ['test-results/AC-REG-09.txt'],
+    });
+
+  it('is NOT VERIFIED while the criterion it depends on is not DONE, and its records say so', () => {
+    const m = run([reg, dep()]);
+    const r = statusOf(m, 'AC-REG-09');
+    expect(r?.status).toBe('NOT VERIFIED');
+    expect(r?.reason).toContain('AC-RLS-15 (NOT RUN)');
+    expect(m.records.find((x) => x.acId === 'AC-REG-09')?.status).toBe(
+      'NOT VERIFIED',
+    );
+  });
+
+  it('is DONE once the criterion it depends on is DONE', () => {
+    const m = run(
+      [reg, dep()],
+      [
+        test(
+          'cascade (AC-RLS-15)',
+          'passed',
+          'PG',
+          'test/payments-database.e2e-spec.ts',
+        ),
+      ],
+    );
+    expect(statusOf(m, 'AC-RLS-15')?.status).toBe('DONE');
+    expect(statusOf(m, 'AC-REG-09')?.status).toBe('DONE');
+  });
+
+  it('is NOT VERIFIED when the dependency belongs to the other repository', () => {
+    const m = run([reg, dep({ repo: 'frontend' })]);
+    expect(statusOf(m, 'AC-REG-09')?.reason).toContain(
+      'AC-RLS-15 (not in this repository)',
+    );
+  });
+
+  it('a failed dependency also holds it back, and is named with its status', () => {
+    const m = run(
+      [reg, dep()],
+      [
+        test(
+          'cascade (AC-RLS-15)',
+          'failed',
+          'PG',
+          'test/payments-database.e2e-spec.ts',
+        ),
+      ],
+    );
+    expect(statusOf(m, 'AC-REG-09')?.reason).toContain('AC-RLS-15 (FAILED)');
+  });
+
+  it('does not touch a row that is not DONE anyway', () => {
+    const m = build({ registry: [reg, dep()] });
+    expect(statusOf(m, 'AC-REG-09')?.status).toBe('NOT RUN');
   });
 });

@@ -339,6 +339,25 @@ export function buildManifest(input: BuildInput): Manifest {
     }
   }
 
+  // A row whose wording asks for more than its own tests show cannot be DONE while the criterion that proves the rest is not.
+  const dependencies = new Map(registry.map((e) => [e.acId, e.dependsOn]));
+  for (const a of acs) {
+    if (a.status !== 'DONE') continue;
+    const unmet = (dependencies.get(a.acId) ?? []).filter(
+      (id) => acs.find((x) => x.acId === id)?.status !== 'DONE',
+    );
+    if (!unmet.length) continue;
+    a.status = 'NOT VERIFIED';
+    a.reason = `depends on ${unmet
+      .map(
+        (id) =>
+          `${id} (${acs.find((x) => x.acId === id)?.status ?? 'not in this repository'})`,
+      )
+      .join(', ')}, which is not DONE`;
+  }
+  for (const r of records)
+    r.status = acs.find((a) => a.acId === r.acId)?.status ?? r.status;
+
   const byStatus = Object.fromEntries(
     STATUSES.map((s) => [s, acs.filter((a) => a.status === s).length]),
   ) as Record<AcStatus, number>;
