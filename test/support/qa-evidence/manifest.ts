@@ -170,12 +170,15 @@ function regressionTests(
   const out: AcResult['tests'] = [];
   for (const spec of entry.regressionSpecs) {
     const layer = layerOfTest(spec, '');
+    // The comparison is attributed to the current run's report that holds this file's results, so the evidence record
+    // names that run's command and environment.
+    const current = reports.find((r) => r.results.some((t) => t.file === spec));
     const row = (status: string, fullName: string) => ({
       file: spec,
       fullName: `${entry.acId} regression: ${fullName}`,
       layer,
       status,
-      report: 'baseline-comparison',
+      report: current?.path ?? reports[0]?.path ?? 'baseline-comparison',
     });
     const before = (baselines ?? []).flatMap((r) =>
       r.results.filter((t) => t.file === spec && t.status === 'passed'),
@@ -333,7 +336,9 @@ export function buildManifest(input: BuildInput): Manifest {
         environment: provenance?.environment ?? firstReport?.environment ?? '',
         actualResult:
           provenance?.actualResult ??
-          `${passed.length} passed, ${failed.length} failed (layers: ${observed.join(', ') || 'none'})`,
+          (entry.regressionSpecs.length
+            ? tests.map((t) => t.fullName).join('; ')
+            : `${passed.length} passed, ${failed.length} failed (layers: ${observed.join(', ') || 'none'})`),
         status,
       });
     }

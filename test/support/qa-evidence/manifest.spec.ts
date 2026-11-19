@@ -739,3 +739,46 @@ describe('explicit dependencies between criteria', () => {
     expect(statusOf(m, 'AC-REG-09')?.status).toBe('NOT RUN');
   });
 });
+
+describe('records of a regression criterion carry the command and environment of the current run', () => {
+  const SPEC = 'test/store-team.e2e-spec.ts';
+  const registry = [
+    ac('AC-REG-04', {
+      layers: ['HTTP'],
+      evidenceFiles: ['test-results/AC-REG-04.txt'],
+      regressionSpecs: [SPEC],
+    }),
+  ];
+  const t = (name: string) => test(name, 'passed', 'HTTP', SPEC);
+
+  it('names the current report’s command and environment, and says what was compared', () => {
+    const m = build({
+      registry,
+      reports: [
+        report([t('adds a member')], {
+          path: 'test-results/api-e2e.json',
+          command: 'npm run test:e2e -- --reporter=json',
+          environment: 'pglite',
+        }),
+      ],
+      baselines: [
+        report([t('adds a member')], {
+          path: 'test-results/baseline/api-e2e.json',
+        }),
+      ],
+      files: present({ 'test-results/AC-REG-04.txt': 200 }),
+      generated: ['test-results/AC-REG-04.txt'],
+    });
+    expect(statusOf(m, 'AC-REG-04')?.status).toBe('DONE');
+    const [record] = m.records;
+    expect(record).toMatchObject({
+      acId: 'AC-REG-04',
+      command: 'npm run test:e2e -- --reporter=json',
+      environment: 'pglite',
+      status: 'DONE',
+    });
+    expect(record?.testName).toContain('AC-REG-04 regression');
+    expect(record?.actualResult).toContain('still pass');
+    for (const v of Object.values(record ?? {})) expect(v).not.toBe('');
+  });
+});
