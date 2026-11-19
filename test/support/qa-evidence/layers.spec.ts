@@ -23,6 +23,8 @@ describe('verification layer of a test', () => {
     ['/r/test/payments.e2e-spec.ts', 'HTTP'],
     ['/r/test/platform.e2e-spec.ts', 'HTTP'],
     ['/r/src/modules/storefront/storefront.int-spec.ts', 'HTTP'],
+    ['C:/sf-wt/fe/tests/unit/auth-api-mode.test.ts', 'FE'],
+    ['/r/tests/unit/payments-ui.test.tsx', 'FE'],
   ])('%s is %s', (file, layer) => {
     expect(layerOfTest(file, 'any test name')).toBe(layer);
   });

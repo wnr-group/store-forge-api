@@ -209,6 +209,30 @@ describe('payments static scans', () => {
     );
   });
 
+  it('AC-FE-14 [layer:STATIC]: no frontend REST route handler and no Settings change appears in this repository (API half)', async () => {
+    // The registry attributes this row to the API repository's static scan; the frontend repository runs its own (and passes).
+    const files = git('diff', '--name-only', 'origin/main')
+      .split('\n')
+      .filter(Boolean);
+    const handlers = files.filter((f) => /(^|\/)route\.(ts|tsx|js)$/.test(f));
+    const settings = files.filter((f) =>
+      /(^|\/)(app|components)\/.*settings/i.test(f),
+    );
+    await evidence(
+      'AC-FE-14',
+      `${files.length} changed files in the API repository: none is a route handler (route.ts) and none is a Settings page or component`,
+      [
+        `changed files: ${files.length}`,
+        `route handlers added: ${handlers.length}`,
+        `Settings page or component files changed: ${settings.length}`,
+      ],
+      () => {
+        expect(handlers).toEqual([]);
+        expect(settings).toEqual([]);
+      },
+    );
+  });
+
   it('AC-SCOPE-01 [layer:STATIC]: no shopper login, registration or authentication enforcement was introduced (API)', async () => {
     const files = git('diff', '--name-only', 'origin/main')
       .split('\n')

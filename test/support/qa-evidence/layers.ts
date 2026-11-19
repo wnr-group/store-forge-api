@@ -37,6 +37,9 @@ export function layerOfTest(file: string, fullName: string): Layer | undefined {
   if (/\/payments-database[^/]*\.e2e-spec\.ts$/.test(path)) return 'PG';
   if (/\.(e2e|int)-spec\.ts$/.test(path)) return 'HTTP';
   if (path.endsWith('.spec.ts')) return 'U';
+  // The frontend repository's Vitest unit tests (`*.test.ts`, with mocked endpoints or a local HTTP stub) are the FE layer.
+  // The API repository has no `*.test.ts` files, so this cannot change any API result.
+  if (/\.test\.tsx?$/.test(path)) return 'FE';
   return undefined;
 }
 
