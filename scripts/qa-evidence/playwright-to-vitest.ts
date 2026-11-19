@@ -4,8 +4,8 @@
  *   npx tsx scripts/qa-evidence/playwright-to-vitest.ts --out <vitest-shaped.json> --root <frontend repo> <playwright.json>...
  *
  * - Each test's name carries the acceptance criteria it covers (from its `AC` annotation, space separated) and `[layer:PW]`.
- * - Several passes (for example one with the API's encryption key and one without) are merged by test name: a test is `passed`
- *   if any pass passed it, `failed` if any failed it, and `skipped` only if no pass ran it. A skip never counts as a pass.
+ * - Several reports (for example a pass with the API's encryption key and one without) are merged by test name, oldest first: the
+ *   latest report that actually ran a test decides its result, and a skip never replaces a result or counts as a pass.
  * - The statuses are Playwright's own; nothing is inferred and nothing is added.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -43,7 +43,6 @@ if (!out || inputs.length === 0) {
   process.exit(2);
 }
 
-const rank: Record<string, number> = { passed: 3, failed: 2, skipped: 1 };
 const merged = new Map<string, { file: string; status: string }>();
 
 const statusOf = (t: PwTest): string => {
@@ -67,14 +66,9 @@ const visit = (suite: PwSuite, titles: string[], file: string) => {
       const fullName = `${[...here, spec.title].join(' > ')}${acs ? ` ${acs}` : ''} [layer:PW]`;
       const status = statusOf(test);
       const before = merged.get(fullName);
-      // failed beats passed on purpose: a test that failed in any pass is reported failed.
-      const keep =
-        !before ||
-        (status === 'failed'
-          ? true
-          : before.status === 'failed'
-            ? false
-            : (rank[status] ?? 0) > (rank[before.status] ?? 0));
+      // Inputs are given oldest first and the latest run that actually EXECUTED a test decides its result (a failure that was
+      // fixed and re-run is superseded; the earlier report stays in the evidence folder). A skip never replaces a result.
+      const keep = !before || status !== 'skipped';
       if (keep)
         merged.set(fullName, { file: `${root}/${spec.file ?? file}`, status });
     }
