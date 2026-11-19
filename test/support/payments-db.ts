@@ -22,10 +22,12 @@ import { seedWorld, type World } from './world.js';
  */
 
 export const KEY_ENV = {
-  CREDENTIALS_ENCRYPTION_KEY_V1: randomBytes(32).toString('base64'),
+  CREDENTIALS_ENCRYPTION_KEY_V1:
+    process.env.QA_SYNTH_KEY_B64 ?? randomBytes(32).toString('base64'),
   CREDENTIALS_ENCRYPTION_KEY_CURRENT: '1',
 };
-export const SYNTH_SECRET = `SYNTH${randomBytes(10).toString('hex')}`;
+export const SYNTH_SECRET =
+  process.env.QA_SYNTH_SECRET ?? `SYNTH${randomBytes(10).toString('hex')}`;
 export const TABLE = 'public.tenant_razorpay_config';
 export const SECRET_COLUMNS = [
   'secret_ciphertext',
