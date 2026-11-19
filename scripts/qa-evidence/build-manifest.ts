@@ -1,0 +1,160 @@
+/**
+ * Builds the evidence manifest (`summary/manifest.json`) from saved test reports, the registry and the evidence folder.
+ *
+ *   npx tsx scripts/qa-evidence/build-manifest.ts --dir <evidence root> --scope api|frontend --repo-root <repo> \
+ *     --report "<report path relative to --dir>|<exact command>|<unit|pglite|local-stack|hosted>" [--report ...] \
+ *     [--extracts-only] [--waivers <waivers.json>] [--registry <registry.json>]
+ *
+ * Order of a run: tests produce evidence and JSON reports -> `--extracts-only` writes the per-AC test extracts ->
+ * scan-secrets scans the whole folder -> this script (without --extracts-only) builds the manifest. A criterion is DONE
+ * only when the manifest builder can prove it; see test/support/qa-evidence/manifest.ts for the rules.
+ */
+import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
+import { join, resolve } from 'node:path';
+import {
+  buildManifest,
+  extractsToWrite,
+  parseVitestReport,
+  type EvidenceEntry,
+  type ReportInput,
+  type RunMeta,
+  type Waiver,
+} from '../../test/support/qa-evidence/manifest.js';
+import type { AcRegistryEntry } from '../../test/support/qa-evidence/registry.js';
+import type { EvidenceEnvironment } from '../../test/support/qa-evidence/writer.js';
+
+const args = process.argv.slice(2);
+const one = (name: string): string | undefined => {
+  const i = args.indexOf(`--${name}`);
+  return i >= 0 ? args[i + 1] : undefined;
+};
+const many = (name: string): string[] =>
+  args.flatMap((a, i) => (a === `--${name}` ? [args[i + 1] ?? ''] : []));
+
+const dir = one('dir');
+const scope = one('scope');
+// Absolute, so file paths in reports are made repository-relative whatever form the caller used.
+const repoRoot = resolve(one('repo-root') ?? process.cwd());
+if (!dir || (scope !== 'api' && scope !== 'frontend')) {
+  console.error(
+    'usage: build-manifest.ts --dir <evidence root> --scope api|frontend --report "path|command|environment" ...',
+  );
+  process.exit(2);
+}
+
+const sha256 = (bytes: Buffer) =>
+  createHash('sha256').update(bytes).digest('hex');
+const git = (...a: string[]) =>
+  execFileSync('git', ['-C', repoRoot, ...a], { encoding: 'utf8' }).trim();
+
+const registry = (
+  JSON.parse(
+    readFileSync(
+      one('registry') ?? 'test/support/qa-evidence/ac-registry.json',
+      'utf8',
+    ),
+  ) as {
+    entries: AcRegistryEntry[];
+  }
+).entries;
+
+const reports: ReportInput[] = many('report').map((spec) => {
+  const [path = '', command = '', environment = ''] = spec.split('|');
+  const bytes = readFileSync(join(dir, path));
+  return parseVitestReport(JSON.parse(bytes.toString('utf8')), {
+    path,
+    sha256: sha256(bytes),
+    command,
+    environment: environment as EvidenceEnvironment,
+    repoRoot,
+  });
+});
+
+const meta: RunMeta = {
+  repo: scope === 'api' ? 'store-forge-api' : 'store-forge',
+  scope,
+  branch: git('branch', '--show-current'),
+  commit: git('rev-parse', 'HEAD'),
+  // Tracked modifications only: the evidence folder and other untracked files do not make a run "dirty".
+  dirty: git('status', '--porcelain', '--untracked-files=no') !== '',
+  node: process.version,
+  generatedAt: new Date().toISOString(),
+};
+
+const generated: string[] = [];
+const extracts = extractsToWrite(registry, reports, meta);
+for (const { file, content } of extracts) {
+  mkdirSync(join(dir, 'test-results'), { recursive: true });
+  writeFileSync(join(dir, file), content);
+  generated.push(file);
+}
+if (args.includes('--extracts-only')) {
+  console.log(`wrote ${extracts.length} per-AC test extract(s)`);
+  process.exit(0);
+}
+// A manifest run without --extracts-only re-derives the same list, so provenance is identical in both steps.
+
+const entriesFile = join(dir, 'summary', 'evidence-entries.jsonl');
+const entries: EvidenceEntry[] = existsSync(entriesFile)
+  ? readFileSync(entriesFile, 'utf8')
+      .split('\n')
+      .filter(Boolean)
+      .map((l) => JSON.parse(l) as EvidenceEntry)
+  : [];
+
+const scanFile = join(dir, 'summary', 'secret-scan.json');
+const scan = existsSync(scanFile)
+  ? (() => {
+      const s = JSON.parse(readFileSync(scanFile, 'utf8')) as {
+        scannedFiles: number;
+        findings: unknown[];
+      };
+      return {
+        status: s.findings.length ? ('dirty' as const) : ('clean' as const),
+        scannedFiles: s.scannedFiles,
+      };
+    })()
+  : { status: 'missing' as const, scannedFiles: 0 };
+
+const waiversFile = one('waivers');
+const waivers: Waiver[] = waiversFile
+  ? (JSON.parse(readFileSync(waiversFile, 'utf8')) as Waiver[])
+  : [];
+
+const manifest = buildManifest({
+  registry,
+  reports,
+  entries,
+  generated,
+  scan,
+  waivers,
+  meta,
+  files: (rel) => {
+    const p = join(dir, rel);
+    return existsSync(p) && statSync(p).isFile()
+      ? { bytes: statSync(p).size, sha256: sha256(readFileSync(p)) }
+      : undefined;
+  },
+});
+
+mkdirSync(join(dir, 'summary'), { recursive: true });
+writeFileSync(
+  join(dir, 'summary', 'manifest.json'),
+  `${JSON.stringify(manifest, null, 2)}\n`,
+);
+console.log(
+  `manifest: ${manifest.summary.total} criteria in scope (${manifest.summary.outOfScope} belong to the other repository)`,
+);
+for (const [status, n] of Object.entries(manifest.summary.byStatus))
+  console.log(`  ${status.padEnd(13)} ${n}`);
+console.log(
+  `  secret scan: ${scan.status} (${scan.scannedFiles} files)  commit ${meta.commit.slice(0, 7)}${meta.dirty ? ' (tracked changes present)' : ''}`,
+);
