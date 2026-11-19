@@ -27,6 +27,11 @@ export interface AcRegistryEntry {
   /** Set when the plan itself marks the row BLOCKED, with the stated reason. */
   blockedReason: string | undefined;
   initialStatus: 'NOT RUN' | 'BLOCKED';
+  /**
+   * Existing test files a regression row names (`AC-REG-*`). The manifest compares each against the baseline report:
+   * nothing that passed at the baseline may fail or disappear.
+   */
+  regressionSpecs: string[];
 }
 
 const ID_CELL = /^AC-[A-Z]+-\d+[a-z]?$/;
@@ -42,6 +47,15 @@ function cells(line: string): string[] {
 
 function evidenceFilesOf(cell: string): string[] {
   return [...cell.matchAll(/`([^`]+)`/g)].map((m) => m[1] ?? '');
+}
+
+/** Backticked test-file paths in a method cell, e.g. `test/store-team.e2e-spec.ts`. */
+function testFilesOf(method: string): string[] {
+  return [
+    ...method.matchAll(
+      /`((?:test|tests|src)\/[^`]+\.(?:e2e-spec|int-spec|spec|test)\.ts)`/g,
+    ),
+  ].map((m) => m[1] ?? '');
 }
 
 function repoOf(location: string, layers: readonly Layer[]): RepoScope {
@@ -99,6 +113,7 @@ export function parsePlanMatrix(markdown: string): AcRegistryEntry[] {
       needsEnvironment: layers.includes('REAL') || layers.includes('PW'),
       blockedReason,
       initialStatus: blockedReason ? 'BLOCKED' : 'NOT RUN',
+      regressionSpecs: acId.startsWith('AC-REG-') ? testFilesOf(method) : [],
     });
   }
   return entries;

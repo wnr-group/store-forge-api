@@ -45,7 +45,7 @@ const scope = one('scope');
 const repoRoot = resolve(one('repo-root') ?? process.cwd());
 if (!dir || (scope !== 'api' && scope !== 'frontend')) {
   console.error(
-    'usage: build-manifest.ts --dir <evidence root> --scope api|frontend --report "path|command|environment" ...',
+    'usage: build-manifest.ts --dir <evidence root> --scope api|frontend --report "path|command|environment" ... [--baseline "path|command|environment|baselineRepoRoot" ...]',
   );
   process.exit(2);
 }
@@ -66,17 +66,21 @@ const registry = (
   }
 ).entries;
 
-const reports: ReportInput[] = many('report').map((spec) => {
-  const [path = '', command = '', environment = ''] = spec.split('|');
+/** "path|command|environment[|repoRoot]": the path is relative to --dir; repoRoot defaults to this repository. */
+const readReport = (spec: string): ReportInput => {
+  const [path = '', command = '', environment = '', root] = spec.split('|');
   const bytes = readFileSync(join(dir, path));
   return parseVitestReport(JSON.parse(bytes.toString('utf8')), {
     path,
     sha256: sha256(bytes),
     command,
     environment: environment as EvidenceEnvironment,
-    repoRoot,
+    repoRoot: root ? resolve(root) : repoRoot,
   });
-});
+};
+const reports: ReportInput[] = many('report').map(readReport);
+/** Reports of the same suites at the baseline commit; their repoRoot is the baseline worktree. */
+const baselines: ReportInput[] = many('baseline').map(readReport);
 
 const meta: RunMeta = {
   repo: scope === 'api' ? 'store-forge-api' : 'store-forge',
@@ -90,7 +94,7 @@ const meta: RunMeta = {
 };
 
 const generated: string[] = [];
-const extracts = extractsToWrite(registry, reports, meta);
+const extracts = extractsToWrite(registry, reports, meta, baselines);
 for (const { file, content } of extracts) {
   mkdirSync(join(dir, 'test-results'), { recursive: true });
   writeFileSync(join(dir, file), content);
@@ -132,6 +136,7 @@ const waivers: Waiver[] = waiversFile
 const manifest = buildManifest({
   registry,
   reports,
+  baselines,
   entries,
   generated,
   scan,

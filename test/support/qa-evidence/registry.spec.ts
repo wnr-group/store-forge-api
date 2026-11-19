@@ -72,6 +72,7 @@ describe('parsePlanMatrix', () => {
       layers: ['HTTP'],
       evidenceFiles: ['test-results/AC-REG-04.txt'],
       preconditions: '',
+      regressionSpecs: ['test/store-team.e2e-spec.ts'],
       expected: '',
       repo: 'api',
     });

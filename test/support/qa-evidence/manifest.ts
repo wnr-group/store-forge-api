@@ -82,6 +82,8 @@ export interface BuildInput {
   scan: { status: 'clean' | 'dirty' | 'missing'; scannedFiles: number };
   waivers: Waiver[];
   meta: RunMeta;
+  /** Reports of the same suites at the baseline commit, for the regression criteria. */
+  baselines?: ReportInput[];
 }
 
 export interface AcArtifact {
@@ -136,6 +138,13 @@ export interface Manifest {
     environment: string;
     tests: number;
   }[];
+  baselines: {
+    path: string;
+    sha256: string;
+    command: string;
+    environment: string;
+    tests: number;
+  }[];
   summary: {
     total: number;
     outOfScope: number;
@@ -147,6 +156,63 @@ export interface Manifest {
 
 const inScope = (entry: AcRegistryEntry, scope: RunMeta['scope']) =>
   entry.repo === 'both' || entry.repo === scope;
+
+/**
+ * Regression check for an `AC-REG-*` row: for each existing test file the row names, every test that PASSED at the baseline
+ * must still pass now. A baseline failure is pre-existing and never counted against the change; a baseline-passing test that
+ * now fails, is skipped or has disappeared is a regression. Without a baseline report nothing can be concluded.
+ */
+function regressionTests(
+  entry: AcRegistryEntry,
+  reports: ReportInput[],
+  baselines: ReportInput[] | undefined,
+): AcResult['tests'] {
+  const out: AcResult['tests'] = [];
+  for (const spec of entry.regressionSpecs) {
+    const layer = layerOfTest(spec, '');
+    const row = (status: string, fullName: string) => ({
+      file: spec,
+      fullName: `${entry.acId} regression: ${fullName}`,
+      layer,
+      status,
+      report: 'baseline-comparison',
+    });
+    const before = (baselines ?? []).flatMap((r) =>
+      r.results.filter((t) => t.file === spec && t.status === 'passed'),
+    );
+    if (!baselines?.length) {
+      out.push(row('skipped', `no baseline report supplied for ${spec}`));
+      continue;
+    }
+    if (before.length === 0) {
+      out.push(row('skipped', `no passing baseline test in ${spec}`));
+      continue;
+    }
+    const now = new Map(
+      reports.flatMap((r) =>
+        r.results
+          .filter((t) => t.file === spec)
+          .map((t) => [t.fullName, t.status] as const),
+      ),
+    );
+    const regressed = before.filter((t) => now.get(t.fullName) !== 'passed');
+    out.push(
+      regressed.length
+        ? row(
+            'failed',
+            `${regressed.length} of ${before.length} baseline-passing test(s) in ${spec} no longer pass (${regressed
+              .slice(0, 3)
+              .map((t) => t.fullName)
+              .join('; ')})`,
+          )
+        : row(
+            'passed',
+            `all ${before.length} baseline-passing test(s) in ${spec} still pass`,
+          ),
+    );
+  }
+  return out;
+}
 
 export function buildManifest(input: BuildInput): Manifest {
   const { registry, reports, entries, files, scan, waivers, meta } = input;
@@ -160,17 +226,20 @@ export function buildManifest(input: BuildInput): Manifest {
       outOfScope += 1;
       continue;
     }
-    const tests = reports.flatMap((r) =>
-      r.results
-        .filter((t) => acTagsOf(t.fullName).includes(entry.acId))
-        .map((t) => ({
-          file: t.file,
-          fullName: t.fullName,
-          layer: t.layer ?? layerOfTest(t.file, t.fullName),
-          status: t.status,
-          report: r.path,
-        })),
-    );
+    const tests = [
+      ...reports.flatMap((r) =>
+        r.results
+          .filter((t) => acTagsOf(t.fullName).includes(entry.acId))
+          .map((t) => ({
+            file: t.file,
+            fullName: t.fullName,
+            layer: t.layer ?? layerOfTest(t.file, t.fullName),
+            status: t.status,
+            report: r.path,
+          })),
+      ),
+      ...regressionTests(entry, reports, input.baselines),
+    ];
     const passed = tests.filter((t) => t.status === 'passed');
     const failed = tests.filter((t) => t.status === 'failed');
     const observed = LAYERS.filter((l) => passed.some((t) => t.layer === l));
@@ -283,6 +352,13 @@ export function buildManifest(input: BuildInput): Manifest {
       environment: r.environment,
       tests: r.results.length,
     })),
+    baselines: (input.baselines ?? []).map((r) => ({
+      path: r.path,
+      sha256: r.sha256,
+      command: r.command,
+      environment: r.environment,
+      tests: r.results.length,
+    })),
     summary: { total: acs.length, outOfScope, byStatus },
     acs,
     records,
@@ -361,17 +437,67 @@ export function renderTestExtract(
   return `${lines.join('\n')}\n`;
 }
 
-/** Extract files to write: every criterion whose evidence includes `test-results/<AC>.txt` and which has a test result. */
+/** The per-AC extract of a regression criterion: the baseline comparison for each test file it names. */
+function renderRegressionExtract(
+  entry: AcRegistryEntry,
+  tests: AcResult['tests'],
+  reports: ReportInput[],
+  baselines: ReportInput[],
+  meta: RunMeta,
+): string {
+  const lines = [
+    `Regression check for ${entry.acId}: ${entry.requirement}`,
+    `repository: ${meta.repo}  branch: ${meta.branch}  commit: ${meta.commit}`,
+    'rule: every test that passed at the baseline must still pass (a baseline failure is pre-existing, not a regression)',
+  ];
+  for (const r of baselines)
+    lines.push(
+      '',
+      `baseline command: ${r.command}`,
+      `baseline report: ${r.path} (sha256 ${r.sha256})`,
+    );
+  for (const r of reports)
+    lines.push(
+      '',
+      `current command: ${r.command}`,
+      `current report: ${r.path} (sha256 ${r.sha256})`,
+    );
+  lines.push('');
+  for (const t of tests)
+    lines.push(`  [${t.layer ?? '?'}] ${t.status.padEnd(7)} ${t.fullName}`);
+  return `${lines.join('\n')}\n`;
+}
+
+/**
+ * Extract files to write: every criterion whose evidence includes `test-results/<AC>.txt` and which has a test result
+ * (tagged tests, or for a regression row a baseline comparison that could actually be made).
+ */
 export function extractsToWrite(
   registry: AcRegistryEntry[],
   reports: ReportInput[],
   meta: RunMeta,
+  baselines?: ReportInput[],
 ): { file: string; content: string }[] {
   const out: { file: string; content: string }[] = [];
   for (const entry of registry) {
     if (!inScope(entry, meta.scope)) continue;
     const file = `test-results/${entry.acId}.txt`;
     if (!entry.evidenceFiles.includes(file)) continue;
+    if (entry.regressionSpecs.length) {
+      const tests = regressionTests(entry, reports, baselines);
+      if (tests.some((t) => t.status === 'passed' || t.status === 'failed'))
+        out.push({
+          file,
+          content: renderRegressionExtract(
+            entry,
+            tests,
+            reports,
+            baselines ?? [],
+            meta,
+          ),
+        });
+      continue;
+    }
     const ran = reports.some((r) =>
       r.results.some(
         (t) =>
