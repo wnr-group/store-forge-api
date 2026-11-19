@@ -32,6 +32,7 @@
     "db:seed:demo": "tsx --env-file-if-exists=.env scripts/seed-demo-data.ts",
     "db:seed:themes": "tsx --env-file-if-exists=.env scripts/seed-themes.ts",
     "test:int": "vitest run --config ./vitest.config.integration.ts",
+    "test:real": "vitest run --config ./vitest.config.real.ts",
     "auth:token": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/get-access-token.ps1"
   },
   "dependencies": {
