@@ -189,6 +189,8 @@ describe('payments static scans', () => {
       'package.json',
       'package-lock.json',
       ':(exclude)test/support/qa-evidence',
+      // ...and this spec names the criterion in its own title, which would otherwise match once it is committed.
+      ':(exclude)test/payments-static.spec.ts',
     );
     const added = diff
       .split('\n')
@@ -198,7 +200,7 @@ describe('payments static scans', () => {
       .filter(Boolean);
     await evidence(
       'AC-REG-15',
-      `scanned the diff against origin/main (${files.length} files, including package.json and the lockfile) for the added word, excluding the QA registry folder: ${added.length} found`,
+      `scanned the diff against origin/main (${files.length} files, including package.json and the lockfile) for the added word, excluding the QA registry folder and this spec: ${added.length} found`,
       [
         `files in diff: ${files.length}`,
         `added lines matching: ${added.length}`,
