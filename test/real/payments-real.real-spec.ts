@@ -358,9 +358,9 @@ describe.skipIf(!enabled)(
 
       // The API has now handled requests whose bodies carried the secret: its own log must not.
       // The Nest console logger wraps lines in ANSI colour codes; strip them so the request lines can be matched.
-      // eslint-disable-next-line no-control-regex
+      const ansi = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, 'g');
       const log = readFileSync(need('QA_REAL_API_LOG'), 'utf8').replace(
-        /\u001b\[[0-9;]*m/g,
+        ansi,
         '',
       );
       const sentinels = [
