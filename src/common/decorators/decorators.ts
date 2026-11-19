@@ -24,6 +24,16 @@ export const ORG_SCOPED = 'orgScoped';
  */
 export const OrgScoped = () => SetMetadata(ORG_SCOPED, true);
 
+export const REQUIRE_EXPLICIT_ORG = 'requireExplicitOrg';
+/**
+ * Opt-in, for routes where acting on the wrong organization would be costly and silent (payment credentials). The
+ * `X-Organization-Id` header must be present and non-blank; without it the request is refused with 400
+ * ORGANIZATION_REQUIRED instead of falling back to the caller's first organization. The header is still verified
+ * against the caller's memberships. Routes without this decorator behave exactly as before.
+ */
+export const RequireExplicitOrganization = () =>
+  SetMetadata(REQUIRE_EXPLICIT_ORG, true);
+
 export const REQUIRED_PERMISSION = 'requiredPermission';
 /** Requires `can(actor, permission)` (same rules as the Next.js `lib/auth/permissions.ts`). Implies a resolved organization. */
 export const RequirePermission = (permission: Permission) =>

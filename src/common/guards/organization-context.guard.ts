@@ -1,7 +1,12 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { DatabaseService } from '../../database/database.service.js';
-import { ORG_SCOPED, REQUIRED_PERMISSION } from '../decorators/decorators.js';
+import { AppException } from '../app.exception.js';
+import {
+  ORG_SCOPED,
+  REQUIRE_EXPLICIT_ORG,
+  REQUIRED_PERMISSION,
+} from '../decorators/decorators.js';
 import type { AuthenticatedRequest } from '../interfaces/request-context.js';
 import {
   listActiveMemberships,
@@ -31,6 +36,17 @@ export class OrganizationContextGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const header = request.headers[ORGANIZATION_HEADER];
     const hint = Array.isArray(header) ? header[0] : header;
+
+    // Opt-in (see RequireExplicitOrganization): checked before any lookup, and only after authentication, which
+    // runs in an earlier guard, so an unauthenticated request is still answered 401.
+    const explicit = this.reflector.getAllAndOverride<boolean>(
+      REQUIRE_EXPLICIT_ORG,
+      targets,
+    );
+    if (explicit && !hint?.trim())
+      throw new AppException('VALIDATION', 'Select an organization first.', {
+        code: 'ORGANIZATION_REQUIRED',
+      });
 
     const all = await this.db.withUser(request.user.id, (tx) =>
       listActiveMemberships(tx, request.user.id),
