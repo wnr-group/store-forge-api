@@ -15,6 +15,10 @@ import {
   footerGroup,
   headerGroup,
 } from './shared.js';
+import {
+  marketplaceAboutPage,
+  marketplaceContactPage,
+} from './marketplace-pages.js';
 
 const column = (id: string, title: string, body: string): Child => [
   id,
@@ -69,7 +73,7 @@ export const marketplace: ThemeDefinition = {
   description:
     'Shop-first marketplace theme: a dark header with a wide search bar, a banner hero, category shortcuts, scrolling product shelves, a filter panel on listings and a three-column product page with a buy box.',
   industry: 'general',
-  version: 1,
+  version: 2,
   previewImage: '/themes/marketplace/preview.svg',
   documents: {
     theme_settings: themeSettings({
@@ -94,6 +98,11 @@ export const marketplace: ThemeDefinition = {
       layout: { pageWidth: 1560, gridGap: 12 },
       buttons: { radius: 8 },
       social: {},
+      // Designed About and Contact pages, shown at /about and /contact unless the store writes its own under Pages.
+      pages: {
+        about: { ...marketplaceAboutPage() },
+        contact: { ...marketplaceContactPage() },
+      },
     }),
     index: page('classic', [
       [

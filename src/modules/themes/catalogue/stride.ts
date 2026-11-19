@@ -16,6 +16,7 @@ import {
   footerGroup,
   headerGroup,
 } from './shared.js';
+import { strideAboutPage, strideContactPage } from './stride-pages.js';
 
 const column = (id: string, title: string, body: string): Child => [
   id,
@@ -74,7 +75,7 @@ export const stride: ThemeDefinition = {
   description:
     'Sportswear and activewear theme: a sliding full-screen hero, slanted capital headlines, rounded product cards, a hover mega menu and a filter sidebar on product listings.',
   industry: 'fashion',
-  version: 1,
+  version: 2,
   previewImage: '/themes/stride/preview.svg',
   documents: {
     theme_settings: themeSettings({
@@ -99,6 +100,11 @@ export const stride: ThemeDefinition = {
       layout: { pageWidth: 1720, gridGap: 24 },
       buttons: { radius: 50 },
       social: {},
+      // Designed About and Contact pages, shown at /about and /contact unless the store writes its own under Pages.
+      pages: {
+        about: { ...strideAboutPage() },
+        contact: { ...strideContactPage() },
+      },
     }),
     index: page('classic', [
       [
