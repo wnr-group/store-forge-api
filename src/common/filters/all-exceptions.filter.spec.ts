@@ -3,10 +3,14 @@ import {
   ForbiddenException,
   HttpException,
   Logger,
+  ServiceUnavailableException,
   type ArgumentsHost,
 } from '@nestjs/common';
 import { ThrottlerException } from '@nestjs/throttler';
+import { HealthController } from '../../modules/health/health.controller.js';
+import type { HealthService } from '../../modules/health/health.service.js';
 import { AppException } from '../app.exception.js';
+import { ERROR_STATUS } from '../constants/error-codes.js';
 import { mapDbError } from '../db-errors.js';
 import { AllExceptionsFilter } from './all-exceptions.filter.js';
 
@@ -153,6 +157,114 @@ describe('AllExceptionsFilter', () => {
     expect(
       run(new HttpException('x', 418), '/api/v1/x?password=hunter2').body.path,
     ).toBe('/api/v1/x');
+  });
+});
+
+describe('AllExceptionsFilter: the generic 5xx error log', () => {
+  const errorLog = () =>
+    vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('still logs an UNKNOWN (500) AppException once, with its stack, exactly as before', () => {
+    const spy = errorLog();
+    const exception = new AppException('UNKNOWN', 'Something failed.');
+    const { status } = run(exception);
+    expect(status).toBe(500);
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy).toHaveBeenCalledWith(
+      'Unhandled exception on GET /api/v1/products/123',
+      exception.stack,
+    );
+  });
+
+  it('still logs an unexpected error once, with its stack, exactly as before', () => {
+    const spy = errorLog();
+    const failure = new Error('boom');
+    const { status, body } = run(failure);
+    expect(status).toBe(500);
+    expect(body.message).toBe('Something went wrong. Please try again.');
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy).toHaveBeenCalledWith(
+      'Unhandled exception on GET /api/v1/products/123',
+      failure.stack,
+    );
+  });
+
+  it('still logs the health readiness 503 once, with its stack, exactly as before', async () => {
+    const spy = errorLog();
+    const controller = new HealthController({
+      readiness: () =>
+        Promise.resolve({
+          status: 'ok',
+          service: 'store-forge-api',
+          database: 'down',
+        }),
+    } as unknown as HealthService);
+    let thrown: unknown;
+    try {
+      await controller.ready();
+    } catch (e) {
+      thrown = e;
+    }
+    expect(thrown).toBeInstanceOf(ServiceUnavailableException);
+
+    const { status, body } = run(thrown);
+    expect(status).toBe(503);
+    expect(body.error).toEqual({ code: 'HTTP_503', details: null });
+    expect(body.message).toBe('Something went wrong. Please try again.');
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy).toHaveBeenCalledWith(
+      'Unhandled exception on GET /api/v1/products/123',
+      (thrown as Error).stack,
+    );
+  });
+
+  it('adds no generic error log for an UNAVAILABLE AppException, and still answers 503 with its own code', () => {
+    const spy = errorLog();
+    const { status, body } = run(
+      new AppException(
+        'UNAVAILABLE',
+        'Payment settings are temporarily unavailable. Please contact support.',
+        { code: 'PAYMENTS_UNAVAILABLE' },
+      ),
+    );
+    expect(status).toBe(503);
+    expect(body).toMatchObject({
+      success: false,
+      message:
+        'Payment settings are temporarily unavailable. Please contact support.',
+      error: { code: 'PAYMENTS_UNAVAILABLE', details: null },
+      path: '/api/v1/products/123',
+    });
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('adds none for an UNAVAILABLE exception with the default code either', () => {
+    const spy = errorLog();
+    const { status, body } = run(new AppException('UNAVAILABLE', 'Later.'));
+    expect(status).toBe(503);
+    expect(body.error).toEqual({ code: 'SERVICE_UNAVAILABLE', details: null });
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('exempts nothing else: every other kind answering 5xx is still logged', () => {
+    for (const [kind, expected] of Object.entries(ERROR_STATUS)) {
+      if (expected < 500 || kind === 'UNAVAILABLE') continue;
+      const spy = errorLog();
+      run(new AppException(kind as keyof typeof ERROR_STATUS, 'x'));
+      expect(spy, kind).toHaveBeenCalledTimes(1);
+      spy.mockRestore();
+    }
+  });
+
+  it('never logs a client error (4xx), as before', () => {
+    const spy = errorLog();
+    run(new AppException('FORBIDDEN', 'No.'));
+    run(new AppException('NOT_FOUND', 'No.'));
+    expect(spy).not.toHaveBeenCalled();
   });
 });
 
