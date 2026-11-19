@@ -15,6 +15,7 @@ import {
   headerGroup,
   productPage,
 } from './shared.js';
+import { maisonAboutPage, maisonContactPage } from './maison-pages.js';
 
 const column = (id: string, title: string, body: string): Child => [
   id,
@@ -44,7 +45,7 @@ export const maison: ThemeDefinition = {
   description:
     'Boutique theme for stores with a wide range: a forest-green hero panel, picture-led category tiles, refined serif headlines and square 3:4 product cards.',
   industry: 'general',
-  version: 1,
+  version: 3,
   previewImage: '/themes/maison/preview.svg',
   documents: {
     theme_settings: themeSettings({
@@ -69,6 +70,11 @@ export const maison: ThemeDefinition = {
       layout: { pageWidth: 1536, gridGap: 24 },
       buttons: { radius: 50 },
       social: {},
+      // Designed About and Contact pages, shown at /about and /contact unless the store writes its own under Pages.
+      pages: {
+        about: { ...maisonAboutPage() },
+        contact: { ...maisonContactPage() },
+      },
     }),
     index: page('classic', [
       [

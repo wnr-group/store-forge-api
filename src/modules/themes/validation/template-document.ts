@@ -63,6 +63,8 @@ const THEME_PAGE_KEYS = [
   'cart',
   'wishlist',
   'content',
+  'about',
+  'contact',
 ];
 
 /** Setting keys that hold a link. */
