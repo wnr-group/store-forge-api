@@ -584,6 +584,15 @@ describe.skipIf(!migrationsAvailable)(
     });
 
     describe('documentation', () => {
+      it('AC-REG-02: the anonymous public storefront still answers without a token', async () => {
+        const { default: request } = await import('supertest');
+        const res = await request(h.t.app.getHttpServer()).get(
+          '/api/v1/public/storefronts/alpha-shop',
+        );
+        expect(res.status).toBe(200);
+        expect(JSON.stringify(res.body)).not.toMatch(/razorpay|rzp_/i);
+      });
+
       it('AC-REG-13: the OpenAPI document gained exactly the three payments operations and no other route changed', async () => {
         const { default: request } = await import('supertest');
         const doc = (
