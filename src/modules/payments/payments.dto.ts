@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsString,
   Validate,
@@ -55,4 +55,42 @@ export class SaveRazorpayConfigDto {
   @IsString({ message: 'Enter your Razorpay Key Secret.' })
   @Validate(KeySecretConstraint)
   keySecret!: string;
+}
+
+/**
+ * What `GET`, `PUT` and `DELETE /payments/razorpay` return: whether credentials are saved, and only safe facts about them.
+ * `{ configured: false }` carries no other field. The secret, its ciphertext, IV, tag and key version are never returned, and
+ * "configured" means saved, NOT verified with Razorpay.
+ */
+export class RazorpayStatusDto {
+  @ApiProperty({
+    description:
+      'True when a Key ID and Key Secret are saved. It does not mean they were checked with Razorpay.',
+  })
+  configured!: boolean;
+
+  @ApiPropertyOptional({
+    example: 'rzp_test_••••5678',
+    description:
+      'The Key ID with its middle hidden: the prefix and the last four characters.',
+  })
+  keyIdMasked?: string;
+
+  @ApiPropertyOptional({
+    enum: ['test', 'live'],
+    description: 'Taken from the Key ID prefix.',
+  })
+  mode?: 'test' | 'live';
+
+  @ApiPropertyOptional({
+    description: 'When the credentials were last saved.',
+  })
+  updatedAt?: Date;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'The name of the person who last saved them, or null when that person is no longer on the team.',
+  })
+  updatedByName?: string | null;
 }

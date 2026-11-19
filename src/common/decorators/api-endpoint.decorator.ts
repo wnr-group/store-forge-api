@@ -46,6 +46,7 @@ const ERROR_TEXT: Record<number, string> = {
   409: 'This conflicts with data that already exists',
   429: 'Too many requests. Please wait a little and try again',
   500: 'Something went wrong on the server',
+  503: 'This part of the service is temporarily unavailable',
 };
 
 /**
