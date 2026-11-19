@@ -22,7 +22,7 @@ const EXISTING_CODE = {
   UNKNOWN: 'INTERNAL_ERROR',
 } as const;
 
-describe('error kinds', () => {
+describe('error kinds (AC-REG-14)', () => {
   it('keeps every existing kind exactly as it was', () => {
     for (const [kind, status] of Object.entries(EXISTING_STATUS))
       expect(ERROR_STATUS[kind as keyof typeof EXISTING_STATUS], kind).toBe(

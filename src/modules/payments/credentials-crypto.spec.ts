@@ -210,14 +210,14 @@ describe('no decryption path in production code', () => {
     expect(files.length).toBeGreaterThan(50);
   });
 
-  it('references decryptSecret and __testing only inside the crypto module itself', () => {
+  it('references decryptSecret and __testing only inside the crypto module itself (AC-ENC-09) [layer:STATIC]', () => {
     const offenders = files
       .filter((f) => /decryptSecret|__testing/.test(readFileSync(f, 'utf8')))
       .map((f) => relative(root, f).split(sep).join('/'));
     expect(offenders).toEqual(['modules/payments/credentials-crypto.ts']);
   });
 
-  it('never re-exports the crypto module from a barrel or wires it as a provider', () => {
+  it('never re-exports the crypto module from a barrel or wires it as a provider (AC-ENC-09) [layer:STATIC]', () => {
     const importers = files
       .filter((f) => /credentials-crypto/.test(readFileSync(f, 'utf8')))
       .map((f) => relative(root, f).split(sep).join('/'));

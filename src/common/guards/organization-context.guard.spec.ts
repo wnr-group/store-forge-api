@@ -107,7 +107,7 @@ describe('OrganizationContextGuard: explicit organization (opt-in)', () => {
       ['@OrgScoped', ExplicitController],
       ['@RequirePermission', ExplicitByPermissionOnly],
     ])(
-      'refuses a %s route with 400 ORGANIZATION_REQUIRED and never looks up memberships',
+      'refuses a %s route with 400 ORGANIZATION_REQUIRED and never looks up memberships (AC-ORG-01, AC-ORG-02, AC-ORG-03, AC-ORG-04)',
       async (_n, controller) => {
         const { request, result } = run(controller, headers);
         const error = await refusal(result);
