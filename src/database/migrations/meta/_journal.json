@@ -225,6 +225,20 @@
       "when": 1794300014000,
       "tag": "0031_store_video_uploads",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1794300017000,
+      "tag": "0034_tenant_razorpay_config",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1794300018000,
+      "tag": "0035_tenant_customer_auth_flag",
+      "breakpoints": true
     }
   ]
 }
