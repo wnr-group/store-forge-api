@@ -239,6 +239,20 @@
       "when": 1794300016000,
       "tag": "0033_product_presentations_public_functions",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1794300017000,
+      "tag": "0034_store_subdomain",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1794300018000,
+      "tag": "0035_store_subdomain_column",
+      "breakpoints": true
     }
   ]
 }
