@@ -294,18 +294,28 @@ describe.skipIf(!migrationsAvailable)(
       // The plan's row expects 403. The existing, unchanged organization guard answers 404 NO_WORKSPACE for any user without
       // an active membership, and a platform admin can never be a member (a trigger forbids it). The request is denied and
       // returns no payments data either way; the 404 is recorded as the observed behaviour, not changed.
-      it("AC-PERM-05: a platform admin is denied (observed 404 NO_WORKSPACE, not the plan's 403)", () =>
+      it("AC-PERM-05: a platform admin and users without active membership are denied (observed 404 NO_WORKSPACE, not the plan's 403)", () =>
         deny(
           'AC-PERM-05',
-          'platform admin',
+          'platform admin and user without active membership',
           404,
           [
             ['superAdmin', h.w.superAdmin],
             ['admin', h.w.admin],
+            ['userWithoutMembership', h.w.carol],
           ],
           h.w.tenantA,
           'NO_WORKSPACE',
         ));
+      it('user without active membership is denied on all three routes with 404 NO_WORKSPACE and zero leaks', async () => {
+        const probeResult = await probe(h.w.carol, h.w.tenantA);
+        for (const [, res] of Object.entries(probeResult.res)) {
+          expect(res.status).toBe(404);
+          expect(res.body.error.code).toBe('NO_WORKSPACE');
+          expect(JSON.stringify(res.body)).not.toMatch(/rzp_|SYNTH/);
+        }
+        expect(probeResult.after).toEqual(probeResult.before);
+      });
       it('AC-PERM-06: an Owner of another tenant is denied on all three routes and tenant B is unchanged', () =>
         deny(
           'AC-PERM-06',
