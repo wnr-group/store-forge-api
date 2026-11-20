@@ -54,6 +54,26 @@ const git = (...args: string[]) =>
     maxBuffer: 64 << 20,
   });
 
+const baseBranch = () => {
+  try {
+    execFileSync('git', ['rev-parse', '--verify', 'origin/main'], {
+      cwd: ROOT,
+      stdio: 'ignore',
+    });
+    return 'origin/main';
+  } catch {
+    try {
+      execFileSync('git', ['rev-parse', '--verify', 'main'], {
+        cwd: ROOT,
+        stdio: 'ignore',
+      });
+      return 'main';
+    } catch {
+      return 'HEAD';
+    }
+  }
+};
+
 describe('payments static scans', () => {
   it('AC-ENC-09 [layer:STATIC]: no production code can decrypt a stored secret', async () => {
     const files = source();
@@ -180,7 +200,7 @@ describe('payments static scans', () => {
     // test/support/qa-evidence/ holds the acceptance-criterion registry, whose REG-15 row quotes the word it asks us to scan for.
     const diff = git(
       'diff',
-      'origin/main',
+      baseBranch(),
       '--unified=0',
       '--',
       'src',
@@ -195,12 +215,12 @@ describe('payments static scans', () => {
     const added = diff
       .split('\n')
       .filter((l) => l.startsWith('+') && !l.startsWith('+++') && word.test(l));
-    const files = git('diff', '--name-only', 'origin/main')
+    const files = git('diff', '--name-only', baseBranch())
       .split('\n')
       .filter(Boolean);
     await evidence(
       'AC-REG-15',
-      `scanned the diff against origin/main (${files.length} files, including package.json and the lockfile) for the added word, excluding the QA registry folder and this spec: ${added.length} found`,
+      `scanned the diff against ${baseBranch()} (${files.length} files, including package.json and the lockfile) for the added word, excluding the QA registry folder and this spec: ${added.length} found`,
       [
         `files in diff: ${files.length}`,
         `added lines matching: ${added.length}`,
@@ -211,7 +231,7 @@ describe('payments static scans', () => {
 
   it('AC-FE-14 [layer:STATIC]: no frontend REST route handler and no Settings change appears in this repository (API half)', async () => {
     // The registry attributes this row to the API repository's static scan; the frontend repository runs its own (and passes).
-    const files = git('diff', '--name-only', 'origin/main')
+    const files = git('diff', '--name-only', baseBranch())
       .split('\n')
       .filter(Boolean);
     const handlers = files.filter((f) => /(^|\/)route\.(ts|tsx|js)$/.test(f));
@@ -234,7 +254,7 @@ describe('payments static scans', () => {
   });
 
   it('AC-SCOPE-01 [layer:STATIC]: no shopper login, registration or authentication enforcement was introduced (API)', async () => {
-    const files = git('diff', '--name-only', 'origin/main')
+    const files = git('diff', '--name-only', baseBranch())
       .split('\n')
       .filter(Boolean);
     const authTouched = files.filter((f) =>
