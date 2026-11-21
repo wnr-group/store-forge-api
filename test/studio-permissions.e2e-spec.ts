@@ -138,8 +138,9 @@ describe.skipIf(!migrationsAvailable)('Studio permission matrix (e2e)', () => {
     Object.fromEntries(
       await Promise.all(ops.map(async ([n, f]) => [n, (await f()).status] as const)),
     );
-  const allowed = (s: Record<string, number>) => 
-    Object.values(s).every((x) => x >= 200 && x < 300);
+  /** Authorized: success, or a business conflict (409, e.g. rolling back to the live version) - never 401/403/5xx. */
+  const allowed = (s: Record<string, number>) =>
+    Object.values(s).every((x) => (x >= 200 && x < 300) || x === 409);
   const denied = (s: Record<string, number>) =>
     Object.values(s).every((x) => x === 403);
 
