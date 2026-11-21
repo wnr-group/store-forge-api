@@ -7,6 +7,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { ApiParam, ApiTags } from '@nestjs/swagger';
 import { ApiEndpoint } from '../../common/decorators/api-endpoint.decorator.js';
@@ -23,6 +24,8 @@ import type {
 import {
   CollectionDetailDto,
   CollectionDto,
+  CollectionUsageDto,
+  DeleteCollectionQueryDto,
   CreateCollectionDto,
   ProductOptionChoiceDto,
   UpdateCollectionDto,
@@ -128,24 +131,42 @@ export class CollectionsController {
     return this.collections.update(org, user, id, dto);
   }
 
+  @Get(':id/usage')
+  @RequirePermission('catalog:manage')
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiEndpoint({
+    summary: 'See where a collection is used',
+    description:
+      'Lists the product-list sections of your store design (drafts and the live design) that show this collection. Check this before deleting a collection.',
+    auth: 'org',
+    permission: 'catalog:manage',
+    response: CollectionUsageDto,
+    message: 'Collection usage retrieved successfully',
+    errors: [404],
+  })
+  usage(@CurrentOrg() org: OrgContext, @Param('id', ParseUUIDPipe) id: string) {
+    return this.collections.usage(org, id);
+  }
+
   @Delete(':id')
   @RequirePermission('catalog:delete')
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiEndpoint({
     summary: 'Remove a collection',
     description:
-      'Delete a collection. The products in it are not deleted. Its cover image file is also deleted, unless something else is still using it.',
+      'Delete a collection. The products in it are not deleted. Its cover image file is also deleted, unless something else is still using it. If the collection is used in your store design you get a 409 until you send the `usage` value from the usage check; if the design changed since that check you get a 409 again.',
     auth: 'org',
     permission: 'catalog:delete',
     response: null,
     message: 'Collection deleted successfully',
-    errors: [404],
+    errors: [404, 409],
   })
   async remove(
     @CurrentOrg() org: OrgContext,
     @CurrentUser() user: AuthUser,
     @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: DeleteCollectionQueryDto,
   ) {
-    await this.collections.remove(org, user, id);
+    await this.collections.remove(org, user, id, query.usage);
   }
 }
