@@ -1,0 +1,33 @@
+{
+  "timestamp": "2026-11-16T18:21:32Z",
+  "environment": "Windows 11 / Node.js v24.18.0 / npm 11.2.0 / vitest 4.1.12 / PGlite 0.2.14",
+  "branch": "feat/foundation-security",
+  "commit": "89e0b55",
+  "summary": {
+    "unit": {
+      "files": 33,
+      "passedFiles": 33,
+      "tests": 96,
+      "passedTests": 96
+    },
+    "int": {
+      "files": 17,
+      "passedFiles": 17,
+      "tests": 80,
+      "passedTests": 80
+    },
+    "e2e": {
+      "files": 12,
+      "passedFiles": 12,
+      "tests": 43,
+      "passedTests": 43
+    },
+    "total": {
+      "files": 62,
+      "tests": 219,
+      "passed": 219,
+      "failed": 0,
+      "passRate": "100%"
+    }
+  }
+}

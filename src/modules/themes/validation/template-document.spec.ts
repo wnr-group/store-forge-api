@@ -166,6 +166,49 @@ describe('validateTemplateDocument', () => {
       2,
     );
   });
+
+  it('accepts redesigned storefront pages in the theme, per page', () => {
+    const section = (type: string) => ({
+      type,
+      settings: {},
+      blocks: {},
+      block_order: [],
+    });
+    const page = (ids: string[]) => ({
+      schemaVersion: 1,
+      layout: 'classic',
+      sections: Object.fromEntries(
+        ids.map((id) => [id, section(id === 'cart' ? 'cart' : 'rich-text')]),
+      ),
+      order: ids,
+    });
+    const ok = {
+      schemaVersion: 1,
+      // Ids repeat across pages, which is fine.
+      settings: {
+        pages: {
+          cart: page(['cart']),
+          products: page(['intro', 'grid']),
+          search: page(['intro', 'grid']),
+        },
+      },
+    };
+    expect(validateTemplateDocument(ok, ctx('theme_settings'))).toEqual([]);
+    const unknown = {
+      schemaVersion: 1,
+      settings: { pages: { checkout: page(['a']) } },
+    };
+    expect(
+      validateTemplateDocument(unknown, ctx('theme_settings')),
+    ).toHaveLength(1);
+    const broken = {
+      schemaVersion: 1,
+      settings: { pages: { cart: { ...page(['cart']), order: [] } } },
+    };
+    expect(
+      validateTemplateDocument(broken, ctx('theme_settings')).length,
+    ).toBeGreaterThan(0);
+  });
 });
 
 describe('isSafeUrl', () => {

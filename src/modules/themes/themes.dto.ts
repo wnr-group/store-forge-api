@@ -17,6 +17,7 @@ import {
   THEME_INDUSTRIES,
   TEMPLATE_KINDS,
 } from '../../database/schema/templates.js';
+import { ProductPresentationsPublishedDto } from './product-presentations.dto.js';
 
 export class ThemeListQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional({
@@ -191,6 +192,12 @@ export class PublishResultDto {
   unchanged!: number;
   @ApiProperty({ example: 'acme-store' }) storeSlug!: string;
   @ApiProperty() publishedAt!: Date;
+  @ApiPropertyOptional({
+    type: ProductPresentationsPublishedDto,
+    description:
+      'Only when the whole theme is published: how many product design settings went live.',
+  })
+  productPresentations?: ProductPresentationsPublishedDto;
 }
 
 export class TemplateVersionDto {

@@ -4,6 +4,7 @@ import { drizzle } from 'drizzle-orm/pglite';
 import { rowsOf } from '../src/database/database.service.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { syncThemeCatalogue } from '../src/modules/themes/catalogue/sync.js';
+import { THEME_CATALOGUE } from '../src/modules/themes/catalogue/themes.js';
 import { as, createTestApp, type TestApp } from './support/app.js';
 import { createTestDb, migrationsAvailable } from './support/pglite.js';
 import { seedWorld, type World } from './support/world.js';
@@ -56,10 +57,13 @@ describe.skipIf(!migrationsAvailable)('themes and store design (e2e)', () => {
     list.find((x) => x.kind === kind && (x.isDefault || kind.includes('_')))!;
 
   describe('theme catalogue', () => {
-    it('lists the six themes, paginated, with the same content for every tenant', async () => {
+    it('lists every theme, paginated, with the same content for every tenant', async () => {
       const a = await alice.get('/themes').expect(200);
-      expect(a.body.data).toHaveLength(6);
-      expect(a.body.meta).toMatchObject({ page: 1, total: 6 });
+      expect(a.body.data).toHaveLength(THEME_CATALOGUE.length);
+      expect(a.body.meta).toMatchObject({
+        page: 1,
+        total: THEME_CATALOGUE.length,
+      });
       expect(a.body.data[0]).not.toHaveProperty('documents');
       const b = await bob.get('/themes').expect(200);
       expect(b.body.data.map((x: { slug: string }) => x.slug)).toEqual(
@@ -68,7 +72,11 @@ describe.skipIf(!migrationsAvailable)('themes and store design (e2e)', () => {
 
       const page = await alice.get('/themes?limit=2&page=2').expect(200);
       expect(page.body.data).toHaveLength(2);
-      expect(page.body.meta).toMatchObject({ page: 2, limit: 2, total: 6 });
+      expect(page.body.meta).toMatchObject({
+        page: 2,
+        limit: 2,
+        total: THEME_CATALOGUE.length,
+      });
     });
 
     it('filters by industry and searches by name', async () => {

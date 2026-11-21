@@ -21,6 +21,8 @@ export const stores = pgTable(
       .references(() => tenants.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     slug: text('slug').notNull(),
+    /** Public host label `{slug}-{tenant public_id}`. Maintained by the stores_set_subdomain trigger; never written. */
+    subdomain: text('subdomain').notNull(),
     description: text('description'),
     /** Object path of the logo in the `products` bucket (`{tenant_id}/store/...`), not a URL. */
     logoUrl: text('logo_url'),
@@ -40,6 +42,11 @@ export const stores = pgTable(
   },
   (t) => [
     unique('stores_slug_key').on(t.slug),
+    unique('stores_subdomain_key').on(t.subdomain),
+    check(
+      'stores_subdomain_check',
+      sql`${t.subdomain} ~ '^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$'`,
+    ),
     unique('stores_tenant_id_id_key').on(t.tenantId, t.id),
     check(
       'stores_name_check',

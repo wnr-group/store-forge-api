@@ -463,6 +463,76 @@ export class ProductsService {
         );
   }
 
+  /** One tenant-scoped check for many category ids (the batch form of assertCategory; same error). */
+  async assertCategories(tx: DbTx, tenantId: string, ids: string[]) {
+    const unique = [...new Set(ids)];
+    if (unique.length === 0) return;
+    const found = await tx
+      .select({ id: categories.id })
+      .from(categories)
+      .where(
+        and(eq(categories.tenantId, tenantId), inArray(categories.id, unique)),
+      );
+    if (found.length !== unique.length)
+      throw invalid(
+        'The selected category no longer exists.',
+        { categoryId: 'Choose another category' },
+        'CATEGORY_NOT_FOUND',
+      );
+  }
+
+  /**
+   * Inserts ONE NEW product and the child rows it actually has. Shared by POST /products and POST /products/import.
+   * A just-inserted product cannot have options, images, variants or collections yet (the insert precedes them and
+   * foreign keys cascade), so the delete/select steps of the update path are skipped when a list is empty.
+   */
+  async insertNewProductInTx(
+    tx: DbTx,
+    tenantId: string,
+    values: ProductValues,
+    currency: string,
+    opts: {
+      verified?: Map<string, { mimeType: string; sizeBytes: number }>;
+      skipCategoryCheck?: boolean;
+    } = {},
+  ): Promise<void> {
+    if (!opts.skipCategoryCheck)
+      await this.assertCategory(tx, tenantId, values.categoryId);
+    const slug =
+      values.slug ??
+      (await this.uniqueSlug(tx, tenantId, slugify(values.name)));
+    await tx.insert(products).values({
+      id: values.id,
+      tenantId,
+      slug,
+      ...this.productColumns(values, currency),
+    });
+    if (values.options.length)
+      await this.replaceOptions(tx, tenantId, values.id, values);
+    let idByPath = new Map<string, string>();
+    if (values.images.length)
+      idByPath = (
+        await this.syncImages(
+          tx,
+          tenantId,
+          values.id,
+          values,
+          opts.verified ?? new Map(),
+        )
+      ).idByPath;
+    if (values.variants.length)
+      await this.syncVariants(
+        tx,
+        tenantId,
+        values.id,
+        values,
+        currency,
+        idByPath,
+      );
+    if (values.collectionIds.length)
+      await this.syncCollections(tx, tenantId, values.id, values.collectionIds);
+  }
+
   private async assertCategory(
     tx: DbTx,
     tenantId: string,
@@ -534,7 +604,7 @@ export class ProductsService {
     );
   }
 
-  private static fromCreate(dto: CreateProductDto, id: string): ProductValues {
+  static fromCreate(dto: CreateProductDto, id: string): ProductValues {
     return {
       id,
       name: dto.name,
@@ -673,37 +743,12 @@ export class ProductsService {
           values,
           new Set(),
         );
-        await this.assertCategory(tx, ctx.tenantId, values.categoryId);
-        const slug =
-          values.slug ??
-          (await this.uniqueSlug(tx, ctx.tenantId, slugify(values.name)));
-        await tx.insert(products).values({
-          id: values.id,
-          tenantId: ctx.tenantId,
-          slug,
-          ...this.productColumns(values, store.currency),
-        });
-        await this.replaceOptions(tx, ctx.tenantId, values.id, values);
-        const { idByPath } = await this.syncImages(
+        await this.insertNewProductInTx(
           tx,
           ctx.tenantId,
-          values.id,
-          values,
-          verified,
-        );
-        await this.syncVariants(
-          tx,
-          ctx.tenantId,
-          values.id,
           values,
           store.currency,
-          idByPath,
-        );
-        await this.syncCollections(
-          tx,
-          ctx.tenantId,
-          values.id,
-          values.collectionIds,
+          { verified },
         );
       }),
     );

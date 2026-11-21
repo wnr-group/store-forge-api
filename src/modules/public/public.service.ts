@@ -2,7 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import { notFound } from '../../common/app.exception.js';
 import { DatabaseService, rowsOf } from '../../database/database.service.js';
-import type { PublicBrandingDto, StorefrontDto } from './public.dto.js';
+import type {
+  PublicBrandingDto,
+  PublicHostDto,
+  StorefrontDto,
+} from './public.dto.js';
 
 const DEFAULT_BRANDING: PublicBrandingDto = {
   platformName: 'StoreForge',
@@ -57,6 +61,23 @@ export class PublicService {
       );
       return DEFAULT_BRANDING;
     }
+  }
+
+  /**
+   * Which store a host label names (`urban-nest-zqkod2`), read from the stored stores.subdomain. Unknown, inactive and
+   * suspended stores look identical: not found.
+   */
+  async host(subdomain: string): Promise<PublicHostDto> {
+    const row = await this.db.withPublic(
+      async (tx) =>
+        rowsOf<{ slug: string; public_id: string }>(
+          await tx.execute(
+            sql`select * from public.get_public_store_by_subdomain(${subdomain})`,
+          ),
+        )[0],
+    );
+    if (!row) throw notFound('Store not found.', 'STORE_NOT_FOUND');
+    return { slug: row.slug, publicId: row.public_id };
   }
 
   /** Unknown, inactive and suspended stores look identical: not found. */

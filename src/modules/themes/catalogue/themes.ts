@@ -16,6 +16,9 @@ import {
   headerGroup,
   productPage,
 } from './shared.js';
+import { maison } from './maison.js';
+import { marketplace } from './marketplace.js';
+import { stride } from './stride.js';
 
 const testimonial = (
   id: string,
@@ -1041,4 +1044,7 @@ export const THEME_CATALOGUE: readonly ThemeDefinition[] = [
   furniture,
   grocery,
   minimal,
+  maison,
+  stride,
+  marketplace,
 ];

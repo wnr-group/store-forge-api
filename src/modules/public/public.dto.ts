@@ -52,6 +52,11 @@ export class StorefrontDto {
   template!: Record<string, unknown> | null;
 }
 
+export class PublicHostDto {
+  @ApiProperty({ example: 'urban-nest' }) slug!: string;
+  @ApiProperty({ example: 'zqkod2' }) publicId!: string;
+}
+
 export class PublicLayoutDto {
   @ApiPropertyOptional({
     nullable: true,

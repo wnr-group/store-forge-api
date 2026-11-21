@@ -31,13 +31,18 @@ import {
   ProductListQueryDto,
   UpdateProductDto,
 } from './products.dto.js';
+import { ImportProductsDto, ImportResultDto } from './product-import.dto.js';
+import { ProductImportService } from './product-import.service.js';
 import { ProductsService } from './products.service.js';
 
 @ApiTags('products')
 @Controller('products')
 @OrgScoped()
 export class ProductsController {
-  constructor(private readonly products: ProductsService) {}
+  constructor(
+    private readonly products: ProductsService,
+    private readonly importer: ProductImportService,
+  ) {}
 
   @Get()
   @RequirePermission('catalog:view')
@@ -92,6 +97,27 @@ export class ProductsController {
     @Body() dto: CreateProductDto,
   ) {
     return this.products.create(org, user, dto);
+  }
+
+  @Post('import')
+  @RequirePermission('catalog:manage')
+  @ApiEndpoint({
+    summary: 'Import products from rows',
+    description:
+      'Create up to 500 simple products at once from rows read from a CSV or Excel file. Every row is checked first; if any row has a problem, nothing is created and the response lists each problem with its row, column, message and value. If every row is fine, all products are created in one go, or none are. Categories and subcategories must already exist and are matched by name or handle. All products created by one import share the same creation time, so their relative order by creation time is not guaranteed.',
+    auth: 'org',
+    permission: 'catalog:manage',
+    body: ImportProductsDto,
+    response: ImportResultDto,
+    status: 201,
+    message: 'Products imported successfully',
+    errors: [409],
+  })
+  importProducts(
+    @CurrentOrg() org: OrgContext,
+    @Body() dto: ImportProductsDto,
+  ) {
+    return this.importer.import(org, dto);
   }
 
   // Bulk routes are declared before `:id` routes with the same verb so their literal segment wins.
