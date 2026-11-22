@@ -117,7 +117,16 @@ export class UploadsController {
     @Body() dto: RequestUploadsDto,
   ) {
     const needed = dto.scope === 'store' ? 'store:manage' : 'catalog:manage';
-    if (!can({ role: org.role, permissions: org.permissions }, needed))
+    if (
+      !can(
+        {
+          role: org.role,
+          permissions: org.permissions,
+          capabilities: org.capabilities,
+        },
+        needed,
+      )
+    )
       throw forbidden();
     if (dto.scope !== 'store' && !dto.ownerId)
       throw invalid('ownerId is required.', {

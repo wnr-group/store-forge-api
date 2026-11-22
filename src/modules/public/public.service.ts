@@ -2,6 +2,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
 import { notFound } from '../../common/app.exception.js';
 import { DatabaseService, rowsOf } from '../../database/database.service.js';
+import { RecommendationsService } from '../recommendations/recommendations.service.js';
+import type { PublicRecommendationsQueryDto } from '../recommendations/recommendations.dto.js';
+import type { RecordWebVitalsDto } from '../studio/studio.dto.js';
 import type {
   PublicBrandingDto,
   PublicHostDto,
@@ -39,7 +42,10 @@ interface StorefrontRaw {
 export class PublicService {
   private readonly logger = new Logger(PublicService.name);
 
-  constructor(private readonly db: DatabaseService) {}
+  constructor(
+    private readonly db: DatabaseService,
+    private readonly recommendationsService: RecommendationsService,
+  ) {}
 
   /** The platform name and support contact. If the database cannot be reached the defaults are used. */
   async branding(): Promise<PublicBrandingDto> {
@@ -234,5 +240,81 @@ export class PublicService {
       string,
       unknown
     >;
+  }
+
+  /** Published reviews for a product with mandatory disclosure wording. */
+  async reviews(slug: string, productSlug: string, limit = 20, offset = 0) {
+    const raw = await this.db.withPublic(async (tx) =>
+      rowsOf<{ r: unknown }>(
+        await tx.execute(
+          sql`select public.get_public_product_reviews(${slug}, ${productSlug}, ${limit}, ${offset}) as r`,
+        ),
+      )[0]?.r,
+    );
+    if (!raw) throw notFound('Product or store not found.', 'NOT_FOUND');
+    return (typeof raw === 'string' ? JSON.parse(raw) : raw) as Record<string, unknown>;
+  }
+
+  /** Recommendations for a product / collection on the storefront. */
+  async recommendations(slug: string, query: PublicRecommendationsQueryDto) {
+    return this.recommendationsService.getPublicRecommendations(slug, query);
+  }
+
+  /** Ingest client-side Web Vitals performance sample into daily aggregation. */
+  async recordWebVitals(dto: RecordWebVitalsDto) {
+    return this.db.withPublic(async (tx) => {
+      const storeRows = rowsOf<{ id: string }>(
+        await tx.execute(
+          sql`SELECT id FROM public.stores WHERE slug = ${dto.storeSlug} AND status = 'active'`,
+        ),
+      );
+      if (!storeRows[0]) return { recorded: false };
+      const storeId = storeRows[0].id;
+
+      let bucket = 'good';
+      if (dto.metric === 'LCP') {
+        if (dto.value > 4000) bucket = 'poor';
+        else if (dto.value > 2500) bucket = 'needs_improvement';
+      } else if (dto.metric === 'CLS') {
+        if (dto.value > 0.25) bucket = 'poor';
+        else if (dto.value > 0.1) bucket = 'needs_improvement';
+      } else if (dto.metric === 'INP') {
+        if (dto.value > 500) bucket = 'poor';
+        else if (dto.value > 200) bucket = 'needs_improvement';
+      } else if (dto.metric === 'TTFB' || dto.metric === 'FCP') {
+        if (dto.value > 1800) bucket = 'poor';
+        else if (dto.value > 800) bucket = 'needs_improvement';
+      }
+
+      const bucketKey = bucket;
+      await tx.execute(
+        sql`INSERT INTO public.web_vitals_daily
+              (store_id, publish_id, route_kind, device_class, metric, day, bucket_counts, sample_count)
+            VALUES
+              (${storeId}, ${dto.publishId ?? null}, ${dto.routeKind}, ${dto.deviceClass}, ${dto.metric}, CURRENT_DATE, jsonb_build_object(${bucketKey}, 1), 1)
+            ON CONFLICT ("store_id", "publish_id", "route_kind", "device_class", "metric", "day")
+            DO UPDATE SET
+              sample_count = public.web_vitals_daily.sample_count + 1,
+              bucket_counts = jsonb_set(
+                public.web_vitals_daily.bucket_counts,
+                ARRAY[${bucketKey}],
+                to_jsonb(COALESCE((public.web_vitals_daily.bucket_counts->>${bucketKey})::int, 0) + 1)
+              )`,
+      );
+      return { recorded: true };
+    });
+  }
+
+  /** One published landing page (kind = 'page'). */
+  async landingPage(slug: string, pageSlug: string) {
+    const raw = await this.db.withPublic(async (tx) =>
+      rowsOf<{ p: unknown }>(
+        await tx.execute(
+          sql`select public.get_public_landing_page(${slug}, ${pageSlug}) as p`,
+        ),
+      )[0]?.p,
+    );
+    if (!raw) throw notFound('Landing page not found.', 'PAGE_NOT_FOUND');
+    return (typeof raw === 'string' ? JSON.parse(raw) : raw) as Record<string, unknown>;
   }
 }

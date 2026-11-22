@@ -1,0 +1,2166 @@
+{
+  "bundleVersion": 1,
+  "manifestVersion": 1,
+  "generatedBy": "lib/templates/manifest-bundle.ts",
+  "manifests": [
+    {
+      "manifestVersion": 1,
+      "kind": "section",
+      "id": "announcement-bar",
+      "name": "Announcement Bar",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Header",
+      "tags": [
+        "section",
+        "header"
+      ],
+      "allowedSlots": [
+        "page"
+      ],
+      "dataSources": [],
+      "permissions": [],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [
+          "text",
+          "link",
+          "social-link"
+        ],
+        "maxChildren": 5,
+        "settingsRef": "registry:sections/announcement-bar"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": true,
+        "copyPaste": true
+      },
+      "protectedParts": [],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "section",
+      "id": "header",
+      "name": "Header Navigation",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Header",
+      "tags": [
+        "section",
+        "header"
+      ],
+      "allowedSlots": [
+        "page"
+      ],
+      "dataSources": [
+        "storefront",
+        "cart"
+      ],
+      "permissions": [
+        "cart:read",
+        "media:read",
+        "storefront:read"
+      ],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [
+          "link",
+          "button"
+        ],
+        "maxChildren": 10,
+        "settingsRef": "registry:sections/header"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": false,
+        "reusable": false,
+        "copyPaste": false
+      },
+      "protectedParts": [
+        "cart-link",
+        "account-link"
+      ],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "section",
+      "id": "footer",
+      "name": "Footer",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Footer",
+      "tags": [
+        "section",
+        "footer"
+      ],
+      "allowedSlots": [
+        "page"
+      ],
+      "dataSources": [
+        "storefront"
+      ],
+      "permissions": [
+        "storefront:read"
+      ],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [
+          "link-column",
+          "social-link",
+          "text",
+          "heading"
+        ],
+        "maxChildren": 10,
+        "settingsRef": "registry:sections/footer"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": false,
+        "reusable": false,
+        "copyPaste": false
+      },
+      "protectedParts": [
+        "legal-links"
+      ],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "section",
+      "id": "hero",
+      "name": "Hero Banner",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Banners",
+      "tags": [
+        "section",
+        "banners"
+      ],
+      "allowedSlots": [
+        "page"
+      ],
+      "dataSources": [],
+      "permissions": [
+        "media:read"
+      ],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [
+          "heading",
+          "text",
+          "button",
+          "hero-slide"
+        ],
+        "maxChildren": 10,
+        "settingsRef": "registry:sections/hero"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": true,
+        "copyPaste": true
+      },
+      "protectedParts": [],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "section",
+      "id": "image-banner",
+      "name": "Image Banner",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Banners",
+      "tags": [
+        "section",
+        "banners"
+      ],
+      "allowedSlots": [
+        "page"
+      ],
+      "dataSources": [],
+      "permissions": [
+        "media:read"
+      ],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [
+          "heading",
+          "text",
+          "button"
+        ],
+        "maxChildren": 10,
+        "settingsRef": "registry:sections/image-banner"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": true,
+        "copyPaste": true
+      },
+      "protectedParts": [],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "section",
+      "id": "rich-text",
+      "name": "Rich Text",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Content",
+      "tags": [
+        "section",
+        "content"
+      ],
+      "allowedSlots": [
+        "page"
+      ],
+      "dataSources": [],
+      "permissions": [],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [
+          "heading",
+          "text",
+          "button"
+        ],
+        "maxChildren": 10,
+        "settingsRef": "registry:sections/rich-text"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": true,
+        "copyPaste": true
+      },
+      "protectedParts": [],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "section",
+      "id": "image-with-text",
+      "name": "Image with Text",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Content",
+      "tags": [
+        "section",
+        "content"
+      ],
+      "allowedSlots": [
+        "page"
+      ],
+      "dataSources": [],
+      "permissions": [
+        "media:read"
+      ],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [
+          "heading",
+          "text",
+          "button"
+        ],
+        "maxChildren": 10,
+        "settingsRef": "registry:sections/image-with-text"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": true,
+        "copyPaste": true
+      },
+      "protectedParts": [],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "section",
+      "id": "multicolumn",
+      "name": "Multi-column",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Content",
+      "tags": [
+        "section",
+        "content"
+      ],
+      "allowedSlots": [
+        "page"
+      ],
+      "dataSources": [],
+      "permissions": [],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [
+          "column"
+        ],
+        "maxChildren": 12,
+        "settingsRef": "registry:sections/multicolumn"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": true,
+        "copyPaste": true
+      },
+      "protectedParts": [],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "section",
+      "id": "collapsible-content",
+      "name": "Collapsible Content",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Content",
+      "tags": [
+        "section",
+        "content"
+      ],
+      "allowedSlots": [
+        "page"
+      ],
+      "dataSources": [],
+      "permissions": [],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [
+          "collapsible-item"
+        ],
+        "maxChildren": 20,
+        "settingsRef": "registry:sections/collapsible-content"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": true,
+        "copyPaste": true
+      },
+      "protectedParts": [],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "section",
+      "id": "testimonials",
+      "name": "Customer Testimonials",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Content",
+      "tags": [
+        "section",
+        "content"
+      ],
+      "allowedSlots": [
+        "page"
+      ],
+      "dataSources": [],
+      "permissions": [],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [
+          "testimonial"
+        ],
+        "maxChildren": 12,
+        "settingsRef": "registry:sections/testimonials"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": true,
+        "copyPaste": true
+      },
+      "protectedParts": [],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "section",
+      "id": "product-grid",
+      "name": "Product Grid",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Collections",
+      "tags": [
+        "section",
+        "collections"
+      ],
+      "allowedSlots": [
+        "page"
+      ],
+      "dataSources": [
+        "products",
+        "collections"
+      ],
+      "permissions": [
+        "collections:read",
+        "products:read"
+      ],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [],
+        "settingsRef": "registry:sections/product-grid"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": true,
+        "copyPaste": true
+      },
+      "protectedParts": [],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "section",
+      "id": "collection-list",
+      "name": "Collection List",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Collections",
+      "tags": [
+        "section",
+        "collections"
+      ],
+      "allowedSlots": [
+        "page"
+      ],
+      "dataSources": [
+        "collections"
+      ],
+      "permissions": [
+        "collections:read"
+      ],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [],
+        "settingsRef": "registry:sections/collection-list"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": true,
+        "copyPaste": true
+      },
+      "protectedParts": [],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "section",
+      "id": "featured-collection",
+      "name": "Featured Collection",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Collections",
+      "tags": [
+        "section",
+        "collections"
+      ],
+      "allowedSlots": [
+        "page"
+      ],
+      "dataSources": [
+        "collections",
+        "products"
+      ],
+      "permissions": [
+        "collections:read",
+        "products:read"
+      ],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [],
+        "settingsRef": "registry:sections/featured-collection"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": true,
+        "copyPaste": true
+      },
+      "protectedParts": [],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "section",
+      "id": "collection-banner",
+      "name": "Collection Banner",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Collections",
+      "tags": [
+        "section",
+        "collections"
+      ],
+      "allowedSlots": [
+        "page"
+      ],
+      "dataSources": [
+        "collections"
+      ],
+      "permissions": [
+        "collections:read"
+      ],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [
+          "heading",
+          "text"
+        ],
+        "maxChildren": 5,
+        "settingsRef": "registry:sections/collection-banner"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": true,
+        "copyPaste": true
+      },
+      "protectedParts": [],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "section",
+      "id": "main-product",
+      "name": "Product Information & Media",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Product",
+      "tags": [
+        "section",
+        "product"
+      ],
+      "allowedSlots": [
+        "page"
+      ],
+      "dataSources": [
+        "products",
+        "cart"
+      ],
+      "permissions": [
+        "cart:read",
+        "products:read"
+      ],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [
+          "product-title",
+          "product-price",
+          "product-compare-at-price",
+          "product-sku",
+          "product-type",
+          "product-category",
+          "product-description",
+          "variant-picker",
+          "collapsible-info",
+          "social-share",
+          "image",
+          "button",
+          "text",
+          "heading"
+        ],
+        "maxChildren": 20,
+        "settingsRef": "registry:sections/main-product"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": false,
+        "reusable": false,
+        "copyPaste": false
+      },
+      "protectedParts": [
+        "price",
+        "variant-picker",
+        "add-to-cart"
+      ],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "section",
+      "id": "related-products",
+      "name": "Related Products",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Product",
+      "tags": [
+        "section",
+        "product"
+      ],
+      "allowedSlots": [
+        "page"
+      ],
+      "dataSources": [
+        "products"
+      ],
+      "permissions": [
+        "products:read"
+      ],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [],
+        "settingsRef": "registry:sections/related-products"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": true,
+        "copyPaste": true
+      },
+      "protectedParts": [],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "section",
+      "id": "promotional-banner",
+      "name": "Promotional Banner",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Marketing",
+      "tags": [
+        "section",
+        "marketing"
+      ],
+      "allowedSlots": [
+        "page"
+      ],
+      "dataSources": [],
+      "permissions": [],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [
+          "heading",
+          "text",
+          "button",
+          "column"
+        ],
+        "maxChildren": 10,
+        "settingsRef": "registry:sections/promotional-banner"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": true,
+        "copyPaste": true
+      },
+      "protectedParts": [],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "section",
+      "id": "logo-list",
+      "name": "Logo List",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Marketing",
+      "tags": [
+        "section",
+        "marketing"
+      ],
+      "allowedSlots": [
+        "page"
+      ],
+      "dataSources": [],
+      "permissions": [],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [
+          "image"
+        ],
+        "maxChildren": 12,
+        "settingsRef": "registry:sections/logo-list"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": true,
+        "copyPaste": true
+      },
+      "protectedParts": [],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "section",
+      "id": "countdown",
+      "name": "Countdown",
+      "description": "Counts down to a real end time, such as the end of a sale. It is the same for every visitor.",
+      "componentVersion": "1.0.0",
+      "category": "Promotion",
+      "tags": [
+        "section",
+        "promotion"
+      ],
+      "allowedSlots": [
+        "page"
+      ],
+      "dataSources": [],
+      "permissions": [],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": true,
+        "featureKey": "countdown"
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [],
+        "maxChildren": 0,
+        "settingsRef": "registry:sections/countdown"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": true,
+        "copyPaste": true
+      },
+      "protectedParts": [
+        "end-message"
+      ],
+      "messageKeys": [
+        "countdown.announce.long",
+        "countdown.announce.day",
+        "countdown.announce.hour",
+        "countdown.announce.tenMinutes",
+        "countdown.announce.minute",
+        "countdown.announce.ended"
+      ],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "section",
+      "id": "trust-badges",
+      "name": "Trust Badges",
+      "description": "A row of short statements from you, such as free shipping or easy returns.",
+      "componentVersion": "1.0.0",
+      "category": "Content",
+      "tags": [
+        "section",
+        "content"
+      ],
+      "allowedSlots": [
+        "page"
+      ],
+      "dataSources": [],
+      "permissions": [],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": true,
+        "wordingKey": "badge_upload"
+      },
+      "legal": {
+        "required": true,
+        "featureKey": "trust_badges"
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [
+          "trust-badge"
+        ],
+        "maxChildren": 8,
+        "settingsRef": "registry:sections/trust-badges"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": true,
+        "copyPaste": true
+      },
+      "protectedParts": [
+        "disclaimer"
+      ],
+      "messageKeys": [
+        "trustBadges.disclaimer"
+      ],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "block",
+      "id": "heading",
+      "name": "Heading",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Text",
+      "tags": [
+        "block",
+        "text"
+      ],
+      "allowedSlots": [
+        "footer",
+        "hero",
+        "image-banner",
+        "rich-text",
+        "image-with-text",
+        "collection-banner",
+        "main-product",
+        "promotional-banner",
+        "column",
+        "group"
+      ],
+      "dataSources": [],
+      "permissions": [],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [],
+        "settingsRef": "registry:blocks/heading"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": true,
+        "copyPaste": true
+      },
+      "protectedParts": [],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "block",
+      "id": "text",
+      "name": "Text",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Text",
+      "tags": [
+        "block",
+        "text"
+      ],
+      "allowedSlots": [
+        "announcement-bar",
+        "footer",
+        "hero",
+        "image-banner",
+        "rich-text",
+        "image-with-text",
+        "collection-banner",
+        "main-product",
+        "promotional-banner",
+        "column",
+        "group"
+      ],
+      "dataSources": [],
+      "permissions": [],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [],
+        "settingsRef": "registry:blocks/text"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": true,
+        "copyPaste": true
+      },
+      "protectedParts": [],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "block",
+      "id": "button",
+      "name": "Button",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Action",
+      "tags": [
+        "block",
+        "action"
+      ],
+      "allowedSlots": [
+        "header",
+        "hero",
+        "image-banner",
+        "rich-text",
+        "image-with-text",
+        "main-product",
+        "promotional-banner",
+        "column",
+        "group"
+      ],
+      "dataSources": [],
+      "permissions": [],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [],
+        "settingsRef": "registry:blocks/button"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": true,
+        "copyPaste": true
+      },
+      "protectedParts": [],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "block",
+      "id": "image",
+      "name": "Image",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Media",
+      "tags": [
+        "block",
+        "media"
+      ],
+      "allowedSlots": [
+        "main-product",
+        "logo-list",
+        "column",
+        "group"
+      ],
+      "dataSources": [],
+      "permissions": [
+        "media:read"
+      ],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [],
+        "settingsRef": "registry:blocks/image"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": true,
+        "copyPaste": true
+      },
+      "protectedParts": [],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "block",
+      "id": "link",
+      "name": "Link",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Navigation",
+      "tags": [
+        "block",
+        "navigation"
+      ],
+      "allowedSlots": [
+        "announcement-bar",
+        "header",
+        "link-column",
+        "group"
+      ],
+      "dataSources": [],
+      "permissions": [],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [],
+        "settingsRef": "registry:blocks/link"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": true,
+        "copyPaste": true
+      },
+      "protectedParts": [],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "block",
+      "id": "link-column",
+      "name": "Link Column",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Navigation",
+      "tags": [
+        "block",
+        "navigation"
+      ],
+      "allowedSlots": [
+        "footer"
+      ],
+      "dataSources": [],
+      "permissions": [],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [
+          "link"
+        ],
+        "maxChildren": 20,
+        "settingsRef": "registry:blocks/link-column"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": true,
+        "copyPaste": true
+      },
+      "protectedParts": [],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "block",
+      "id": "social-link",
+      "name": "Social Link",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Social",
+      "tags": [
+        "block",
+        "social"
+      ],
+      "allowedSlots": [
+        "announcement-bar",
+        "footer",
+        "group"
+      ],
+      "dataSources": [],
+      "permissions": [],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [],
+        "settingsRef": "registry:blocks/social-link"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": true,
+        "copyPaste": true
+      },
+      "protectedParts": [],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "block",
+      "id": "column",
+      "name": "Column",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Layout",
+      "tags": [
+        "block",
+        "layout"
+      ],
+      "allowedSlots": [
+        "multicolumn",
+        "promotional-banner"
+      ],
+      "dataSources": [],
+      "permissions": [
+        "media:read"
+      ],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [
+          "heading",
+          "text",
+          "button",
+          "image"
+        ],
+        "maxChildren": 10,
+        "settingsRef": "registry:blocks/column"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": true,
+        "copyPaste": true
+      },
+      "protectedParts": [],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "block",
+      "id": "collapsible-item",
+      "name": "Collapsible Row",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Content",
+      "tags": [
+        "block",
+        "content"
+      ],
+      "allowedSlots": [
+        "collapsible-content"
+      ],
+      "dataSources": [],
+      "permissions": [],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [],
+        "settingsRef": "registry:blocks/collapsible-item"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": true,
+        "copyPaste": true
+      },
+      "protectedParts": [],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "block",
+      "id": "testimonial",
+      "name": "Testimonial",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Content",
+      "tags": [
+        "block",
+        "content"
+      ],
+      "allowedSlots": [
+        "testimonials"
+      ],
+      "dataSources": [],
+      "permissions": [
+        "media:read"
+      ],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [],
+        "settingsRef": "registry:blocks/testimonial"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": true,
+        "copyPaste": true
+      },
+      "protectedParts": [],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "block",
+      "id": "group",
+      "name": "Group Container",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Layout",
+      "tags": [
+        "block",
+        "layout"
+      ],
+      "allowedSlots": [],
+      "dataSources": [],
+      "permissions": [],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [
+          "heading",
+          "text",
+          "button",
+          "image",
+          "link",
+          "social-link"
+        ],
+        "maxChildren": 20,
+        "settingsRef": "registry:blocks/group"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": true,
+        "copyPaste": true
+      },
+      "protectedParts": [],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "block",
+      "id": "product-title",
+      "name": "Product Title",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Product",
+      "tags": [
+        "block",
+        "product"
+      ],
+      "allowedSlots": [
+        "main-product"
+      ],
+      "dataSources": [
+        "products"
+      ],
+      "permissions": [
+        "products:read"
+      ],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [],
+        "settingsRef": "registry:blocks/product-title"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": false,
+        "reusable": false,
+        "copyPaste": true
+      },
+      "protectedParts": [
+        "title"
+      ],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "block",
+      "id": "product-price",
+      "name": "Product Price",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Product",
+      "tags": [
+        "block",
+        "product"
+      ],
+      "allowedSlots": [
+        "main-product"
+      ],
+      "dataSources": [
+        "products"
+      ],
+      "permissions": [
+        "products:read"
+      ],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [],
+        "settingsRef": "registry:blocks/product-price"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": false,
+        "reusable": false,
+        "copyPaste": true
+      },
+      "protectedParts": [
+        "price"
+      ],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "block",
+      "id": "product-compare-at-price",
+      "name": "Compare-at Price & Savings",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Product",
+      "tags": [
+        "block",
+        "product"
+      ],
+      "allowedSlots": [
+        "main-product"
+      ],
+      "dataSources": [
+        "products"
+      ],
+      "permissions": [
+        "products:read"
+      ],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [],
+        "settingsRef": "registry:blocks/product-compare-at-price"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": false,
+        "reusable": false,
+        "copyPaste": true
+      },
+      "protectedParts": [
+        "compare-at-price"
+      ],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "block",
+      "id": "product-sku",
+      "name": "Product SKU",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Product",
+      "tags": [
+        "block",
+        "product"
+      ],
+      "allowedSlots": [
+        "main-product"
+      ],
+      "dataSources": [
+        "products"
+      ],
+      "permissions": [
+        "products:read"
+      ],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [],
+        "settingsRef": "registry:blocks/product-sku"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": false,
+        "copyPaste": true
+      },
+      "protectedParts": [],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "block",
+      "id": "product-type",
+      "name": "Product Type",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Product",
+      "tags": [
+        "block",
+        "product"
+      ],
+      "allowedSlots": [
+        "main-product"
+      ],
+      "dataSources": [
+        "products"
+      ],
+      "permissions": [
+        "products:read"
+      ],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [],
+        "settingsRef": "registry:blocks/product-type"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": false,
+        "copyPaste": true
+      },
+      "protectedParts": [],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "block",
+      "id": "product-category",
+      "name": "Product Category",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Product",
+      "tags": [
+        "block",
+        "product"
+      ],
+      "allowedSlots": [
+        "main-product"
+      ],
+      "dataSources": [
+        "products"
+      ],
+      "permissions": [
+        "products:read"
+      ],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [],
+        "settingsRef": "registry:blocks/product-category"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": false,
+        "copyPaste": true
+      },
+      "protectedParts": [],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "block",
+      "id": "product-description",
+      "name": "Product Description",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Product",
+      "tags": [
+        "block",
+        "product"
+      ],
+      "allowedSlots": [
+        "main-product"
+      ],
+      "dataSources": [
+        "products"
+      ],
+      "permissions": [
+        "products:read"
+      ],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [],
+        "settingsRef": "registry:blocks/product-description"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": false,
+        "copyPaste": true
+      },
+      "protectedParts": [],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "block",
+      "id": "variant-picker",
+      "name": "Variant Picker",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Product",
+      "tags": [
+        "block",
+        "product"
+      ],
+      "allowedSlots": [
+        "main-product"
+      ],
+      "dataSources": [
+        "products",
+        "cart"
+      ],
+      "permissions": [
+        "cart:read",
+        "products:read"
+      ],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [],
+        "settingsRef": "registry:blocks/variant-picker"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": false,
+        "reusable": false,
+        "copyPaste": true
+      },
+      "protectedParts": [
+        "variant-selection"
+      ],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "block",
+      "id": "collapsible-info",
+      "name": "Collapsible Product Information",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Product",
+      "tags": [
+        "block",
+        "product"
+      ],
+      "allowedSlots": [
+        "main-product"
+      ],
+      "dataSources": [
+        "products"
+      ],
+      "permissions": [
+        "products:read"
+      ],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [],
+        "settingsRef": "registry:blocks/collapsible-info"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": false,
+        "copyPaste": true
+      },
+      "protectedParts": [],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "block",
+      "id": "social-share",
+      "name": "Social Share",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Social",
+      "tags": [
+        "block",
+        "social"
+      ],
+      "allowedSlots": [
+        "main-product"
+      ],
+      "dataSources": [
+        "products"
+      ],
+      "permissions": [
+        "products:read"
+      ],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [],
+        "settingsRef": "registry:blocks/social-share"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": false,
+        "copyPaste": true
+      },
+      "protectedParts": [],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "block",
+      "id": "hero-slide",
+      "name": "Hero slide",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Banners",
+      "tags": [
+        "block",
+        "banners"
+      ],
+      "allowedSlots": [
+        "hero"
+      ],
+      "dataSources": [],
+      "permissions": [
+        "media:read"
+      ],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": false
+      },
+      "legal": {
+        "required": false
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [],
+        "settingsRef": "registry:blocks/hero-slide"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": true,
+        "copyPaste": true
+      },
+      "protectedParts": [],
+      "messageKeys": [],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    },
+    {
+      "manifestVersion": 1,
+      "kind": "block",
+      "id": "trust-badge",
+      "name": "Trust Badge",
+      "description": "",
+      "componentVersion": "1.0.0",
+      "category": "Content",
+      "tags": [
+        "block",
+        "content"
+      ],
+      "allowedSlots": [
+        "trust-badges"
+      ],
+      "dataSources": [],
+      "permissions": [],
+      "requiresPurchaseFlow": false,
+      "attestation": {
+        "required": true,
+        "wordingKey": "badge_upload"
+      },
+      "legal": {
+        "required": true,
+        "featureKey": "trust_badges"
+      },
+      "compatibility": {
+        "documentSchemaVersions": [
+          1,
+          2
+        ],
+        "accepts": [],
+        "settingsRef": "registry:blocks/trust-badge"
+      },
+      "availability": "available",
+      "supports": {
+        "displayRules": true,
+        "reusable": true,
+        "copyPaste": true
+      },
+      "protectedParts": [],
+      "messageKeys": [
+        "trustBadges.disclaimer",
+        "trustBadges.preset.freeShipping",
+        "trustBadges.preset.easyReturns",
+        "trustBadges.preset.securePackaging",
+        "trustBadges.preset.qualityChecked"
+      ],
+      "readinessRules": [
+        "component.unavailable"
+      ]
+    }
+  ]
+}

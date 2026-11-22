@@ -97,6 +97,9 @@ export const collections = pgTable(
     status: text('status', { enum: COLLECTION_STATUSES })
       .notNull()
       .default('draft'),
+    seoTitle: text('seo_title'),
+    seoDescription: text('seo_description'),
+    socialImagePath: text('social_image_path'),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -145,6 +148,9 @@ export const products = pgTable(
     status: text('status', { enum: PRODUCT_STATUSES })
       .notNull()
       .default('draft'),
+    seoTitle: text('seo_title'),
+    seoDescription: text('seo_description'),
+    socialImagePath: text('social_image_path'),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

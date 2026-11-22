@@ -10,11 +10,22 @@ export type MembershipRole = (typeof MEMBERSHIP_ROLES)[number];
  * Modules an Owner can grant to a team member, with the level each one takes. `write` always includes `read`.
  * The database enforces this with restrictive RLS policies calling has_module_access() (0018_member_permissions).
  */
-export const MODULES = ['products', 'orders', 'customers', 'settings'] as const;
+export const MODULES = [
+  'products',
+  'orders',
+  'customers',
+  'settings',
+  'design',
+] as const;
 export type Module = (typeof MODULES)[number];
-export const ACCESS_LEVELS = ['none', 'read', 'write'] as const;
+/** `publish` exists for the `design` module only (publish implies write implies read). */
+export const ACCESS_LEVELS = ['none', 'read', 'write', 'publish'] as const;
 export type AccessLevel = (typeof ACCESS_LEVELS)[number];
 export type MemberPermissions = Partial<Record<Module, AccessLevel>>;
+
+/** Independent grants stored on the membership (memberships.capabilities). They are not levels and do not imply one. */
+export const MEMBER_CAPABILITIES = ['attest', 'discard'] as const;
+export type MemberCapability = (typeof MEMBER_CAPABILITIES)[number];
 
 /** Platform staff levels. Only a super admin can manage other admins and the platform settings; the last one can never be removed. */
 export const PLATFORM_ADMIN_ROLES = ['super_admin', 'admin'] as const;

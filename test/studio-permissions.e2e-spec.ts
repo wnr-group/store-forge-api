@@ -11,11 +11,13 @@ import { seedWorld, type World } from './support/world.js';
 
 type Client = Awaited<ReturnType<typeof as>>;
 type Level = 'none' | 'read' | 'write';
+// `design` follows the mapping of migration 0036: settings write -> publish, read -> read, none -> none.
 const perms = (products: Level, settings: Level) => ({
   products,
   orders: 'none',
   customers: 'none',
   settings,
+  design: { write: 'publish', read: 'read', none: 'none' }[settings],
 });
 
 describe.skipIf(!migrationsAvailable)('Studio permission matrix (e2e)', () => {
@@ -167,11 +169,14 @@ describe.skipIf(!migrationsAvailable)('Studio permission matrix (e2e)', () => {
       expect(denied(await statuses(catalog(c)))).toBe(true);
     }
   });
-  it('viewing: every member can read templates and versions; catalogue reads need products access', async () => {
-    for (const c of [designOnly, catalogOnly, readAll, noProducts]) {
+  it('viewing: members with design read can read templates and versions; catalogue reads need products access', async () => {
+    for (const c of [designOnly, readAll, noProducts]) {
       await c.get('/store/templates').expect(200);
       await c.get(`/store/templates/${tplId}/versions`).expect(200);
     }
+    // Reading the design now needs design:view: catalogOnly has settings none, so design none (migration 0036).
+    await catalogOnly.get('/store/templates').expect(403);
+    await catalogOnly.get(`/store/templates/${tplId}/versions`).expect(403);
     await readAll.get('/products').expect(200);
     await noProducts.get('/products').expect(403);
     await designOnly.get('/products').expect(403);

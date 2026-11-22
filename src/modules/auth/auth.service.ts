@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { eq, sql } from 'drizzle-orm';
 import { AppException, invalid } from '../../common/app.exception.js';
+import { effectiveCapabilities } from '../../common/constants/permissions.js';
 import type { AuthUser } from '../../common/interfaces/request-context.js';
 import { listActiveMemberships } from '../../common/tenancy/memberships.js';
 import type { AppConfig } from '../../config/configuration.js';
@@ -57,6 +58,7 @@ export class AuthService {
         organizationSlug: m.tenant.slug,
         role: m.role,
         permissions: m.permissions as Record<string, string>,
+        capabilities: effectiveCapabilities(m.role, m.capabilities),
         joinedAt: m.joinedAt,
       })),
     };

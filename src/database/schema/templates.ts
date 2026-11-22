@@ -26,11 +26,24 @@ export const TEMPLATE_KINDS = [
   'group_header',
   'group_footer',
   'group_announcement',
+  'group_cart_drawer',
+  'page',
 ] as const;
 export type TemplateKind = (typeof TEMPLATE_KINDS)[number];
 
+export const THEME_DOCUMENT_KINDS = [
+  'index',
+  'product',
+  'collection',
+  'theme_settings',
+  'group_header',
+  'group_footer',
+  'group_announcement',
+] as const;
+export type ThemeDocumentKind = (typeof THEME_DOCUMENT_KINDS)[number];
+
 /** Page kinds render a storefront page; the others are one-per-store shared documents. */
-export const PAGE_TEMPLATE_KINDS = ['index', 'product', 'collection'] as const;
+export const PAGE_TEMPLATE_KINDS = ['index', 'product', 'collection', 'page'] as const;
 
 export const THEME_INDUSTRIES = [
   'fashion',
@@ -52,6 +65,7 @@ export const templates = pgTable(
     storeId: uuid('store_id').notNull(),
     kind: text('kind', { enum: TEMPLATE_KINDS }).notNull(),
     name: text('name').notNull(),
+    pageSlug: text('page_slug'),
     status: text('status', { enum: ['active', 'archived'] })
       .notNull()
       .default('active'),

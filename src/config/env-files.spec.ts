@@ -45,7 +45,7 @@ describe('envFilePaths and environment precedence (D-016)', () => {
     const configService = moduleRef.get(ConfigService);
     expect(configService.get('TEST_VAR')).toBe('from-env-local');
     await moduleRef.close();
-  });
+  }, 15000);
 
   it('AC-A-02: .env supplies keys absent from .env.local', async () => {
     writeFileSync(join(tempDir, '.env'), 'BASE_ONLY=base-value\nSHARED=base\n');

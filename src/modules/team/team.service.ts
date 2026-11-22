@@ -6,7 +6,11 @@ import {
   invalid,
   notFound,
 } from '../../common/app.exception.js';
-import { MEMBER_ROLE, roleLabel } from '../../common/constants/permissions.js';
+import {
+  effectiveCapabilities,
+  MEMBER_ROLE,
+  roleLabel,
+} from '../../common/constants/permissions.js';
 import { errorChain, mapErrors } from '../../common/db-errors.js';
 import type { OrgContext } from '../../common/interfaces/request-context.js';
 import {
@@ -15,7 +19,10 @@ import {
   type DbTx,
 } from '../../database/database.service.js';
 import { memberships } from '../../database/schema/index.js';
-import type { MemberPermissions } from '../../database/schema/enums.js';
+import type {
+  MemberCapability,
+  MemberPermissions,
+} from '../../database/schema/enums.js';
 import { SupabaseAdminService } from '../auth/supabase-admin.service.js';
 import type {
   CreatedMemberDto,
@@ -32,6 +39,7 @@ type TeamRaw = {
   status: string;
   joined_at: string | Date;
   permissions: MemberPermissions | null;
+  capabilities: MemberCapability[] | null;
 };
 
 export type TeamMemberRow = Omit<TeamMemberDto, 'roleLabel'> & {
@@ -56,6 +64,10 @@ export async function listTeamRows(
     status: r.status === 'disabled' ? 'disabled' : 'active',
     joinedAt: new Date(r.joined_at),
     permissions: r.permissions ?? {},
+    capabilities: effectiveCapabilities(
+      r.role === 'owner' ? 'owner' : 'admin',
+      r.capabilities,
+    ),
   }));
 }
 
@@ -63,6 +75,7 @@ export const toTeamMemberDto = (m: TeamMemberRow): TeamMemberDto => ({
   ...m,
   roleLabel: roleLabel(m.role as 'owner' | 'admin' | 'staff', m.permissions),
   permissions: m.permissions as Record<string, string>,
+  capabilities: m.capabilities,
 });
 
 const memberNotFound = () =>
@@ -128,6 +141,7 @@ export class TeamService {
             userId: user.id,
             role: MEMBER_ROLE,
             permissions: dto.permissions,
+            capabilities: dto.capabilities ?? [],
           }),
         ),
       );
@@ -154,10 +168,20 @@ export class TeamService {
             ne(memberships.role, 'owner'),
             ne(memberships.userId, ctx.userId),
           );
-          if (dto.permissions) {
+          if (dto.permissions || dto.capabilities) {
+            const { design, ...modules } = dto.permissions ?? {};
+            const set: Partial<typeof memberships.$inferInsert> = {};
+            if (dto.permissions)
+              // A client that does not know the design module must not wipe a level the Owner already gave.
+              set.permissions = (
+                design === undefined
+                  ? sql`${JSON.stringify(modules)}::jsonb || case when ${memberships.permissions} -> 'design' is not null then jsonb_build_object('design', ${memberships.permissions} -> 'design') else '{}'::jsonb end`
+                  : { ...modules, design }
+              ) as never;
+            if (dto.capabilities) set.capabilities = dto.capabilities;
             const updated = await tx
               .update(memberships)
-              .set({ permissions: dto.permissions })
+              .set(set)
               .where(guard)
               .returning({ id: memberships.id });
             if (updated.length !== 1) throw memberNotFound();

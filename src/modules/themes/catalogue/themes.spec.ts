@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TEMPLATE_KINDS } from '../../../database/schema/templates.js';
+import { THEME_DOCUMENT_KINDS } from '../../../database/schema/templates.js';
 import { validateTemplateDocument } from '../validation/template-document.js';
 import { THEME_CATALOGUE } from './themes.js';
 
@@ -63,11 +63,11 @@ describe('theme catalogue', () => {
     describe(theme.name, () => {
       it('defines every template kind', () => {
         expect(Object.keys(theme.documents).sort()).toEqual(
-          [...TEMPLATE_KINDS].sort(),
+          [...THEME_DOCUMENT_KINDS].sort(),
         );
       });
 
-      for (const kind of TEMPLATE_KINDS) {
+      for (const kind of THEME_DOCUMENT_KINDS) {
         it(`${kind} passes server validation`, () => {
           expect(
             validateTemplateDocument(theme.documents[kind], {

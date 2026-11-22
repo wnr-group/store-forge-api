@@ -1,7 +1,10 @@
 import { and, asc, eq } from 'drizzle-orm';
 import type { DbTx } from '../../database/database.service.js';
 import { memberships, tenants } from '../../database/schema/index.js';
-import type { MemberPermissions } from '../../database/schema/enums.js';
+import type {
+  MemberCapability,
+  MemberPermissions,
+} from '../../database/schema/enums.js';
 import { isRole, type Role } from '../constants/permissions.js';
 import { AppException } from '../app.exception.js';
 import { ORGANIZATION_HEADER } from '../constants/error-codes.js';
@@ -19,6 +22,7 @@ export type OrgMembership = {
   tenant: TenantSummary;
   role: Role;
   permissions: MemberPermissions;
+  capabilities: MemberCapability[];
   joinedAt: Date;
 };
 
@@ -37,6 +41,7 @@ export async function listActiveMemberships(
     .select({
       role: memberships.role,
       permissions: memberships.permissions,
+      capabilities: memberships.capabilities,
       joinedAt: memberships.createdAt,
       tenant: {
         id: tenants.id,
@@ -96,5 +101,6 @@ export function resolveOrganization(
     tenantPublicId: chosen.tenant.publicId,
     role: chosen.role,
     permissions: chosen.permissions,
+    capabilities: chosen.capabilities,
   };
 }

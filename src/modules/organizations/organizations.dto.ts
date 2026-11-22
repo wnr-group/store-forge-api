@@ -20,14 +20,21 @@ export class OrganizationSummaryDto {
     },
   })
   permissions!: Record<string, string>;
+  @ApiProperty({
+    type: [String],
+    example: ['attest'],
+    description:
+      'Independent capabilities you hold (attest, discard). The Owner holds all of them.',
+  })
+  capabilities!: string[];
   @ApiProperty() joinedAt!: Date;
 }
 
 export class AccessEntryDto {
-  @ApiProperty({ enum: ['products', 'orders', 'customers', 'settings'] })
+  @ApiProperty({ enum: ['products', 'orders', 'customers', 'settings', 'design'] })
   module!: string;
   @ApiProperty({ example: 'Products & inventory' }) label!: string;
-  @ApiProperty({ enum: ['read', 'write'] }) level!: string;
+  @ApiProperty({ enum: ['read', 'write', 'publish'] }) level!: string;
 }
 
 export class OrganizationRefDto {
@@ -50,6 +57,11 @@ export class CurrentOrganizationDto {
   })
   roleLabel!: string;
   @ApiProperty() permissions!: Record<string, string>;
+  @ApiProperty({
+    type: [String],
+    description: 'Independent capabilities you hold (attest, discard).',
+  })
+  capabilities!: string[];
   @ApiProperty({
     type: [AccessEntryDto],
     description:

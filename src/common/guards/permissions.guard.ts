@@ -22,7 +22,14 @@ export class PermissionsGuard implements CanActivate {
     const org = context.switchToHttp().getRequest<AuthenticatedRequest>().org;
     if (
       !org ||
-      !can({ role: org.role, permissions: org.permissions }, permission)
+      !can(
+        {
+          role: org.role,
+          permissions: org.permissions,
+          capabilities: org.capabilities,
+        },
+        permission,
+      )
     )
       throw forbidden();
     return true;

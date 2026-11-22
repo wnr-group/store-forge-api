@@ -1,5 +1,6 @@
 import type { Request } from 'express';
 import type {
+  MemberCapability,
   MemberPermissions,
   MembershipRole,
 } from '../../database/schema/enums.js';
@@ -24,6 +25,7 @@ export interface OrgContext {
   tenantPublicId: string;
   role: MembershipRole;
   permissions: MemberPermissions;
+  capabilities: MemberCapability[];
 }
 
 export type PlatformLevel = 'super_admin' | 'admin';
