@@ -613,8 +613,8 @@ describe.skipIf(!migrationsAvailable)(
           methods.filter((m) => item[m]).map((m) => `${m} ${path}`),
         );
         const payments = ops.filter((o) => o.includes('/payments/'));
-        // 101 is the operation count of the baseline (origin/main) application.
-        expect(ops.length - payments.length).toBe(101);
+        // 148 is the operation count of the baseline (origin/main) application, Store Forge Studio included.
+        expect(ops.length - payments.length).toBe(148);
         expect(payments.sort()).toEqual([
           'delete /api/v1/payments/razorpay',
           'get /api/v1/payments/razorpay',

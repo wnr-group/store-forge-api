@@ -69,7 +69,10 @@ const baseBranch = () => {
       });
       return 'main';
     } catch {
-      return 'HEAD';
+      // Comparing HEAD with itself would pass every diff scan with zero files; refuse instead of recording passing evidence.
+      throw new Error(
+        'payments static scans need origin/main or main to compare against; fetch it (CI checks out with fetch-depth: 0)',
+      );
     }
   }
 };
@@ -142,7 +145,7 @@ describe('payments static scans', () => {
 
   it('AC-DB-09 [layer:STATIC]: the flag adds no backfill, grant, DTO, accessor or endpoint', async () => {
     const ddl = read(
-      join(ROOT, 'src/database/migrations/0035_tenant_customer_auth_flag.sql'),
+      join(ROOT, 'src/database/migrations/0043_tenant_customer_auth_flag.sql'),
     )
       .split('\n')
       .filter((l) => !l.trim().startsWith('--'))
@@ -152,7 +155,7 @@ describe('payments static scans', () => {
       .map(norm);
     await evidence(
       'AC-DB-09',
-      '0035 contains one ALTER TABLE ADD COLUMN and nothing else; the flag is referenced only by the schema model',
+      '0043 contains one ALTER TABLE ADD COLUMN and nothing else; the flag is referenced only by the schema model',
       [`ddl: ${ddl.trim()}`, `source references: ${readers.join(', ')}`],
       () => {
         expect(ddl.trim()).toMatch(
@@ -166,14 +169,14 @@ describe('payments static scans', () => {
     );
   });
 
-  it('AC-DB-12 [layer:STATIC]: migration 0035 does not reference the payments table', async () => {
+  it('AC-DB-12 [layer:STATIC]: migration 0043 does not reference the payments table', async () => {
     const file = read(
-      join(ROOT, 'src/database/migrations/0035_tenant_customer_auth_flag.sql'),
+      join(ROOT, 'src/database/migrations/0043_tenant_customer_auth_flag.sql'),
     );
     const refs = file.match(/tenant_razorpay_config/gi) ?? [];
     await evidence(
       'AC-DB-12',
-      '0035 contains no reference to tenant_razorpay_config',
+      '0043 contains no reference to tenant_razorpay_config',
       [`references: ${refs.length}`],
       () => expect(refs).toHaveLength(0),
     );
@@ -346,7 +349,11 @@ describe('HTTP request logger middleware', () => {
       get: () => ({ get: (key: keyof typeof settings) => settings[key] }),
       getHttpAdapter: () => ({ getInstance: () => ({ set: () => undefined }) }),
       setGlobalPrefix: () => undefined,
-      use: (fn: (typeof handlers)[number]) => handlers.push(fn),
+      // Only global middleware: `app.use(path, handler)` is path-mounted (bulk import's body parser) and is not under test.
+      use: (...args: unknown[]) => {
+        if (args.length === 1)
+          handlers.push(args[0] as (typeof handlers)[number]);
+      },
       enableCors: () => undefined,
       useGlobalPipes: () => undefined,
       useGlobalFilters: () => undefined,

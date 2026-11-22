@@ -29,6 +29,7 @@ const membership = (role: OrgMembership['role']): OrgMembership => ({
   },
   role,
   permissions: {},
+  capabilities: [],
   joinedAt: new Date(),
 });
 

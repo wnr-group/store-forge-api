@@ -29,7 +29,7 @@ describe.skipIf(!migrationsAvailable)(
     const { t, w, own, rowOf, seedRow, clear, evidence } = usePaymentsDb();
 
     describe('migrations and constraints', () => {
-      it('AC-DB-01: migration 0034 applies to an empty database and creates the table', async () => {
+      it('AC-DB-01: migration 0042 applies to an empty database and creates the table', async () => {
         const journal = JSON.parse(
           readFileSync(join(MIGRATIONS_DIR, 'meta/_journal.json'), 'utf8'),
         ) as { entries: { tag: string }[] };
@@ -44,10 +44,10 @@ describe.skipIf(!migrationsAvailable)(
           'all migrations applied to an empty PGlite database; the table exists',
           {
             tableRegclass: exists.rows[0].r,
-            journalHasMigration: tags.includes('0034_tenant_razorpay_config'),
+            journalHasMigration: tags.includes('0042_tenant_razorpay_config'),
           },
           () => {
-            expect(tags).toContain('0034_tenant_razorpay_config');
+            expect(tags).toContain('0042_tenant_razorpay_config');
             expect(exists.rows[0].r).toBe('tenant_razorpay_config');
           },
         );
@@ -82,7 +82,7 @@ describe.skipIf(!migrationsAvailable)(
         );
         await evidence(
           'AC-DB-07',
-          '0035 applied and idempotent: boolean NOT NULL DEFAULT false',
+          '0043 applied and idempotent: boolean NOT NULL DEFAULT false',
           { column: flag.rows[0] },
           () => {
             expect(flag.rows[0]).toMatchObject({
@@ -225,8 +225,8 @@ describe.skipIf(!migrationsAvailable)(
         );
       });
 
-      it('AC-DB-08: tenants that existed before 0035 receive customer_auth_enabled = false', async () => {
-        const dir = mkdtempSync(join(tmpdir(), 'mig-to-0034-'));
+      it('AC-DB-08: tenants that existed before 0043 receive customer_auth_enabled = false', async () => {
+        const dir = mkdtempSync(join(tmpdir(), 'mig-to-0042-'));
         try {
           cpSync(resolve(MIGRATIONS_DIR), dir, { recursive: true });
           const jp = join(dir, 'meta/_journal.json');
@@ -234,7 +234,7 @@ describe.skipIf(!migrationsAvailable)(
             entries: { tag: string }[];
           };
           journal.entries = journal.entries.filter(
-            (e) => e.tag <= '0034_tenant_razorpay_config',
+            (e) => e.tag <= '0042_tenant_razorpay_config',
           );
           writeFileSync(jp, JSON.stringify(journal));
           const pg = new PGlite({ extensions: { pgcrypto } });
@@ -253,7 +253,7 @@ describe.skipIf(!migrationsAvailable)(
           await pg.close();
           await evidence(
             'AC-DB-08',
-            'database built to 0034, two tenants inserted, then migrated to 0035: both false',
+            'database built to 0042, two tenants inserted, then migrated to 0043: both false',
             { flags: flags.rows },
             () => {
               expect(flags.rows).toHaveLength(2);
@@ -267,7 +267,7 @@ describe.skipIf(!migrationsAvailable)(
         }
       });
 
-      it('AC-DB-09: 0035 adds no grant change; tenants grants stay table-level SELECT/DELETE and UPDATE (name, slug) [PG half]', async () => {
+      it('AC-DB-09: 0043 adds no grant change; tenants grants stay table-level SELECT/DELETE and UPDATE (name, slug) [PG half]', async () => {
         const upd = await own((pg) =>
           pg.query<{ column_name: string }>(
             `select column_name from information_schema.column_privileges where table_schema='public' and table_name='tenants' and grantee='authenticated' and privilege_type='UPDATE' order by 1`,
@@ -311,9 +311,9 @@ describe.skipIf(!migrationsAvailable)(
         );
       });
 
-      it('AC-DB-12 [layer:STATIC]: 0035 does not reference the payments table', () => {
+      it('AC-DB-12 [layer:STATIC]: 0043 does not reference the payments table', () => {
         const file = readFileSync(
-          join(MIGRATIONS_DIR, '0035_tenant_customer_auth_flag.sql'),
+          join(MIGRATIONS_DIR, '0043_tenant_customer_auth_flag.sql'),
           'utf8',
         );
         expect(file).not.toMatch(/tenant_razorpay_config/i);

@@ -26,7 +26,7 @@ export const tenants = pgTable(
       .default('active'),
     contactPhone: text('contact_phone'),
     address: text('address'),
-    /** Dormant switch for future shopper authentication (migration 0035). Nothing reads or writes it yet. */
+    /** Dormant switch for future shopper authentication (migration 0043). Nothing reads or writes it yet. */
     customerAuthEnabled: boolean('customer_auth_enabled')
       .notNull()
       .default(false),

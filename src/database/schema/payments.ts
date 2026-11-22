@@ -11,7 +11,7 @@ import { authUsers } from './auth-users.js';
 import { tenants } from './tenants.js';
 
 /**
- * A tenant's Razorpay credentials (migration 0034). The Key Secret exists ONLY as AES-256-GCM ciphertext. The request role may
+ * A tenant's Razorpay credentials (migration 0042). The Key Secret exists ONLY as AES-256-GCM ciphertext. The request role may
  * SELECT just tenant_id, key_id, updated_at and updated_by (column privileges), so the secret columns are never read by the
  * application; they are written through one upsert and never returned. Access goes through the API only (RLS, Owner only).
  */
