@@ -183,3 +183,39 @@ Rollout flag, legal gate, attestations and Studio media. Store routes are `JWT+O
 | 115 | studio | Ask to upload a Studio image | POST `/store/media-assets/upload-requests` | JWT+Org | `design:edit` | `{kind: badge_image, mimeType: jpeg\|png\|webp, sizeBytes<=5 MiB, width, height<=8192, altText?}` | `{id, path, token, signedUrl}` (201) | `media_assets` (RLS), Storage | SVG and other types 400; path `{tenant}/{uuid}.{ext}` chosen by the server; any client path field 400 |
 | 116 | studio | Finish a Studio image upload | POST `/store/media-assets/:id/finalize` | JWT+Org | `design:edit` | `{attestationId?}` | media asset | `media_assets` (RLS), Storage | type and size re-read from Storage (mismatch 400, object removed); attestation must be this file's, the same person's; linked once (409); repeat is safe |
 | 117 | studio | Check my design before publishing | POST `/store/studio/readiness` | JWT+Org | `design:view` | `{templateId?}` | `{issues[{key,ruleId,severity,message,messageKey,target{documentId,nodeId},fixAction,controlPath}], counts, canPublish, evaluatedAt, enforced}` | `templates` (RLS), `studio_rollout_status()`, `is_feature_approved()` | read-only; rule registry in `src/modules/studio/readiness`; blockers first. When Studio is ON for the store, `POST /store/theme/publish` and `POST /store/templates/:id/publish` rerun the rules inside the publish transaction before any write: blockers refused (400 `READINESS_BLOCKED`, no override), unacknowledged warnings refused (400 `READINESS_ACKNOWLEDGEMENT_REQUIRED`; send `acknowledgedWarnings: string[]` of issue keys), and one append-only `studio_publishes` row (publisher, items, acknowledgements, readiness summary, schema version) is written in the same transaction. Studio OFF: publish behaves exactly as before |
+
+## Reviews, recommendations, Studio workflow and public additions (Store Forge Studio, Releases 2-4)
+
+Routes added by the Studio releases after the foundation above. The request and response columns name the DTOs and results the live OpenAPI document describes; `test/swagger.e2e-spec.ts` compares this table with the registered routes in both directions.
+
+| # | Module | Feature | Method + endpoint | Auth | Permission | Request | Response |
+|---|---|---|---|---|---|---|---|
+| 118 | recommendations | Read merchant-picked recommendations for a product | GET `/store/products/:productId/recommendations` | JWT+Org | `catalog:view` | productId | merchant-picked recommendations |
+| 119 | recommendations | Set merchant-picked recommendations for a product | PUT `/store/products/:productId/recommendations` | JWT+Org | `catalog:manage` | `SetRecommendationsDto` (a product cannot recommend itself) | updated recommendations |
+| 120 | reviews | List reviews | GET `/reviews` | JWT+Org | `catalog:view` | filters, `page, limit` | paginated reviews |
+| 121 | reviews | Create a review | POST `/reviews` | JWT+Org | `catalog:manage` | `CreateReviewDto` | review |
+| 122 | reviews | Review CSV import template | GET `/reviews/import-template` | JWT+Org | `catalog:view` | - | CSV header row |
+| 123 | reviews | Import reviews | POST `/reviews/import` | JWT+Org | `catalog:manage` | `ReviewImportRequestDto`; validate-only mode checks every row without inserting; a real import needs an attestation id and is all-or-nothing | import result |
+| 124 | reviews | Update a review | PATCH `/reviews/:id` | JWT+Org | `catalog:manage` | `UpdateReviewDto` | review |
+| 125 | reviews | Delete a review | DELETE `/reviews/:id` | JWT+Org | `catalog:delete` | id | `{}` |
+| 126 | reviews | Publish a review | POST `/reviews/:id/publish` | JWT+Org | `catalog:manage` | - (id only) | review |
+| 127 | reviews | Unpublish a review | POST `/reviews/:id/unpublish` | JWT+Org | `catalog:manage` | - (id only) | review |
+| 128 | studio | Read Studio settings | GET `/store/studio/settings` | JWT+Org | `design:view` | - | review disclosure wording and language |
+| 129 | studio | Update Studio settings | PATCH `/store/studio/settings` | JWT+Org | `design:edit` | `UpdateStudioSettingsDto` | settings |
+| 130 | studio | Web Vitals statistics | GET `/store/studio/speed` | JWT+Org | `design:view` | - | aggregated Web Vitals from real visitor sessions |
+| 131 | studio | Mark drafts ready for review | POST `/store/studio/review-requests` | JWT+Org | `design:edit` | - (acts on the store's current drafts) | review request with its revision fingerprint |
+| 132 | studio | Current review request | GET `/store/studio/review-requests/current` | JWT+Org | `design:view` | - | the pending review request, if any |
+| 133 | studio | Unpublished draft changes | GET `/store/studio/changes` | JWT+Org | `design:view` | - | drafts compared with the published versions |
+| 134 | studio | Change ledger | GET `/store/studio/ledger` | JWT+Org | `design:view` | - | recent ledger entries |
+| 135 | studio | Discard draft changes | POST `/store/studio/discard` | JWT+Org | `design:edit` (and the discard capability) | `DiscardDraftDto` | template back at its published version |
+| 136 | studio | List reusable sections | GET `/store/studio/reusable-sections` | JWT+Org | `design:view` | - | sections with usage counts and current versions |
+| 137 | studio | Create a reusable section | POST `/store/studio/reusable-sections` | JWT+Org | `design:edit` | `CreateReusableSectionDto` | section and its first version (201) |
+| 138 | studio | Read a reusable section | GET `/store/studio/reusable-sections/:id` | JWT+Org | `design:view` | id | section with its current version |
+| 139 | studio | Update a reusable section | PUT `/store/studio/reusable-sections/:id` | JWT+Org | `design:edit` | `UpdateReusableSectionDto` | section; may add a new immutable version |
+| 140 | studio | Archive a reusable section | DELETE `/store/studio/reusable-sections/:id` | JWT+Org | `design:edit` | id | `{}`; 409 while an active template uses it |
+| 141 | studio | Reusable section versions | GET `/store/studio/reusable-sections/:id/versions` | JWT+Org | `design:view` | id | full version history |
+| 142 | studio | Restore a section version | POST `/store/studio/reusable-sections/:id/restore` | JWT+Org | `design:edit` | `RestoreReusableSectionVersionDto` | a new version carrying the restored content |
+| 143 | public | Published reviews for a product | GET `/public/storefronts/:slug/products/:productSlug/reviews` | Public | - | slug, productSlug | published reviews and disclosure wording; unpublished reviews are never returned |
+| 144 | public | Product recommendations | GET `/public/storefronts/:slug/recommendations` | Public | - | slug, source (related, merchant_picked, collection, newest, recently_viewed) | recommended products |
+| 145 | public | Record a Web Vitals sample | POST `/public/vitals` | Public | - | `RecordWebVitalsDto` (LCP, CLS, INP, TTFB, FCP) | daily histogram sample recorded |
+| 146 | public | Published landing page | GET `/public/storefronts/:slug/landing-pages/:pageSlug` | Public | - | slug, pageSlug | section-based landing page document; 404 when unpublished |
