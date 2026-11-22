@@ -227,6 +227,74 @@ describe.skipIf(!migrationsAvailable)('tenant public id (e2e)', () => {
       await anonymous(t).get('/public/storefronts/no-such-store').expect(404);
     });
 
+    it('stores each store address as {store slug}-{tenant public id}, kept in step by the database', async () => {
+      const pubA = await publicIdOf(w.tenantA);
+      await t.db.asOwner(async (pg) => {
+        const all = (
+          await pg.query<{
+            slug: string;
+            subdomain: string;
+            public_id: string;
+          }>(
+            'select s.slug, s.subdomain, t.public_id from stores s join tenants t on t.id = s.tenant_id',
+          )
+        ).rows;
+        expect(all.length).toBeGreaterThan(0);
+        for (const r of all)
+          expect(r.subdomain).toBe(`${r.slug}-${r.public_id}`);
+
+        // A hand-written value is overwritten; a slug rename moves the address; renaming back restores it.
+        await pg.query(
+          "update stores set subdomain = 'forged-aaaaaa' where slug = 'alpha-shop'",
+        );
+        const sub = () =>
+          pg
+            .query<{ subdomain: string }>(
+              'select subdomain from stores where id = $1',
+              [w.storeA],
+            )
+            .then((r) => r.rows[0].subdomain);
+        expect(await sub()).toBe(`alpha-shop-${pubA}`);
+        await pg.query(
+          "update stores set slug = 'alpha-renamed' where id = $1",
+          [w.storeA],
+        );
+        expect(await sub()).toBe(`alpha-renamed-${pubA}`);
+        await pg.query("update stores set slug = 'alpha-shop' where id = $1", [
+          w.storeA,
+        ]);
+        expect(await sub()).toBe(`alpha-shop-${pubA}`);
+
+        // The tenant's public id can never change, not even for the table owner.
+        await expect(
+          pg.query("update tenants set public_id = 'zzzzzz' where id = $1", [
+            w.tenantA,
+          ]),
+        ).rejects.toThrow(/public_id is immutable/);
+      });
+    });
+
+    it('resolves a host label to its store through GET /public/hosts/:subdomain, and nothing else', async () => {
+      const pubA = await publicIdOf(w.tenantA);
+      const pubB = await publicIdOf(w.tenantB);
+      const ok = await anonymous(t)
+        .get(`/public/hosts/alpha-shop-${pubA}`)
+        .expect(200);
+      expect(ok.body.data).toEqual({ slug: 'alpha-shop', publicId: pubA });
+      // Another tenant's id, a made-up id, the bare slug (older format) and junk all look the same: not found.
+      for (const label of [
+        `alpha-shop-${pubB}`,
+        'alpha-shop-zzzzzz',
+        'alpha-shop',
+        'no-such-store-aaaaaa',
+        '-bad-',
+        'a.b',
+      ])
+        await anonymous(t)
+          .get(`/public/hosts/${encodeURIComponent(label)}`)
+          .expect(404);
+    });
+
     it("gives members only their own organization's publicId", async () => {
       const alice = await as(t, w.alice);
       const current = (await alice.get('/organizations/current').expect(200))

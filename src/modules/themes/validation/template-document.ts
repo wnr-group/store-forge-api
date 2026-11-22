@@ -1,4 +1,5 @@
 import type { TemplateKind } from '../../../database/schema/templates.js';
+import { analyzeDisplay } from '../../studio/readiness/display.js';
 
 /**
  * Server-side validation of a template document before it is saved or published.
@@ -22,7 +23,13 @@ export const DOCUMENT_LIMITS = Object.freeze({
   maxValueDepth: 64,
 });
 
+/** Schema 1 is the original format. Schema 2 adds the optional `display` rules on sections and blocks (Studio). Both are read. */
 export const DOCUMENT_SCHEMA_VERSION = 1;
+export const DISPLAY_SCHEMA_VERSION = 2;
+export const SUPPORTED_SCHEMA_VERSIONS: readonly number[] = [
+  DOCUMENT_SCHEMA_VERSION,
+  DISPLAY_SCHEMA_VERSION,
+];
 export const LAYOUTS = ['classic', 'spotlight'] as const;
 
 const SAFE_NODE_ID = /^(?!__proto__$)[A-Za-z0-9_-]{1,128}$/;
@@ -43,6 +50,9 @@ const COMMON_SECTIONS = [
   'logo-list',
   'collapsible-content',
   'announcement-bar',
+  'countdown',
+  'trust-badges',
+  'reviews',
 ] as const;
 
 const SECTION_TYPES: Record<TemplateKind, readonly string[]> = {
@@ -53,7 +63,28 @@ const SECTION_TYPES: Record<TemplateKind, readonly string[]> = {
   group_header: ['announcement-bar', 'header'],
   group_footer: ['footer'],
   group_announcement: ['announcement-bar'],
+  group_cart_drawer: [
+    'promotional-banner',
+    'announcement-bar',
+    'rich-text',
+    'countdown',
+    'trust-badges',
+    'related-products',
+  ],
+  page: COMMON_SECTIONS,
 };
+
+/** Generated storefront pages a theme document may redesign. Keep in step with the frontend's lib/storefront/pages.ts. */
+const THEME_PAGE_KEYS = [
+  'products',
+  'collections',
+  'search',
+  'cart',
+  'wishlist',
+  'content',
+  'about',
+  'contact',
+];
 
 /** Setting keys that hold a link. */
 const URL_KEYS = new Set(['link', 'url', 'linkUrl']);
@@ -142,7 +173,13 @@ class Walker {
   private components = 0;
   private readonly seenIds = new Set<string>(['__proto__']);
 
-  constructor(private readonly ctx: ValidationContext) {}
+  constructor(
+    private readonly ctx: ValidationContext,
+    /** Pages stored in the theme may use any section type (the cart and wishlist sections are not offered on page templates). */
+    private readonly anySection = false,
+    /** `display` rules are valid only in a schema 2 document. */
+    private readonly allowDisplay = false,
+  ) {}
 
   add(path: string, message: string) {
     if (this.issues.length < 50) this.issues.push({ path, message });
@@ -235,7 +272,14 @@ class Walker {
 
     const extra = Object.keys(node).filter(
       (k) =>
-        !['type', 'settings', 'blocks', 'block_order', 'disabled'].includes(k),
+        ![
+          'type',
+          'settings',
+          'blocks',
+          'block_order',
+          'disabled',
+          'display',
+        ].includes(k),
     );
     if (extra.length) this.add(path, `Unknown fields: ${extra.join(', ')}.`);
     if (
@@ -243,13 +287,24 @@ class Walker {
       !/^[a-z][a-z0-9-]{0,63}$/.test(node.type)
     )
       this.add(`${path}.type`, 'Type is required.');
-    else if (isSection && !SECTION_TYPES[this.ctx.kind].includes(node.type))
+    else if (
+      isSection &&
+      !this.anySection &&
+      !SECTION_TYPES[this.ctx.kind].includes(node.type)
+    )
       this.add(
         `${path}.type`,
         `A "${node.type}" section is not allowed on this page.`,
       );
     if ('disabled' in node && typeof node.disabled !== 'boolean')
       this.add(`${path}.disabled`, 'Must be true or false.');
+    if ('display' in node) {
+      if (!this.allowDisplay)
+        this.add(`${path}.display`, 'Display rules need schema version 2.');
+      else
+        for (const problem of analyzeDisplay(node.display).problems)
+          this.add(`${path}.display`, problem.message);
+    }
 
     if (!isRecord(node.settings))
       this.add(`${path}.settings`, 'Must be an object.');
@@ -293,6 +348,26 @@ class Walker {
       this.node(`sections.${id}`, id, section, 1, true, { blocks: 0 });
   }
 
+  /** Storefront pages the theme overrides (all products, cart ...): each is a whole page document. */
+  private pages(values: Record<string, unknown>) {
+    for (const [key, doc] of Object.entries(values)) {
+      const at = `settings.pages.${key}`;
+      if (!THEME_PAGE_KEYS.includes(key)) {
+        this.add(at, 'Unknown page.');
+        continue;
+      }
+      if (!isRecord(doc)) {
+        this.add(at, 'Must be an object.');
+        continue;
+      }
+      // A fresh walker per page: ids only have to be unique inside one page.
+      const sub = new Walker(this.ctx, true, this.allowDisplay);
+      sub.page(doc);
+      for (const issue of sub.issues)
+        this.add(`${at}.${issue.path}`, issue.message);
+    }
+  }
+
   themeSettings(doc: Record<string, unknown>) {
     if (!isRecord(doc.settings))
       return this.add('settings', 'Must be an object.');
@@ -305,6 +380,7 @@ class Walker {
       'productCards',
       'productPage',
       'social',
+      'pages',
     ];
     for (const [group, values] of Object.entries(doc.settings)) {
       if (!groups.includes(group)) {
@@ -313,6 +389,10 @@ class Walker {
       }
       if (!isRecord(values)) {
         this.add(`settings.${group}`, 'Must be an object.');
+        continue;
+      }
+      if (group === 'pages') {
+        this.pages(values);
         continue;
       }
       for (const [k, v] of Object.entries(values)) {
@@ -332,16 +412,20 @@ export function validateTemplateDocument(
   doc: unknown,
   ctx: ValidationContext,
 ): DocumentIssue[] {
-  const walker = new Walker(ctx);
   if (!isRecord(doc))
     return [{ path: '', message: 'The document must be an object.' }];
+  const walker = new Walker(
+    ctx,
+    false,
+    doc.schemaVersion === DISPLAY_SCHEMA_VERSION,
+  );
   const bytes = Buffer.byteLength(JSON.stringify(doc), 'utf8');
   if (bytes > DOCUMENT_LIMITS.maxDocumentBytes)
     return [{ path: '', message: 'The document is too large.' }];
-  if (doc.schemaVersion !== DOCUMENT_SCHEMA_VERSION)
+  if (!SUPPORTED_SCHEMA_VERSIONS.includes(doc.schemaVersion as number))
     walker.add(
       'schemaVersion',
-      `Schema version must be ${DOCUMENT_SCHEMA_VERSION}.`,
+      `Schema version must be ${SUPPORTED_SCHEMA_VERSIONS.join(' or ')}.`,
     );
   if (ctx.kind === 'theme_settings') walker.themeSettings(doc);
   else walker.page(doc);

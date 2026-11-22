@@ -41,8 +41,164 @@ describe('validateTemplateDocument', () => {
   it('rejects non-objects and the wrong schema version', () => {
     expect(validateTemplateDocument('x', ctx())).toHaveLength(1);
     expect(
-      validateTemplateDocument({ ...page({}), schemaVersion: 2 }, ctx()),
+      validateTemplateDocument({ ...page({}), schemaVersion: 3 }, ctx()),
     ).toEqual([expect.objectContaining({ path: 'schemaVersion' })]);
+    expect(
+      validateTemplateDocument({ ...page({}), schemaVersion: '2' }, ctx()),
+    ).toEqual([expect.objectContaining({ path: 'schemaVersion' })]);
+  });
+
+  describe('schema 2 and display rules (QA-D-001)', () => {
+    const v2 = (sections: Record<string, unknown>) => ({
+      ...page(sections),
+      schemaVersion: 2,
+    });
+    const withDisplay = (display: unknown) => ({
+      ...node('hero', { heading: 'Hi' }),
+      display,
+    });
+    const device = {
+      type: 'device',
+      desktop: true,
+      tablet: true,
+      mobile: false,
+    };
+
+    it('accepts a schema 2 page without display rules', () => {
+      expect(
+        validateTemplateDocument(v2({ hero: node('hero') }), ctx()),
+      ).toEqual([]);
+    });
+
+    it('accepts schedule and device rules on a section and on a nested block', () => {
+      const section = {
+        ...withDisplay({
+          v: 1,
+          rules: [
+            device,
+            {
+              type: 'schedule',
+              startsAt: '2026-12-01T00:00:00Z',
+              endsAt: '2026-12-05T00:00:00+05:30',
+              timezone: 'Asia/Kolkata',
+            },
+          ],
+        }),
+        blocks: {
+          b1: {
+            ...node('button', { label: 'Go' }),
+            display: { v: 1, rules: [device] },
+          },
+        },
+        block_order: ['b1'],
+      };
+      expect(validateTemplateDocument(v2({ hero: section }), ctx())).toEqual(
+        [],
+      );
+    });
+
+    it('accepts display rules on pages stored inside the theme settings', () => {
+      const theme = {
+        schemaVersion: 2,
+        settings: {
+          pages: { cart: v2({ cart: withDisplay({ v: 1, rules: [device] }) }) },
+        },
+      };
+      expect(validateTemplateDocument(theme, ctx('theme_settings'))).toEqual(
+        [],
+      );
+    });
+
+    it('rejects display rules in a schema 1 document (the exact QA-D-001 payload shape)', () => {
+      const doc = page({ hero: withDisplay({ v: 1, rules: [device] }) });
+      expect(validateTemplateDocument(doc, ctx())).toEqual([
+        expect.objectContaining({
+          path: 'sections.hero.display',
+          message: 'Display rules need schema version 2.',
+        }),
+      ]);
+    });
+
+    it.each([
+      ['not an object', 'x'],
+      ['wrong version', { v: 2, rules: [] }],
+      ['unknown field', { v: 1, rules: [], css: 'x' }],
+      ['rules not a list', { v: 1, rules: {} }],
+      ['unknown rule type', { v: 1, rules: [{ type: 'login' }] }],
+      [
+        'two schedules',
+        {
+          v: 1,
+          rules: [
+            { type: 'schedule', endsAt: '2026-12-01T00:00:00Z' },
+            { type: 'schedule', endsAt: '2026-12-02T00:00:00Z' },
+          ],
+        },
+      ],
+      ['two device rules', { v: 1, rules: [device, device] }],
+      ['too many rules', { v: 1, rules: [device, device, device] }],
+      ['empty schedule', { v: 1, rules: [{ type: 'schedule' }] }],
+      [
+        'instant without offset',
+        { v: 1, rules: [{ type: 'schedule', endsAt: '2026-12-01T00:00:00' }] },
+      ],
+      ['not a date', { v: 1, rules: [{ type: 'schedule', endsAt: 'soon' }] }],
+      [
+        'end before start',
+        {
+          v: 1,
+          rules: [
+            {
+              type: 'schedule',
+              startsAt: '2026-12-02T00:00:00Z',
+              endsAt: '2026-12-01T00:00:00Z',
+            },
+          ],
+        },
+      ],
+      [
+        'unknown timezone',
+        {
+          v: 1,
+          rules: [
+            {
+              type: 'schedule',
+              endsAt: '2026-12-01T00:00:00Z',
+              timezone: 'Mars/Base',
+            },
+          ],
+        },
+      ],
+      [
+        'device flag not boolean',
+        {
+          v: 1,
+          rules: [
+            { type: 'device', desktop: 'yes', tablet: true, mobile: true },
+          ],
+        },
+      ],
+      ['device rule extra field', { v: 1, rules: [{ ...device, css: 'x' }] }],
+    ])('rejects malformed display rules: %s', (_name, display) => {
+      const issues = validateTemplateDocument(
+        v2({ hero: withDisplay(display) }),
+        ctx(),
+      );
+      expect(issues.length).toBeGreaterThan(0);
+      expect(issues.every((i) => i.path === 'sections.hero.display')).toBe(
+        true,
+      );
+    });
+
+    it('still rejects unknown node fields', () => {
+      const doc = v2({ hero: { ...node('hero'), css: 'x' } });
+      expect(validateTemplateDocument(doc, ctx())).toEqual([
+        expect.objectContaining({
+          path: 'sections.hero',
+          message: 'Unknown fields: css.',
+        }),
+      ]);
+    });
   });
 
   it('requires order to list every section exactly once', () => {
@@ -165,6 +321,49 @@ describe('validateTemplateDocument', () => {
     expect(validateTemplateDocument(bad, ctx('theme_settings'))).toHaveLength(
       2,
     );
+  });
+
+  it('accepts redesigned storefront pages in the theme, per page', () => {
+    const section = (type: string) => ({
+      type,
+      settings: {},
+      blocks: {},
+      block_order: [],
+    });
+    const page = (ids: string[]) => ({
+      schemaVersion: 1,
+      layout: 'classic',
+      sections: Object.fromEntries(
+        ids.map((id) => [id, section(id === 'cart' ? 'cart' : 'rich-text')]),
+      ),
+      order: ids,
+    });
+    const ok = {
+      schemaVersion: 1,
+      // Ids repeat across pages, which is fine.
+      settings: {
+        pages: {
+          cart: page(['cart']),
+          products: page(['intro', 'grid']),
+          search: page(['intro', 'grid']),
+        },
+      },
+    };
+    expect(validateTemplateDocument(ok, ctx('theme_settings'))).toEqual([]);
+    const unknown = {
+      schemaVersion: 1,
+      settings: { pages: { checkout: page(['a']) } },
+    };
+    expect(
+      validateTemplateDocument(unknown, ctx('theme_settings')),
+    ).toHaveLength(1);
+    const broken = {
+      schemaVersion: 1,
+      settings: { pages: { cart: { ...page(['cart']), order: [] } } },
+    };
+    expect(
+      validateTemplateDocument(broken, ctx('theme_settings')).length,
+    ).toBeGreaterThan(0);
   });
 });
 

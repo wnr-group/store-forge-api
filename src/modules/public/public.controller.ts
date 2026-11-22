@@ -1,11 +1,14 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { ApiEndpoint } from '../../common/decorators/api-endpoint.decorator.js';
 import { Public } from '../../common/decorators/decorators.js';
 import { invalid } from '../../common/app.exception.js';
+import { PublicRecommendationsQueryDto } from '../recommendations/recommendations.dto.js';
+import { RecordWebVitalsDto } from '../studio/studio.dto.js';
 import {
   PublicBrandingDto,
   PublicCollectionDto,
+  PublicHostDto,
   PublicLayoutDto,
   PublicPageDto,
   PublicPageLinkDto,
@@ -31,6 +34,21 @@ export class PublicController {
   })
   branding() {
     return this.publicService.branding();
+  }
+
+  @Get('hosts/:subdomain')
+  @ApiParam({ name: 'subdomain', example: 'urban-nest-zqkod2' })
+  @ApiEndpoint({
+    summary: 'Find the store a storefront address names',
+    description:
+      "Turn the host label of a storefront address (for example `urban-nest-zqkod2` in `urban-nest-zqkod2.store-forge.com`) into the store's slug and its organization's public id. Anyone can call it without signing in. If no active store has that address, or its organization is suspended, you get a 404 error in every case, so nobody can tell those situations apart.",
+    auth: 'public',
+    response: PublicHostDto,
+    message: 'Store address resolved successfully',
+    errors: [404],
+  })
+  host(@Param('subdomain') subdomain: string) {
+    return this.publicService.host(subdomain.toLowerCase());
   }
 
   @Get('storefronts/:slug')
@@ -171,6 +189,80 @@ export class PublicController {
   })
   page(@Param('slug') slug: string, @Param('pageSlug') pageSlug: string) {
     return this.publicService.page(
+      slug.toLowerCase(),
+      pageSlug.toLowerCase().slice(0, 100),
+    );
+  }
+
+  @Get('storefronts/:slug/products/:productSlug/reviews')
+  @ApiParam({ name: 'slug', example: 'acme-store' })
+  @ApiParam({ name: 'productSlug', example: 'classic-t-shirt' })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
+  @ApiQuery({ name: 'offset', required: false, example: 0 })
+  @ApiEndpoint({
+    summary: 'Get published reviews for a product',
+    description: 'Get published reviews and disclosure wording for a product. Unpublished reviews are never returned.',
+    auth: 'public',
+    message: 'Product reviews retrieved successfully',
+    errors: [404],
+  })
+  reviews(
+    @Param('slug') slug: string,
+    @Param('productSlug') productSlug: string,
+    @Query('limit') limit = 20,
+    @Query('offset') offset = 0,
+  ) {
+    return this.publicService.reviews(
+      slug.toLowerCase(),
+      productSlug.toLowerCase().slice(0, 100),
+      Number(limit) || 20,
+      Number(offset) || 0,
+    );
+  }
+
+  @Get('storefronts/:slug/recommendations')
+  @ApiParam({ name: 'slug', example: 'acme-store' })
+  @ApiEndpoint({
+    summary: 'Get product recommendations',
+    description: 'Get product recommendations by source (related, merchant_picked, collection, newest, recently_viewed).',
+    auth: 'public',
+    message: 'Recommendations retrieved successfully',
+    errors: [404],
+  })
+  recommendations(
+    @Param('slug') slug: string,
+    @Query() query: PublicRecommendationsQueryDto,
+  ) {
+    return this.publicService.recommendations(slug.toLowerCase(), query);
+  }
+
+  @Post('vitals')
+  @ApiEndpoint({
+    summary: 'Record client-side Web Vitals',
+    description: 'Record a performance measurement sample (LCP, CLS, INP, TTFB, FCP) into the daily histogram.',
+    auth: 'public',
+    body: RecordWebVitalsDto,
+    message: 'Web vitals recorded successfully',
+  })
+  recordVitals(@Body() dto: RecordWebVitalsDto) {
+    return this.publicService.recordWebVitals(dto);
+  }
+
+  @Get('storefronts/:slug/landing-pages/:pageSlug')
+  @ApiParam({ name: 'slug', example: 'acme-store' })
+  @ApiParam({ name: 'pageSlug', example: 'summer-sale' })
+  @ApiEndpoint({
+    summary: 'View a published landing page',
+    description: 'Get the published section-based landing page document. Unpublished pages give 404.',
+    auth: 'public',
+    message: 'Landing page retrieved successfully',
+    errors: [404],
+  })
+  landingPage(
+    @Param('slug') slug: string,
+    @Param('pageSlug') pageSlug: string,
+  ) {
+    return this.publicService.landingPage(
       slug.toLowerCase(),
       pageSlug.toLowerCase().slice(0, 100),
     );

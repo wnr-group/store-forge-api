@@ -1,6 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsIn, IsOptional, ValidateNested } from 'class-validator';
+import {
+  ArrayUnique,
+  IsArray,
+  IsIn,
+  IsOptional,
+  ValidateNested,
+} from 'class-validator';
 import { MODULE_LABELS } from '../../common/constants/permissions.js';
 import {
   EmailField,
@@ -8,7 +14,11 @@ import {
   RequiredText,
   WhenPresent,
 } from '../../common/validation/fields.js';
-import { MEMBERSHIP_STATUSES } from '../../database/schema/enums.js';
+import {
+  MEMBER_CAPABILITIES,
+  MEMBERSHIP_STATUSES,
+  type MemberCapability,
+} from '../../database/schema/enums.js';
 
 const levelsOf = (m: keyof typeof MODULE_LABELS) => [
   ...MODULE_LABELS[m].levels,
@@ -40,6 +50,33 @@ export class PermissionsDto {
   })
   @IsIn(levelsOf('settings'), { message: 'Choose an access level.' })
   settings!: 'read' | 'write';
+
+  @ApiPropertyOptional({
+    enum: levelsOf('design'),
+    description:
+      'Studio access: none, read, write (edit drafts) or publish. Left out on an edit, the member keeps their current level; left out on a new member it means none. Attest and discard are separate (capabilities).',
+  })
+  @IsOptional()
+  @IsIn(levelsOf('design'), { message: 'Choose an access level.' })
+  design?: 'none' | 'read' | 'write' | 'publish';
+}
+
+/** Independent capabilities: they do not depend on any design level. */
+export class CapabilitiesField {
+  @ApiPropertyOptional({
+    enum: MEMBER_CAPABILITIES,
+    isArray: true,
+    description:
+      'Independent grants: attest and discard. They are not access levels and work with any design level.',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsIn(MEMBER_CAPABILITIES, {
+    each: true,
+    message: 'Choose attest and/or discard.',
+  })
+  capabilities?: MemberCapability[];
 }
 
 export class TeamMemberDto {
@@ -55,9 +92,11 @@ export class TeamMemberDto {
   @ApiProperty({ enum: MEMBERSHIP_STATUSES }) status!: string;
   @ApiProperty() joinedAt!: Date;
   @ApiProperty() permissions!: Record<string, string>;
+  @ApiProperty({ enum: MEMBER_CAPABILITIES, isArray: true })
+  capabilities!: string[];
 }
 
-export class CreateMemberDto {
+export class CreateMemberDto extends CapabilitiesField {
   @ApiProperty({ minLength: 2, maxLength: 120 })
   @RequiredText('Member name', 120, 2)
   fullName!: string;
@@ -79,7 +118,7 @@ export class CreateMemberDto {
   permissions!: PermissionsDto;
 }
 
-export class UpdateMemberDto {
+export class UpdateMemberDto extends CapabilitiesField {
   @ApiPropertyOptional({ minLength: 2, maxLength: 120 })
   @WhenPresent()
   @RequiredText('Member name', 120, 2)

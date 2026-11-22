@@ -151,3 +151,14 @@ vite.config.ts.timestamp-*
 .vercel
 .env*
 
+
+# large binary e2e recordings and traces
+*.mp4
+*.webm
+*.mov
+*.avi
+artifacts/**/videos/
+artifacts/**/traces/
+test-results/
+playwright-report/
+

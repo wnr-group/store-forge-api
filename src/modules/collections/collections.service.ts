@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { and, asc, eq, inArray, sql } from 'drizzle-orm';
-import { invalid, notFound } from '../../common/app.exception.js';
+import { conflict, invalid, notFound } from '../../common/app.exception.js';
 import { mapErrors } from '../../common/db-errors.js';
 import type {
   AuthUser,
@@ -14,6 +14,16 @@ import {
   products,
   type Collection,
 } from '../../database/schema/index.js';
+import {
+  templates,
+  templateVersions,
+} from '../../database/schema/templates.js';
+import { getPrimaryStoreInTx } from '../store/store.service.js';
+import {
+  computeUsage,
+  type CollectionUsage,
+  type TemplateSource,
+} from './collection-usage.js';
 import { collectionFolder } from '../storage/storage-paths.js';
 import { StorageReferencesService } from '../storage/storage-references.service.js';
 import type {
@@ -219,9 +229,86 @@ export class CollectionsService {
     return this.get(ctx, id);
   }
 
-  async remove(ctx: OrgContext, user: AuthUser, id: string): Promise<void> {
+  private async requireCollection(tx: DbTx, tenantId: string, id: string) {
+    const [c] = await tx
+      .select({ id: collections.id, slug: collections.slug })
+      .from(collections)
+      .where(and(eq(collections.id, id), eq(collections.tenantId, tenantId)))
+      .limit(1);
+    if (!c) throw notFoundError();
+    return c;
+  }
+
+  /** Draft and currently published document of every active template of the tenant's primary store. */
+  private async templateSources(
+    tx: DbTx,
+    tenantId: string,
+    lock: boolean,
+  ): Promise<TemplateSource[]> {
+    const store = await getPrimaryStoreInTx(tx, tenantId);
+    if (!store) return [];
+    const q = tx
+      .select({
+        id: templates.id,
+        name: templates.name,
+        kind: templates.kind,
+        draft: templates.draft,
+        published: templateVersions.document,
+      })
+      .from(templates)
+      .leftJoin(
+        templateVersions,
+        and(
+          eq(templateVersions.id, templates.publishedVersionId),
+          eq(templateVersions.templateId, templates.id),
+        ),
+      )
+      .where(
+        and(
+          eq(templates.tenantId, tenantId),
+          eq(templates.storeId, store.id),
+          eq(templates.status, 'active'),
+        ),
+      );
+    // FOR SHARE on the template rows: a draft save running at the same time waits until this transaction ends.
+    return lock ? await q.for('share', { of: templates }) : await q;
+  }
+
+  async usage(ctx: OrgContext, id: string): Promise<CollectionUsage> {
+    return this.db.withUser(ctx.userId, (tx) =>
+      mapErrors(async () => {
+        const c = await this.requireCollection(tx, ctx.tenantId, id);
+        return computeUsage(
+          await this.templateSources(tx, ctx.tenantId, false),
+          c,
+        );
+      }),
+    );
+  }
+
+  async remove(
+    ctx: OrgContext,
+    user: AuthUser,
+    id: string,
+    usageHash?: string,
+  ): Promise<void> {
     const imagePath = await this.db.withUser(ctx.userId, (tx) =>
       mapErrors(async () => {
+        const c = await this.requireCollection(tx, ctx.tenantId, id);
+        const current = computeUsage(
+          await this.templateSources(tx, ctx.tenantId, true),
+          c,
+        );
+        const confirmed =
+          usageHash !== undefined
+            ? usageHash === current.hash
+            : current.total === 0;
+        if (!confirmed)
+          throw conflict(
+            'The store design that uses this collection has changed. Review where it is used and confirm again.',
+            undefined,
+            'COLLECTION_IN_USE',
+          );
         const rows = await tx
           .delete(collections)
           .where(

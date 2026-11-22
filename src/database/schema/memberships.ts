@@ -14,6 +14,8 @@ import { authUsers } from './auth-users.js';
 import {
   MEMBERSHIP_ROLES,
   MEMBERSHIP_STATUSES,
+  MEMBER_CAPABILITIES,
+  type MemberCapability,
   type MemberPermissions,
 } from './enums.js';
 import { tenants } from './tenants.js';
@@ -38,6 +40,12 @@ export const memberships = pgTable(
       .$type<MemberPermissions>()
       .notNull()
       .default(sql`'{}'::jsonb`),
+    /** Independent capabilities ('attest', 'discard') granted by the Owner; not tied to any design level. */
+    capabilities: text('capabilities')
+      .array()
+      .$type<MemberCapability[]>()
+      .notNull()
+      .default(sql`'{}'::text[]`),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -51,6 +59,10 @@ export const memberships = pgTable(
     check(
       'memberships_permissions_check',
       sql`public.is_valid_member_permissions(${t.permissions})`,
+    ),
+    check(
+      'memberships_capabilities_check',
+      sql`${t.capabilities} <@ ARRAY[${sql.raw(MEMBER_CAPABILITIES.map((c) => `'${c}'`).join(', '))}]::text[]`,
     ),
     check(
       'memberships_status_check',

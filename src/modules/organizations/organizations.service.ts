@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
   accessEntries,
+  effectiveCapabilities,
   roleLabel,
 } from '../../common/constants/permissions.js';
 import type { OrgContext } from '../../common/interfaces/request-context.js';
@@ -32,6 +33,7 @@ export class OrganizationsService {
       publicId: m.tenant.publicId,
       role: m.role,
       permissions: m.permissions as Record<string, string>,
+      capabilities: effectiveCapabilities(m.role, m.capabilities),
       joinedAt: m.joinedAt,
     }));
   }
@@ -52,6 +54,7 @@ export class OrganizationsService {
       role: ctx.role,
       roleLabel: roleLabel(ctx.role, ctx.permissions),
       permissions: ctx.permissions as Record<string, string>,
+      capabilities: effectiveCapabilities(ctx.role, ctx.capabilities),
       access: accessEntries(ctx.role, ctx.permissions),
       store,
     };

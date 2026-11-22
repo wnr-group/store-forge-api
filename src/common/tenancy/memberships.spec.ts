@@ -18,6 +18,7 @@ const m = (
   },
   role,
   permissions: {},
+  capabilities: [],
   joinedAt: new Date(0),
 });
 

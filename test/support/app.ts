@@ -166,6 +166,18 @@ export class FakeStorage {
     });
   }
 
+  async createUploadTargetAt(_token: string, path: string) {
+    return {
+      path,
+      token: `t-${path}`,
+      signedUrl: `http://storage.test/${path}`,
+    };
+  }
+
+  async verifyChildObject(token: string, folder: string, path: string) {
+    return (await this.verifyObjects(token, folder, [path]))[0];
+  }
+
   async removeObjects(_token: string, paths: string[]) {
     for (const p of paths) {
       this.removed.push(p);

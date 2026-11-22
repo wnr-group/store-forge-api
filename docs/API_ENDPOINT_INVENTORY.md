@@ -69,7 +69,8 @@ All: Auth `JWT+Org`, permission `members:manage`. DB `memberships`, `profiles`, 
 | 24 | Get collection | GET `/collections/:id` | `catalog:view` | - | with ordered `productIds` |
 | 25 | Create | POST `/collections` | `catalog:manage` | `{id?,name,slug?,description?,status,imagePath?,productIds[]}` | image path verified under advisory lock; products must be in tenant |
 | 26 | Update | PATCH `/collections/:id` | `catalog:manage` | same | replaces product set; old image removed after commit if unreferenced |
-| 27 | Delete | DELETE `/collections/:id` | `catalog:delete` | - | image removed after commit if unreferenced |
+| 27 | Delete | DELETE `/collections/:id` | `catalog:delete` | optional `?usage=<64-hex>` | image removed after commit if unreferenced; 409 `COLLECTION_IN_USE` while the store design uses the collection unless `usage` matches the current usage hash |
+| 27a | Usage | GET `/collections/:id/usage` | `catalog:manage` | - | draft and published product-list sections that use the collection, with a `hash` to confirm a delete |
 | 28 | Product choices | GET `/collections/product-options` | `catalog:view` | - | `{id,name}` first 500 by name |
 | 29 | List products | GET `/products?page&limit&search&status&category&stock&sortBy&sortOrder` | `catalog:view` | - | search name/SKU (LIKE-escaped); stock `in/low/out/untracked` by effective stock; sort created/name/price; page size default 20 |
 | 30 | Get product | GET `/products/:id` | `catalog:view` | - | product + options + variants + images + collectionIds |
@@ -79,6 +80,7 @@ All: Auth `JWT+Org`, permission `members:manage`. DB `memberships`, `profiles`, 
 | 34 | Bulk delete | POST `/products/bulk-delete` | `catalog:delete` | `{ids[1..100]}` | returns `{deleted}` |
 | 35 | Bulk status | POST `/products/bulk-status` | `catalog:manage` | `{ids[],status}` | returns `{updated}` |
 | 36 | Duplicate | POST `/products/:id/duplicate` | `catalog:manage` | - | draft copy "(copy)", `sku=null`, no images |
+| 36a | Import products | POST `/products/import` | `catalog:manage` | `{rows[1..500]}` (snake_case file headers, `row` number, optional `source_errors`) | `{count}`; every row validated first, all-or-nothing in one transaction; 2 MB body limit on this route only; 400 `PRODUCT_IMPORT_INVALID` with `{total, errors[<=500]}`; products of one import share one `created_at` |
 | 37 | Signed upload URLs | POST `/uploads/signed-urls` | `catalog:manage` (scope store: `store:manage`) | `{scope: product\|collection\|store, ownerId?, files:[{type,size}]}` 1-10 files, jpeg/png/webp, <=5 MB | folder derived from verified tenant, never from input; Storage called with caller's token |
 | 38 | Stock list | GET `/inventory?search&stock&page` | `catalog:view` | - | one row per sellable unit (simple product or active variant) |
 | 39 | Adjustment ledger | GET `/inventory/adjustments?limit` | `catalog:view` | - | newest first |
@@ -139,7 +141,7 @@ Built on the template engine tables (migrations 0010-0016) plus the theme catalo
 | 80 | themes | One theme with its documents (preview) | GET `/themes/:slug` | JWT+Org | `dashboard:view` | slug | theme + documents | `themes` | read-only |
 | 81 | themes | Current theme | GET `/store/theme` | JWT+Org | `dashboard:view` | - | `{theme, appliedVersion, appliedAt, updateAvailable}` | `store_themes` | - |
 | 82 | themes | Apply a theme | POST `/store/theme` | JWT+Org | `store:manage` | `{themeSlug}` | `{theme, draftsWritten, draftsReplaced}` | `templates`, `store_themes` | copies documents into drafts; never publishes; no commerce data touched |
-| 83 | themes | Publish the whole theme | POST `/store/theme/publish` | JWT+Org | `store:manage` | `{label?}` | `{published[], unchanged, storeSlug, publishedAt}` | `template_versions`, `templates` | one transaction; validates everything first |
+| 83 | themes | Publish the whole theme | POST `/store/theme/publish` | JWT+Org | `store:manage` | `{label?}` | `{published[], unchanged, storeSlug, publishedAt, productPresentations:{published}}` | `template_versions`, `templates`, `product_presentations` | one transaction; validates pages and product settings first |
 | 84 | design | List pages and shared parts | GET `/store/templates` | JWT+Org | `dashboard:view` | - | summaries with publication state | `templates`, `template_versions` | one query, no N+1 |
 | 85 | design | Open one page | GET `/store/templates/:id` | JWT+Org | `dashboard:view` | id | draft + revision | `templates` | - |
 | 86 | design | Preview bundle | GET `/store/templates/:id/preview` | JWT+Org | `dashboard:view` | id | page + theme settings + groups (drafts) | `templates` | members only |

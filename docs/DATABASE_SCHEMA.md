@@ -27,6 +27,7 @@ The database already exists and is **owned by the Next.js repo's migrations** (`
 | `platform_settings` | Singleton | `id boolean = true`; no grants |
 | `admin_audit_logs` | Append-only | UPDATE/DELETE/TRUNCATE blocked by trigger; no grants |
 | `rate_limits` | Fixed-window counters | PK `(key,window_start)`; no grants |
+| `product_presentations` | Per-product design overrides (migrations 0032-0033) | PK `product_id`; composite FKs `(tenant_id,product_id)` and `(tenant_id,store_id)` (cascade); `draft` jsonb, `published` jsonb (NULL = never published), trigger-managed `revision`, `published_at`, `published_by`; JSON size and shape checks; RLS: members read, Owner/Admin write; shoppers read only the projection returned by `get_public_product` |
 
 Tables intentionally **not modelled** (template customization, excluded): `templates`, `template_versions`, `store_template_settings`, template engine cutover tables. They are only touched through raw SQL inside the storage-reference check (below) so deleting a file can never break a template.
 

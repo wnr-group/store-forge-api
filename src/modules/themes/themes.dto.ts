@@ -1,6 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  IsArray,
   IsIn,
   IsInt,
   IsNotEmpty,
@@ -17,6 +19,7 @@ import {
   THEME_INDUSTRIES,
   TEMPLATE_KINDS,
 } from '../../database/schema/templates.js';
+import { ProductPresentationsPublishedDto } from './product-presentations.dto.js';
 
 export class ThemeListQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional({
@@ -167,6 +170,19 @@ export class PublishDto {
   @IsInt()
   @Min(1)
   expectedRevision?: number;
+
+  @ApiPropertyOptional({
+    type: [String],
+    maxItems: 300,
+    description:
+      'Studio stores only: the keys of the readiness warnings you reviewed and accept. Every warning must be listed or the publish is refused. Blockers can never be acknowledged. Ignored when Studio is off for the store.',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(300)
+  @IsString({ each: true })
+  @MaxLength(400, { each: true })
+  acknowledgedWarnings?: string[];
 }
 
 export class PublishThemeDto {
@@ -175,6 +191,19 @@ export class PublishThemeDto {
   @IsString()
   @MaxLength(80)
   label?: string;
+
+  @ApiPropertyOptional({
+    type: [String],
+    maxItems: 300,
+    description:
+      'Studio stores only: the keys of the readiness warnings you reviewed and accept. Every warning must be listed or the publish is refused. Blockers can never be acknowledged. Ignored when Studio is off for the store.',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(300)
+  @IsString({ each: true })
+  @MaxLength(400, { each: true })
+  acknowledgedWarnings?: string[];
 }
 
 export class PublishedItemDto {
@@ -191,6 +220,12 @@ export class PublishResultDto {
   unchanged!: number;
   @ApiProperty({ example: 'acme-store' }) storeSlug!: string;
   @ApiProperty() publishedAt!: Date;
+  @ApiPropertyOptional({
+    type: ProductPresentationsPublishedDto,
+    description:
+      'Only when the whole theme is published: how many product design settings went live.',
+  })
+  productPresentations?: ProductPresentationsPublishedDto;
 }
 
 export class TemplateVersionDto {

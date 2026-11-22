@@ -26,10 +26,20 @@ export interface ThemeSettingsDocument {
   settings: Record<string, Record<string, unknown>>;
 }
 
+export type CoreTemplateKind =
+  | 'index'
+  | 'product'
+  | 'collection'
+  | 'theme_settings'
+  | 'group_header'
+  | 'group_footer'
+  | 'group_announcement';
+
 export type ThemeDocuments = Record<
-  TemplateKind,
+  CoreTemplateKind,
   PageDocument | ThemeSettingsDocument
->;
+> &
+  Partial<Record<TemplateKind, PageDocument | ThemeSettingsDocument>>;
 
 export interface ThemeDefinition {
   slug: string;

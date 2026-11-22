@@ -28,7 +28,7 @@ export class ThemesController {
   constructor(private readonly themes: ThemesService) {}
 
   @Get()
-  @RequirePermission('dashboard:view')
+  @RequirePermission('design:view')
   @ApiEndpoint({
     summary: 'Browse the theme store',
     description:
@@ -44,7 +44,7 @@ export class ThemesController {
   }
 
   @Get(':slug')
-  @RequirePermission('dashboard:view')
+  @RequirePermission('design:view')
   @ApiParam({ name: 'slug', example: 'atelier' })
   @ApiEndpoint({
     summary: 'View one theme',
@@ -71,7 +71,7 @@ export class StoreThemeController {
   ) {}
 
   @Get()
-  @RequirePermission('dashboard:view')
+  @RequirePermission('design:view')
   @ApiEndpoint({
     summary: 'See the theme your store uses',
     description:
@@ -86,7 +86,7 @@ export class StoreThemeController {
   }
 
   @Post()
-  @RequirePermission('store:manage')
+  @RequirePermission('design:edit')
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiEndpoint({
     summary: 'Apply a theme',
@@ -104,7 +104,7 @@ export class StoreThemeController {
   }
 
   @Post('publish')
-  @RequirePermission('store:manage')
+  @RequirePermission('design:publish')
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @ApiEndpoint({
     summary: 'Publish the whole theme',
