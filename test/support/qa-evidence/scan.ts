@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -8,7 +9,7 @@ import { join } from 'node:path';
  * sentinel's position in the list and the form it appeared in, and never contains a sentinel value.
  */
 
-export type LeakForm = 'raw' | 'url' | 'base64';
+export type LeakForm = 'raw' | 'url' | 'json' | 'base64';
 
 export interface ScanFinding {
   /** Forward-slash path relative to the scanned root. */
@@ -21,8 +22,19 @@ export interface ScanResult {
   scannedFiles: number;
   scannedBytes: number;
   sentinelCount: number;
+  /**
+   * SHA-256 over every scanned file's path and content (the scan and manifest results themselves excluded). A later reader
+   * recomputes it to prove the folder is still exactly what was scanned.
+   */
+  filesDigest: string;
   findings: ScanFinding[];
 }
+
+/** Written by the scan and the manifest builder; they describe the folder and are not part of what is scanned or digested. */
+const DERIVED_FILES = new Set([
+  'summary/secret-scan.json',
+  'summary/manifest.json',
+]);
 
 const MIN_SENTINEL_LENGTH = 8;
 
@@ -74,6 +86,8 @@ function variantsOf(value: string): { form: LeakForm; text: string }[] {
   return [
     { form: 'raw' as const, text: value },
     { form: 'url' as const, text: encodeURIComponent(value) },
+    // How the value looks inside a serialized JSON string (quotes, backslashes and control characters escaped).
+    { form: 'json' as const, text: JSON.stringify(value).slice(1, -1) },
     ...base64Forms(value).map((text) => ({ form: 'base64' as const, text })),
   ];
 }
@@ -112,6 +126,21 @@ function* filesUnder(
   }
 }
 
+/** SHA-256 over every file's path and content under `root`, in path order, leaving out the scan and manifest results. */
+export function digestTree(root: string): string {
+  const digest = createHash('sha256');
+  const files = [...filesUnder(root, root.length)]
+    .filter((f) => !DERIVED_FILES.has(f.rel))
+    .sort((a, b) => (a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0));
+  for (const { abs, rel } of files)
+    digest.update(
+      `${rel}
+${createHash('sha256').update(readFileSync(abs)).digest('hex')}
+`,
+    );
+  return digest.digest('hex');
+}
+
 /** Throws when there is nothing to search for, so an unset sentinel list can never be mistaken for a clean scan. */
 export function scanTree(
   root: string,
@@ -145,6 +174,7 @@ export function scanTree(
     scannedFiles,
     scannedBytes,
     sentinelCount: sentinels.length,
+    filesDigest: digestTree(root),
     findings,
   };
 }

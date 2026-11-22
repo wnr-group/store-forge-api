@@ -19,23 +19,28 @@ export const secretOf = (n = 0) =>
 
 /** Everything the application logger wrote, as plain text, for leak scans and event assertions. */
 export class LogRecorder implements LoggerService {
-  readonly entries: { level: string; message: unknown }[] = [];
-  private push(level: string, message: unknown) {
-    this.entries.push({ level, message });
+  readonly entries: { level: string; message: unknown; rest: unknown[] }[] = [];
+  // Nest forwards optional arguments (context, stack, extra values); record them so a leak scan sees every one.
+  private push(level: string, message: unknown, rest: unknown[] = []) {
+    this.entries.push({ level, message, rest });
   }
-  log = (m: unknown) => this.push('log', m);
-  error = (m: unknown) => this.push('error', m);
-  warn = (m: unknown) => this.push('warn', m);
-  debug = (m: unknown) => this.push('debug', m);
-  verbose = (m: unknown) => this.push('verbose', m);
-  fatal = (m: unknown) => this.push('fatal', m);
+  log = (m: unknown, ...rest: unknown[]) => this.push('log', m, rest);
+  error = (m: unknown, ...rest: unknown[]) => this.push('error', m, rest);
+  warn = (m: unknown, ...rest: unknown[]) => this.push('warn', m, rest);
+  debug = (m: unknown, ...rest: unknown[]) => this.push('debug', m, rest);
+  verbose = (m: unknown, ...rest: unknown[]) => this.push('verbose', m, rest);
+  fatal = (m: unknown, ...rest: unknown[]) => this.push('fatal', m, rest);
   clear() {
     this.entries.length = 0;
   }
   text(): string {
     return this.entries
       .map((e) =>
-        typeof e.message === 'string' ? e.message : JSON.stringify(e.message),
+        [e.message, ...e.rest]
+          .map((part) =>
+            typeof part === 'string' ? part : JSON.stringify(part),
+          )
+          .join(' '),
       )
       .join('\n');
   }

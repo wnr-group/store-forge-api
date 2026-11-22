@@ -44,6 +44,8 @@ export interface ReportInput {
 export interface EvidenceEntry {
   acId: string;
   artifact: string;
+  /** SHA-256 of the artifact as captured. An entry whose digest differs from the file on disk is not provenance for it. */
+  sha256: string;
   testName: string;
   testFile: string;
   layer: Layer;
@@ -79,7 +81,11 @@ export interface BuildInput {
   ) => { bytes: number; sha256: string } | undefined;
   /** Extracts the builder wrote in this run (the only builder-made files accepted as evidence). */
   generated?: string[];
-  scan: { status: 'clean' | 'dirty' | 'missing'; scannedFiles: number };
+  scan: {
+    /** `stale`: the evidence folder changed after the scan, so its result says nothing about the current files. */
+    status: 'clean' | 'dirty' | 'missing' | 'stale';
+    scannedFiles: number;
+  };
   waivers: Waiver[];
   meta: RunMeta;
   /** Reports of the same suites at the baseline commit, for the regression criteria. */
@@ -252,7 +258,11 @@ export function buildManifest(input: BuildInput): Manifest {
       const stat = files(file);
       const present = stat !== undefined && stat.bytes > 0;
       const viaEntry = entries.some(
-        (e) => e.acId === entry.acId && e.artifact === file,
+        (e) =>
+          e.acId === entry.acId &&
+          e.artifact === file &&
+          stat !== undefined &&
+          e.sha256 === stat.sha256,
       );
       const viaBuilder = generated.has(file);
       return {
@@ -322,7 +332,10 @@ export function buildManifest(input: BuildInput): Manifest {
     for (const artifact of artifacts) {
       if (!artifact.sha256) continue;
       const provenance = entries.find(
-        (e) => e.acId === entry.acId && e.artifact === artifact.file,
+        (e) =>
+          e.acId === entry.acId &&
+          e.artifact === artifact.file &&
+          e.sha256 === artifact.sha256,
       );
       records.push({
         acId: entry.acId,

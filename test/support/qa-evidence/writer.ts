@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Layer } from './layers.js';
@@ -124,6 +125,8 @@ export async function captureEvidence(
   const entry = {
     acId: options.acId,
     artifact: `${options.folder}/${fileName}`,
+    // Binds this entry to exactly these bytes: a replaced file no longer matches and so loses its provenance.
+    sha256: createHash('sha256').update(bytes).digest('hex'),
     testName: options.testName ?? test.name,
     testFile: test.file,
     layer: options.layer,

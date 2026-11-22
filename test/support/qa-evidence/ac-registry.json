@@ -1727,7 +1727,7 @@
       "preconditions": "P6",
       "expected": "No change to Settings; no `route.ts` added",
       "evidenceFiles": ["logs/AC-FE-14.txt"],
-      "repo": "api",
+      "repo": "frontend",
       "needsEnvironment": false,
       "initialStatus": "NOT RUN",
       "regressionSpecs": [],

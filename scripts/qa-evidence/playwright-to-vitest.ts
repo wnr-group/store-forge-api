@@ -53,7 +53,15 @@ const statusOf = (t: PwTest): string => {
   return 'failed'; // failed, timedOut, interrupted
 };
 
-const visit = (suite: PwSuite, titles: string[], file: string) => {
+/** Within one report, a spec run under several projects keeps its WORST result: a failing project is never masked by a passing one. */
+const RANK: Record<string, number> = { skipped: 0, passed: 1, failed: 2 };
+
+const visit = (
+  suite: PwSuite,
+  titles: string[],
+  file: string,
+  report: Map<string, { file: string; status: string }>,
+) => {
   const here =
     suite.title && suite.title !== file ? [...titles, suite.title] : titles;
   for (const spec of suite.specs ?? []) {
@@ -65,21 +73,25 @@ const visit = (suite: PwSuite, titles: string[], file: string) => {
         .trim();
       const fullName = `${[...here, spec.title].join(' > ')}${acs ? ` ${acs}` : ''} [layer:PW]`;
       const status = statusOf(test);
-      const before = merged.get(fullName);
-      // Inputs are given oldest first and the latest run that actually EXECUTED a test decides its result (a failure that was
-      // fixed and re-run is superseded; the earlier report stays in the evidence folder). A skip never replaces a result.
-      const keep = !before || status !== 'skipped';
-      if (keep)
-        merged.set(fullName, { file: `${root}/${spec.file ?? file}`, status });
+      const before = report.get(fullName);
+      if (!before || RANK[status] > RANK[before.status])
+        report.set(fullName, { file: `${root}/${spec.file ?? file}`, status });
     }
   }
-  for (const child of suite.suites ?? []) visit(child, here, file);
+  for (const child of suite.suites ?? []) visit(child, here, file, report);
 };
 
 for (const input of inputs) {
   const doc = JSON.parse(readFileSync(input, 'utf8')) as { suites?: PwSuite[] };
+  const report = new Map<string, { file: string; status: string }>();
   for (const suite of doc.suites ?? [])
-    visit(suite, [], suite.file ?? suite.title);
+    visit(suite, [], suite.file ?? suite.title, report);
+  // Inputs are given oldest first and the latest run that actually EXECUTED a test decides its result (a failure that was
+  // fixed and re-run is superseded; the earlier report stays in the evidence folder). A skip never replaces a result.
+  for (const [fullName, v] of report) {
+    const before = merged.get(fullName);
+    if (!before || v.status !== 'skipped') merged.set(fullName, v);
+  }
 }
 
 const byFile = new Map<string, { fullName: string; status: string }[]>();

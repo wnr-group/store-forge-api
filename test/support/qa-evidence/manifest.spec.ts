@@ -74,6 +74,7 @@ const entry = (
 ): EvidenceEntry => ({
   acId,
   artifact,
+  sha256: `sha-${artifact}`,
   testName: `captured ${acId}`,
   testFile: 'test/x.e2e-spec.ts',
   layer: 'PG',
@@ -254,6 +255,15 @@ describe('status decisions', () => {
       { 'database-evidence/AC-RLS-02.json': 50 },
       [entry('AC-RLS-03', 'database-evidence/AC-RLS-02.json')],
     ],
+    [
+      'the artifact was replaced after capture (its digest no longer matches the entry)',
+      { 'database-evidence/AC-RLS-02.json': 50 },
+      [
+        entry('AC-RLS-02', 'database-evidence/AC-RLS-02.json', {
+          sha256: 'digest-of-the-original-file',
+        }),
+      ],
+    ],
   ])('when %s', (_label, files, entries) => {
     it('a passing test is not enough: NOT VERIFIED', () => {
       const m = build({
@@ -268,7 +278,7 @@ describe('status decisions', () => {
     });
   });
 
-  it.each(['dirty', 'missing'] as const)(
+  it.each(['dirty', 'missing', 'stale'] as const)(
     'is never DONE when the secret scan is %s',
     (scanStatus) => {
       const m = build({

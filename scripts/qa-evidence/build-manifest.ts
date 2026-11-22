@@ -28,6 +28,7 @@ import {
   type RunMeta,
   type Waiver,
 } from '../../test/support/qa-evidence/manifest.js';
+import { digestTree } from '../../test/support/qa-evidence/scan.js';
 import type { AcRegistryEntry } from '../../test/support/qa-evidence/registry.js';
 import type { EvidenceEnvironment } from '../../test/support/qa-evidence/writer.js';
 
@@ -95,16 +96,20 @@ const meta: RunMeta = {
 
 const generated: string[] = [];
 const extracts = extractsToWrite(registry, reports, meta, baselines);
+const extractsOnly = args.includes('--extracts-only');
 for (const { file, content } of extracts) {
-  mkdirSync(join(dir, 'test-results'), { recursive: true });
-  writeFileSync(join(dir, file), content);
+  // Files are written only in the extracts step, BEFORE the secret scan. The manifest step re-derives the same list for
+  // provenance but never rewrites a file, so nothing can change after the scan that vouches for the folder.
+  if (extractsOnly) {
+    mkdirSync(join(dir, 'test-results'), { recursive: true });
+    writeFileSync(join(dir, file), content);
+  }
   generated.push(file);
 }
-if (args.includes('--extracts-only')) {
+if (extractsOnly) {
   console.log(`wrote ${extracts.length} per-AC test extract(s)`);
   process.exit(0);
 }
-// A manifest run without --extracts-only re-derives the same list, so provenance is identical in both steps.
 
 const entriesFile = join(dir, 'summary', 'evidence-entries.jsonl');
 const entries: EvidenceEntry[] = existsSync(entriesFile)
@@ -119,10 +124,16 @@ const scan = existsSync(scanFile)
   ? (() => {
       const s = JSON.parse(readFileSync(scanFile, 'utf8')) as {
         scannedFiles: number;
+        filesDigest?: string;
         findings: unknown[];
       };
+      // The result only counts for the files it scanned: a changed, added or removed file makes it stale.
       return {
-        status: s.findings.length ? ('dirty' as const) : ('clean' as const),
+        status: s.findings.length
+          ? ('dirty' as const)
+          : s.filesDigest === digestTree(dir)
+            ? ('clean' as const)
+            : ('stale' as const),
         scannedFiles: s.scannedFiles,
       };
     })()

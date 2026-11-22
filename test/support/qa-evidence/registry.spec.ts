@@ -21,6 +21,7 @@ const PLAN = `
 ### 7.8 Frontend unit and contract
 | AC ID | Requirement | Location | Method / test | Pre | Expected | Evidence file | Result | Status |
 |---|---|---|---|---|---|---|---|---|
+| AC-FE-14 | Settings page unmodified | diff | STATIC A | P6 | No change | \`logs/AC-FE-14.txt\` | - | NOT RUN |
 | AC-FE-16 | Reuses the existing design system | payments page | (a) STATIC A diff scan plus FE A render test. (b) PW A at 390px and 1280px widths | (a) P5,P6; (b) P7 | (a) none; (b) layout intact | (a) \`logs/AC-FE-16.txt\`; (b) \`screenshots/AC-FE-16-mobile.png\`, \`screenshots/AC-FE-16-desktop.png\` | - | (a) NOT RUN (feature not implemented); (b) Local: NOT RUN; Hosted: NOT RUN (D22 unknown) |
 
 ### 7.10 Regression (AC-REG-01 to AC-REG-15, each independent)
@@ -44,6 +45,7 @@ describe('parsePlanMatrix', () => {
       'AC-DB-06',
       'AC-RLS-11b',
       'AC-API-07',
+      'AC-FE-14',
       'AC-FE-16',
       'AC-REG-04',
       'AC-REG-15',
@@ -105,6 +107,12 @@ describe('parsePlanMatrix', () => {
     expect(byId('AC-FE-16').repo).toBe('frontend');
     expect(byId('AC-REG-15').repo).toBe('both');
     expect(byId('AC-RLS-11b').repo).toBe('api');
+  });
+
+  it('keeps a static-only frontend row in the frontend scope', () => {
+    expect(byId('AC-FE-14').layers).toEqual(['STATIC']);
+    expect(byId('AC-FE-14').repo).toBe('frontend');
+    expect(byId('AC-REG-15').repo).toBe('both');
   });
 
   it('never starts a row as anything but NOT RUN or BLOCKED', () => {

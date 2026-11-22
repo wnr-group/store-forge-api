@@ -1,7 +1,12 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { loadSentinels, scanTree, sentinelVariants } from './scan.js';
+import {
+  digestTree,
+  loadSentinels,
+  scanTree,
+  sentinelVariants,
+} from './scan.js';
 
 const SECRET = 'SYNTH-secret-Ab12Cd34Ef56Gh78';
 let root: string;
@@ -155,5 +160,29 @@ describe('scanTree', () => {
     expect(() => scanTree(join(root, 'missing'), [SECRET])).toThrow(
       /does not exist/i,
     );
+  });
+});
+
+describe('JSON-escaped sentinels', () => {
+  it('finds a sentinel containing a quote when it was serialized as JSON', () => {
+    const tricky = 'abcd"efgh-Sentinel-1234';
+    writeFileSync(join(root, 'logs', 'a.json'), JSON.stringify({ v: tricky }));
+    const result = scanTree(root, [tricky]);
+    expect(result.findings).toEqual([
+      { file: 'logs/a.json', sentinelIndex: 0, form: 'json' },
+    ]);
+  });
+});
+
+describe('digestTree', () => {
+  it('changes when a scanned file changes and ignores the scan and manifest results', () => {
+    writeFileSync(join(root, 'logs', 'a.txt'), 'one');
+    const first = scanTree(root, [SECRET]).filesDigest;
+    mkdirSync(join(root, 'summary'), { recursive: true });
+    writeFileSync(join(root, 'summary', 'secret-scan.json'), '{}');
+    writeFileSync(join(root, 'summary', 'manifest.json'), '{}');
+    expect(digestTree(root)).toBe(first);
+    writeFileSync(join(root, 'logs', 'a.txt'), 'two');
+    expect(digestTree(root)).not.toBe(first);
   });
 });

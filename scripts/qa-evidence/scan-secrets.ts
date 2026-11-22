@@ -5,7 +5,7 @@
  *
  *   QA_SENTINELS='["..."]' npx tsx scripts/qa-evidence/scan-secrets.ts --dir <evidence root>
  */
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   loadSentinels,
@@ -15,6 +15,9 @@ import { evidenceRoot } from '../../test/support/qa-evidence/writer.js';
 
 const i = process.argv.indexOf('--dir');
 const root = i >= 0 ? (process.argv[i + 1] ?? '') : evidenceRoot();
+
+// A failed or interrupted scan must not leave an earlier "clean" result behind for the manifest to trust.
+rmSync(join(root, 'summary', 'secret-scan.json'), { force: true });
 
 try {
   const result = scanTree(root, loadSentinels());

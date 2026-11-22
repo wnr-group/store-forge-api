@@ -73,13 +73,19 @@ function testFilesOf(method: string): string[] {
   ].map((m) => m[1] ?? '');
 }
 
-function repoOf(location: string, layers: readonly Layer[]): RepoScope {
+function repoOf(
+  acId: string,
+  location: string,
+  layers: readonly Layer[],
+): RepoScope {
   if (/both repos/i.test(location)) return 'both';
   const frontend = layers.some((l) => l === 'FE' || l === 'PW');
   const api = layers.some(
     (l) => l === 'U' || l === 'PG' || l === 'HTTP' || l === 'REAL',
   );
   if (frontend && api) return 'both';
+  // A static-only row has no layer that names a repository: the frontend ids (AC-FE-*) own theirs, everything else is the API's.
+  if (!frontend && !api && acId.startsWith('AC-FE-')) return 'frontend';
   return frontend ? 'frontend' : 'api';
 }
 
@@ -124,7 +130,7 @@ export function parsePlanMatrix(markdown: string): AcRegistryEntry[] {
       preconditions,
       expected,
       evidenceFiles: evidenceFilesOf(evidenceCell),
-      repo: repoOf(location, layers),
+      repo: repoOf(acId, location, layers),
       needsEnvironment: layers.includes('REAL') || layers.includes('PW'),
       blockedReason,
       initialStatus: blockedReason ? 'BLOCKED' : 'NOT RUN',

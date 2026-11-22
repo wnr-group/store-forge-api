@@ -62,6 +62,8 @@ describe.skipIf(!enabled)(
     let token: string;
     let tenantId: string;
     let ownerId: string;
+    // Cleanup only ever removes rows this run created: it stays false if the tenant already held a configuration.
+    let tenantIsDisposable = false;
     const secret = process.env.QA_SYNTH_SECRET ?? '';
 
     const apiCall = (method: string, path: string, body?: object) =>
@@ -133,13 +135,22 @@ describe.skipIf(!enabled)(
         { tenant_id: string }[]
       >`select tenant_id from memberships where user_id = ${ownerId}::uuid and role = 'owner' and status = 'active' limit 1`;
       tenantId = row.tenant_id;
-      await sql.unsafe(`delete from ${TABLE} where tenant_id = '${tenantId}'`);
+      // The REAL layer rewrites this tenant's configuration, so it needs a dedicated, disposable Owner tenant. Refuse (and
+      // delete nothing) if the tenant already holds credentials, rather than destroy a live configuration.
+      const existing =
+        await sql`select 1 from public.tenant_razorpay_config where tenant_id = ${tenantId}::uuid`;
+      if (existing.length > 0)
+        throw new Error(
+          'QA_REAL_OWNER_EMAIL owns a tenant that already has a Razorpay configuration; use a dedicated disposable tenant. Nothing was deleted.',
+        );
+      tenantIsDisposable = true;
     });
     afterAll(async () => {
       if (sql) {
-        await sql.unsafe(
-          `delete from ${TABLE} where tenant_id = '${tenantId}'`,
-        );
+        if (tenantIsDisposable)
+          await sql.unsafe(
+            `delete from ${TABLE} where tenant_id = '${tenantId}'`,
+          );
         await sql.end();
       }
     });
@@ -222,7 +233,24 @@ describe.skipIf(!enabled)(
 
     it('AC-RLS-11b [layer:REAL]: real PostgREST denies an Owner JWT on select, insert, update and delete, while the real API path works', async () => {
       const seededKeyId = keyId(0);
+      // INSERT is tried while the tenant has NO row, so a denial can only come from the policy and not from a duplicate key.
       await sql.unsafe(`delete from ${TABLE} where tenant_id = '${tenantId}'`);
+      const insertAttempt = await rest(
+        'POST',
+        '',
+        {
+          tenant_id: tenantId,
+          key_id: keyId(1),
+          secret_ciphertext: 'QUJD',
+          iv: 'AAAAAAAAAAAAAAAA',
+          auth_tag: 'AAAAAAAAAAAAAAAAAAAAAA==',
+          key_version: 1,
+          updated_by: ownerId,
+        },
+        { Prefer: 'return=representation' },
+      );
+      const insertedRows =
+        await sql`select 1 from public.tenant_razorpay_config where tenant_id = ${tenantId}::uuid`;
       await sql`insert into public.tenant_razorpay_config (tenant_id, key_id, secret_ciphertext, iv, auth_tag, key_version, updated_by)
       values (${tenantId}::uuid, ${seededKeyId}, 'QUJD', 'AAAAAAAAAAAAAAAA', 'AAAAAAAAAAAAAAAAAAAAAA==', 1, ${ownerId}::uuid)`;
       const before =
@@ -232,20 +260,7 @@ describe.skipIf(!enabled)(
         selectAllowedColumns: await rest('GET', '?select=tenant_id,key_id'),
         selectAll: await rest('GET', '?select=*'),
         selectSecret: await rest('GET', '?select=secret_ciphertext'),
-        insert: await rest(
-          'POST',
-          '',
-          {
-            tenant_id: tenantId,
-            key_id: keyId(1),
-            secret_ciphertext: 'QUJD',
-            iv: 'AAAAAAAAAAAAAAAA',
-            auth_tag: 'AAAAAAAAAAAAAAAAAAAAAA==',
-            key_version: 1,
-            updated_by: ownerId,
-          },
-          { Prefer: 'return=representation' },
-        ),
+        insert: insertAttempt,
         update: await rest(
           'PATCH',
           `?tenant_id=eq.${tenantId}`,
@@ -293,6 +308,7 @@ describe.skipIf(!enabled)(
           expect(results.selectAll.status).toBeGreaterThanOrEqual(400);
           expect(results.selectSecret.status).toBeGreaterThanOrEqual(400);
           expect(results.insert.status).toBeGreaterThanOrEqual(400);
+          expect(insertedRows).toHaveLength(0);
           expect(JSON.stringify(before)).toBe(JSON.stringify(after));
           expect(after).toHaveLength(1);
           expect(viaApi.status).toBe(200);
@@ -315,10 +331,14 @@ describe.skipIf(!enabled)(
           .then((r) => connections.push(r[0].n))
           .catch(() => undefined);
       }, 15);
-      const responses = await Promise.all(
-        pairs.map((p) => apiCall('PUT', '/payments/razorpay', p)),
-      );
-      clearInterval(sampler);
+      let responses: Awaited<ReturnType<typeof apiCall>>[];
+      try {
+        responses = await Promise.all(
+          pairs.map((p) => apiCall('PUT', '/payments/razorpay', p)),
+        );
+      } finally {
+        clearInterval(sampler);
+      }
       const statuses = responses.map((r) => r.status);
       const [row] = await sql<
         Record<string, string | number>[]
