@@ -67,25 +67,30 @@ export class PaymentsService {
     const { status, replaced } = await this.db.withUser(
       org.userId,
       async (tx) => {
-        const before = rowsOf(
-          await tx.execute(
-            sql`select tenant_id from public.tenant_razorpay_config where tenant_id = ${org.tenantId}::uuid`,
-          ),
+        // `replaced` comes from the write itself, not from an earlier read: DO NOTHING returns the row only when THIS statement
+        // inserted it, so two concurrent first saves cannot both be recorded as a save. A conflict means a row already existed
+        // (committed by another transaction), and the pair is then overwritten by the UPDATE. Bound parameters throughout, no
+        // EXCLUDED, and RETURNING names only a granted column: nothing secret is read back. The status is a separate SELECT.
+        const inserted = rowsOf(
+          await tx.execute(sql`
+            insert into public.tenant_razorpay_config
+              (tenant_id, key_id, secret_ciphertext, iv, auth_tag, key_version, updated_at, updated_by)
+            values (${org.tenantId}::uuid, ${dto.keyId}, ${encrypted.ciphertext}, ${encrypted.iv}, ${encrypted.authTag},
+              ${encrypted.keyVersion}, now(), ${org.userId}::uuid)
+            on conflict (tenant_id) do nothing
+            returning tenant_id`),
         );
-        // One statement with bound parameters in both VALUES and SET (no EXCLUDED, so no column is read back): the complete
-        // pair is written or nothing is. No RETURNING: the status is read back with a separate SELECT of safe columns.
-        await tx.execute(sql`
-          insert into public.tenant_razorpay_config
-            (tenant_id, key_id, secret_ciphertext, iv, auth_tag, key_version, updated_at, updated_by)
-          values (${org.tenantId}::uuid, ${dto.keyId}, ${encrypted.ciphertext}, ${encrypted.iv}, ${encrypted.authTag},
-            ${encrypted.keyVersion}, now(), ${org.userId}::uuid)
-          on conflict (tenant_id) do update set
-            key_id = ${dto.keyId}, secret_ciphertext = ${encrypted.ciphertext}, iv = ${encrypted.iv},
-            auth_tag = ${encrypted.authTag}, key_version = ${encrypted.keyVersion}, updated_at = now(),
-            updated_by = ${org.userId}::uuid`);
+        if (inserted.length === 0) {
+          await tx.execute(sql`
+            update public.tenant_razorpay_config set
+              key_id = ${dto.keyId}, secret_ciphertext = ${encrypted.ciphertext}, iv = ${encrypted.iv},
+              auth_tag = ${encrypted.authTag}, key_version = ${encrypted.keyVersion}, updated_at = now(),
+              updated_by = ${org.userId}::uuid
+            where tenant_id = ${org.tenantId}::uuid`);
+        }
         return {
           status: await this.readStatus(tx, org),
-          replaced: before.length > 0,
+          replaced: inserted.length === 0,
         };
       },
     );
