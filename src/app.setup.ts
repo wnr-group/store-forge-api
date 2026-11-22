@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import express from 'express';
 import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import helmetModule, { type HelmetOptions } from 'helmet';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter.js';
@@ -73,6 +74,16 @@ export function configureApp(app: INestApplication): void {
   }
 
   app.setGlobalPrefix(apiPrefix);
+
+  // Bulk import carries up to 500 rows, so ONLY that route gets a 2 MB JSON limit; every other route keeps Nest's 100 KB default.
+  // The handler is wrapped on purpose: Nest skips its own default parser when it finds a layer named "jsonParser",
+  // which would silently stop every other route from parsing bodies (verified 2026-11-17 on Nest 12.4.2).
+  const importJson = express.json({ limit: '2mb' });
+  app.use(
+    `/${apiPrefix}/products/import`,
+    (req: Request, res: Response, next: NextFunction) =>
+      importJson(req, res, next),
+  );
 
   // Security headers. Swagger UI needs inline scripts/styles, so only its path gets a relaxed CSP.
   const strict = helmet();

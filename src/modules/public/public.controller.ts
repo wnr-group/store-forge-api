@@ -6,6 +6,7 @@ import { invalid } from '../../common/app.exception.js';
 import {
   PublicBrandingDto,
   PublicCollectionDto,
+  PublicHostDto,
   PublicLayoutDto,
   PublicPageDto,
   PublicPageLinkDto,
@@ -31,6 +32,21 @@ export class PublicController {
   })
   branding() {
     return this.publicService.branding();
+  }
+
+  @Get('hosts/:subdomain')
+  @ApiParam({ name: 'subdomain', example: 'urban-nest-zqkod2' })
+  @ApiEndpoint({
+    summary: 'Find the store a storefront address names',
+    description:
+      "Turn the host label of a storefront address (for example `urban-nest-zqkod2` in `urban-nest-zqkod2.store-forge.com`) into the store's slug and its organization's public id. Anyone can call it without signing in. If no active store has that address, or its organization is suspended, you get a 404 error in every case, so nobody can tell those situations apart.",
+    auth: 'public',
+    response: PublicHostDto,
+    message: 'Store address resolved successfully',
+    errors: [404],
+  })
+  host(@Param('subdomain') subdomain: string) {
+    return this.publicService.host(subdomain.toLowerCase());
   }
 
   @Get('storefronts/:slug')

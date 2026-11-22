@@ -25,6 +25,7 @@ const PUBLIC_ROUTES = new Set([
   'POST /api/v1/auth/logout',
   'POST /api/v1/auth/refresh',
   'GET /api/v1/public/branding',
+  'GET /api/v1/public/hosts/{subdomain}',
   'GET /api/v1/public/storefronts/{slug}',
   'GET /api/v1/public/storefronts/{slug}/layout',
   'GET /api/v1/public/storefronts/{slug}/collections',
@@ -79,8 +80,8 @@ describe('OpenAPI coverage (e2e)', () => {
     await app.close();
   });
 
-  it('documents every endpoint listed in docs/API_ENDPOINT_INVENTORY.md (74 migrated + 4 cookie-session + 12 theme store + 4 public design routes + 5 store pages routes + 2 public page routes)', () => {
-    expect(operations.length).toBe(101);
+  it('documents every endpoint listed in docs/API_ENDPOINT_INVENTORY.md (74 migrated + 1 bulk import + 4 cookie-session + 12 theme store + 4 public design routes + 5 store pages routes + 2 public page routes + 5 product presentation routes)', () => {
+    expect(operations.length).toBe(108);
   });
 
   it('gives every operation a summary, a description, a tag, a success and an error response', () => {
