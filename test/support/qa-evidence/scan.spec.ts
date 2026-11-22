@@ -186,3 +186,17 @@ describe('digestTree', () => {
     expect(digestTree(root)).not.toBe(first);
   });
 });
+
+describe('root spelling', () => {
+  it('reports the same relative paths and digest with or without a trailing separator', () => {
+    mkdirSync(join(root, 'summary'), { recursive: true });
+    writeFileSync(join(root, 'summary', 'secret-scan.json'), '{}');
+    writeFileSync(join(root, 'logs', 'a.txt'), SECRET);
+    const plain = scanTree(root, [SECRET]);
+    const slashed = scanTree(`${root}/`, [SECRET]);
+    expect(slashed.findings).toEqual(plain.findings);
+    expect(plain.findings[0]?.file).toBe('logs/a.txt');
+    expect(slashed.filesDigest).toBe(plain.filesDigest);
+    expect(digestTree(`${root}/`)).toBe(digestTree(root));
+  });
+});

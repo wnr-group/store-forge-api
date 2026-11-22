@@ -21,6 +21,9 @@ import { PaymentsEventLogger } from './payments.logger.js';
 export const PAYMENTS_UNAVAILABLE_MESSAGE =
   'Payment settings are temporarily unavailable. Please contact support.';
 
+/** How often a save re-tries when a concurrent remove deletes the row between its insert and its update. */
+const SAVE_ATTEMPTS = 3;
+
 /** The only columns the request role may read (column privileges); the secret columns are never selected. */
 type StatusRow = {
   tenant_id: string;
@@ -71,27 +74,46 @@ export class PaymentsService {
         // inserted it, so two concurrent first saves cannot both be recorded as a save. A conflict means a row already existed
         // (committed by another transaction), and the pair is then overwritten by the UPDATE. Bound parameters throughout, no
         // EXCLUDED, and RETURNING names only a granted column: nothing secret is read back. The status is a separate SELECT.
-        const inserted = rowsOf(
-          await tx.execute(sql`
-            insert into public.tenant_razorpay_config
-              (tenant_id, key_id, secret_ciphertext, iv, auth_tag, key_version, updated_at, updated_by)
-            values (${org.tenantId}::uuid, ${dto.keyId}, ${encrypted.ciphertext}, ${encrypted.iv}, ${encrypted.authTag},
-              ${encrypted.keyVersion}, now(), ${org.userId}::uuid)
-            on conflict (tenant_id) do nothing
-            returning tenant_id`),
-        );
-        if (inserted.length === 0) {
-          await tx.execute(sql`
-            update public.tenant_razorpay_config set
-              key_id = ${dto.keyId}, secret_ciphertext = ${encrypted.ciphertext}, iv = ${encrypted.iv},
-              auth_tag = ${encrypted.authTag}, key_version = ${encrypted.keyVersion}, updated_at = now(),
-              updated_by = ${org.userId}::uuid
-            where tenant_id = ${org.tenantId}::uuid`);
+        //
+        // A concurrent remove can commit between the two statements and leave the UPDATE with no row. That is detected from the
+        // UPDATE's own RETURNING and the insert is tried again (each statement sees a fresh snapshot), so a successful save
+        // always means the submitted pair is stored and a replace is only recorded for a row that was actually replaced.
+        let replaced: boolean | undefined;
+        for (let attempt = 0; attempt < SAVE_ATTEMPTS; attempt += 1) {
+          const inserted = rowsOf(
+            await tx.execute(sql`
+              insert into public.tenant_razorpay_config
+                (tenant_id, key_id, secret_ciphertext, iv, auth_tag, key_version, updated_at, updated_by)
+              values (${org.tenantId}::uuid, ${dto.keyId}, ${encrypted.ciphertext}, ${encrypted.iv}, ${encrypted.authTag},
+                ${encrypted.keyVersion}, now(), ${org.userId}::uuid)
+              on conflict (tenant_id) do nothing
+              returning tenant_id`),
+          );
+          if (inserted.length > 0) {
+            replaced = false;
+            break;
+          }
+          const updated = rowsOf(
+            await tx.execute(sql`
+              update public.tenant_razorpay_config set
+                key_id = ${dto.keyId}, secret_ciphertext = ${encrypted.ciphertext}, iv = ${encrypted.iv},
+                auth_tag = ${encrypted.authTag}, key_version = ${encrypted.keyVersion}, updated_at = now(),
+                updated_by = ${org.userId}::uuid
+              where tenant_id = ${org.tenantId}::uuid
+              returning tenant_id`),
+          );
+          if (updated.length > 0) {
+            replaced = true;
+            break;
+          }
         }
-        return {
-          status: await this.readStatus(tx, org),
-          replaced: inserted.length === 0,
-        };
+        if (replaced === undefined)
+          throw new AppException(
+            'CONFLICT',
+            'Payment settings changed while saving. Please try again.',
+            { code: 'PAYMENTS_CONFLICT' },
+          );
+        return { status: await this.readStatus(tx, org), replaced };
       },
     );
     this.events.record({

@@ -98,13 +98,19 @@ const generated: string[] = [];
 const extracts = extractsToWrite(registry, reports, meta, baselines);
 const extractsOnly = args.includes('--extracts-only');
 for (const { file, content } of extracts) {
-  // Files are written only in the extracts step, BEFORE the secret scan. The manifest step re-derives the same list for
-  // provenance but never rewrites a file, so nothing can change after the scan that vouches for the folder.
+  // Files are written only in the extracts step, BEFORE the secret scan. The manifest step re-derives the content but never
+  // rewrites a file, and only counts it as builder-generated when the bytes on disk are exactly what this run renders: an
+  // extract left over from older reports gets no provenance.
   if (extractsOnly) {
     mkdirSync(join(dir, 'test-results'), { recursive: true });
     writeFileSync(join(dir, file), content);
+    generated.push(file);
+  } else if (
+    existsSync(join(dir, file)) &&
+    readFileSync(join(dir, file), 'utf8') === content
+  ) {
+    generated.push(file);
   }
-  generated.push(file);
 }
 if (extractsOnly) {
   console.log(`wrote ${extracts.length} per-AC test extract(s)`);

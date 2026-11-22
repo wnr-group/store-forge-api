@@ -14,6 +14,8 @@ type PwTest = {
   annotations?: { type: string; description?: string }[];
   results?: { status: string }[];
   status?: string;
+  projectName?: string;
+  projectId?: string;
 };
 type PwSpec = { title: string; file?: string; tests?: PwTest[] };
 type PwSuite = {
@@ -43,7 +45,11 @@ if (!out || inputs.length === 0) {
   process.exit(2);
 }
 
-const merged = new Map<string, { file: string; status: string }>();
+/** Each project's latest executed result per test name, kept across reports; the projects are aggregated only at the end. */
+const projects = new Map<
+  string,
+  Map<string, { file: string; status: string }>
+>();
 
 const statusOf = (t: PwTest): string => {
   const last =
@@ -53,15 +59,7 @@ const statusOf = (t: PwTest): string => {
   return 'failed'; // failed, timedOut, interrupted
 };
 
-/** Within one report, a spec run under several projects keeps its WORST result: a failing project is never masked by a passing one. */
-const RANK: Record<string, number> = { skipped: 0, passed: 1, failed: 2 };
-
-const visit = (
-  suite: PwSuite,
-  titles: string[],
-  file: string,
-  report: Map<string, { file: string; status: string }>,
-) => {
+const visit = (suite: PwSuite, titles: string[], file: string) => {
   const here =
     suite.title && suite.title !== file ? [...titles, suite.title] : titles;
   for (const spec of suite.specs ?? []) {
@@ -72,26 +70,38 @@ const visit = (
         .join(' ')
         .trim();
       const fullName = `${[...here, spec.title].join(' > ')}${acs ? ` ${acs}` : ''} [layer:PW]`;
+      const project = test.projectName ?? test.projectId ?? '';
       const status = statusOf(test);
-      const before = report.get(fullName);
-      if (!before || RANK[status] > RANK[before.status])
-        report.set(fullName, { file: `${root}/${spec.file ?? file}`, status });
+      const perProject = projects.get(fullName) ?? new Map();
+      projects.set(fullName, perProject);
+      // Inputs are given oldest first and the latest run that actually EXECUTED a test (per project) decides its result: a
+      // failure that was fixed and re-run is superseded, and a skip never replaces a result.
+      if (!perProject.has(project) || status !== 'skipped')
+        perProject.set(project, {
+          file: `${root}/${spec.file ?? file}`,
+          status,
+        });
     }
   }
-  for (const child of suite.suites ?? []) visit(child, here, file, report);
+  for (const child of suite.suites ?? []) visit(child, here, file);
 };
 
 for (const input of inputs) {
   const doc = JSON.parse(readFileSync(input, 'utf8')) as { suites?: PwSuite[] };
-  const report = new Map<string, { file: string; status: string }>();
   for (const suite of doc.suites ?? [])
-    visit(suite, [], suite.file ?? suite.title, report);
-  // Inputs are given oldest first and the latest run that actually EXECUTED a test decides its result (a failure that was
-  // fixed and re-run is superseded; the earlier report stays in the evidence folder). A skip never replaces a result.
-  for (const [fullName, v] of report) {
-    const before = merged.get(fullName);
-    if (!before || v.status !== 'skipped') merged.set(fullName, v);
-  }
+    visit(suite, [], suite.file ?? suite.title);
+}
+
+/** A test is only as good as its worst project: any failing project fails it, and it passes only if some project passed. */
+const merged = new Map<string, { file: string; status: string }>();
+for (const [fullName, perProject] of projects) {
+  const results = [...perProject.values()];
+  const status = results.some((r) => r.status === 'failed')
+    ? 'failed'
+    : results.some((r) => r.status === 'passed')
+      ? 'passed'
+      : 'skipped';
+  merged.set(fullName, { file: results[0]?.file ?? '', status });
 }
 
 const byFile = new Map<string, { fullName: string; status: string }[]>();

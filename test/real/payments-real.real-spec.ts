@@ -247,7 +247,9 @@ describe.skipIf(!enabled)(
           key_version: 1,
           updated_by: ownerId,
         },
-        { Prefer: 'return=representation' },
+        // return=minimal: no RETURNING, so a missing column SELECT privilege cannot be what refuses the request; only the
+        // INSERT policy can.
+        { Prefer: 'return=minimal' },
       );
       const insertedRows =
         await sql`select 1 from public.tenant_razorpay_config where tenant_id = ${tenantId}::uuid`;
@@ -307,7 +309,9 @@ describe.skipIf(!enabled)(
             expect(returnedData(r.body), name).toBe(false);
           expect(results.selectAll.status).toBeGreaterThanOrEqual(400);
           expect(results.selectSecret.status).toBeGreaterThanOrEqual(400);
-          expect(results.insert.status).toBeGreaterThanOrEqual(400);
+          // Policy denial specifically (PostgreSQL 42501, "new row violates row-level security policy"), not any 4xx/5xx.
+          expect([401, 403]).toContain(results.insert.status);
+          expect(results.insert.body).toMatch(/42501|row-level security/i);
           expect(insertedRows).toHaveLength(0);
           expect(JSON.stringify(before)).toBe(JSON.stringify(after));
           expect(after).toHaveLength(1);

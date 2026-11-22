@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 
 /**
  * Secret-leakage scan for QA evidence. A run uses synthetic secrets generated for that run and passes them in the
@@ -115,30 +115,38 @@ export function findSentinel(
 
 function* filesUnder(
   dir: string,
-  rootLength: number,
+  root: string,
 ): Generator<{ abs: string; rel: string }> {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     if (entry.name === 'node_modules') continue;
     const abs = join(dir, entry.name);
-    if (entry.isDirectory()) yield* filesUnder(abs, rootLength);
+    if (entry.isDirectory()) yield* filesUnder(abs, root);
+    // `relative` resolves both sides, so a trailing separator on the root cannot shift or truncate the path.
     else if (entry.isFile())
-      yield { abs, rel: abs.slice(rootLength + 1).replace(/\\/g, '/') };
+      yield { abs, rel: relative(root, abs).replaceAll('\\', '/') };
   }
+}
+
+/** SHA-256 over file paths and contents, in path order, leaving out the scan and manifest results. */
+function digestOf(files: { rel: string; content: Buffer }[]): string {
+  const digest = createHash('sha256');
+  for (const { rel, content } of files
+    .filter((f) => !DERIVED_FILES.has(f.rel))
+    .sort((a, b) => (a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0)))
+    digest.update(
+      `${rel}\n${createHash('sha256').update(content).digest('hex')}\n`,
+    );
+  return digest.digest('hex');
 }
 
 /** SHA-256 over every file's path and content under `root`, in path order, leaving out the scan and manifest results. */
 export function digestTree(root: string): string {
-  const digest = createHash('sha256');
-  const files = [...filesUnder(root, root.length)]
-    .filter((f) => !DERIVED_FILES.has(f.rel))
-    .sort((a, b) => (a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0));
-  for (const { abs, rel } of files)
-    digest.update(
-      `${rel}
-${createHash('sha256').update(readFileSync(abs)).digest('hex')}
-`,
-    );
-  return digest.digest('hex');
+  return digestOf(
+    [...filesUnder(root, root)].map(({ abs, rel }) => ({
+      rel,
+      content: readFileSync(abs),
+    })),
+  );
 }
 
 /** Throws when there is nothing to search for, so an unset sentinel list can never be mistaken for a clean scan. */
@@ -161,8 +169,10 @@ export function scanTree(
   const findings: ScanFinding[] = [];
   let scannedFiles = 0;
   let scannedBytes = 0;
-  for (const { abs, rel } of filesUnder(root, root.length)) {
+  const read: { rel: string; content: Buffer }[] = [];
+  for (const { abs, rel } of filesUnder(root, root)) {
     const content = readFileSync(abs);
+    read.push({ rel, content });
     scannedFiles += 1;
     scannedBytes += content.length;
     variants.forEach((forms, sentinelIndex) => {
@@ -174,7 +184,8 @@ export function scanTree(
     scannedFiles,
     scannedBytes,
     sentinelCount: sentinels.length,
-    filesDigest: digestTree(root),
+    // From the very buffers that were matched, so findings and digest describe the same bytes even if a file changes mid-scan.
+    filesDigest: digestOf(read),
     findings,
   };
 }
