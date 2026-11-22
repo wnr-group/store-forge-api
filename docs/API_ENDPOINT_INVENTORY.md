@@ -160,6 +160,70 @@ Built on the template engine tables (migrations 0010-0016) plus the theme catalo
 | 99 | store-design | Add a content page | POST `/store/pages` | `store:manage` | org | title, slug?, body?, status? | page (201) | `store_pages` (RLS) | reserved/duplicate address rejected |
 | 100 | store-design | Change a content page | PATCH `/store/pages/:id` | `store:manage` | org | title?, slug?, body?, status? | page | `store_pages` (RLS) | other tenant 404 |
 | 101 | store-design | Remove a content page | DELETE `/store/pages/:id` | `store:manage` | org | id | - | `store_pages` (RLS) | other tenant 404 |
-| 102 | payments | See the Razorpay settings | GET `/payments/razorpay` | `payments:manage` | org (header required) | - | `{ configured }` plus, when saved, masked Key ID, mode, updatedAt, updatedByName | `tenant_razorpay_config` (RLS, column grants) | Owner only; never returns the secret; 400 `ORGANIZATION_REQUIRED` without `X-Organization-Id` |
-| 103 | payments | Save the Razorpay settings | PUT `/payments/razorpay` | `payments:manage` | org (header required) | keyId, keySecret (both required) | same safe status | `tenant_razorpay_config` (RLS, column grants) | encrypts (AES-256-GCM) before storing; one atomic upsert; 503 `PAYMENTS_UNAVAILABLE` and nothing written when the key is unusable; throttled |
-| 104 | payments | Remove the Razorpay settings | DELETE `/payments/razorpay` | `payments:manage` | org (header required) | - | `{ configured: false }` | `tenant_razorpay_config` (RLS, column grants) | hard delete, idempotent, needs no key; throttled |
+| 102 | store-design | List customized products | GET `/store/product-presentations` | JWT+Org | `dashboard:view` | page, limit | paginated `{productId, revision, publicationState, publishedAt, updatedAt}` (no product names) | `product_presentations` (RLS) | own store only |
+| 103 | store-design | Open one product design | GET `/store/product-presentations/:productId` | JWT+Org | `dashboard:view` | productId | `{productId, revision, publicationState, document, publishedDocument, publishedAt, updatedAt}`; default (revision 0) when never customized | `product_presentations` (RLS) | other tenant or unknown product 404 |
+| 104 | store-design | Save a product design draft | PUT `/store/product-presentations/:productId/draft` | JWT+Org | `store:manage` | `{document, expectedRevision}` (0 to create) | detail | `product_presentations` (RLS) | closed schema; 400 `PRESENTATION_DOCUMENT_INVALID`; 409 `PRESENTATION_REVISION_CONFLICT`; unchanged draft keeps the revision |
+| 105 | store-design | Publish a product design | POST `/store/product-presentations/:productId/publish` | JWT+Org | `store:manage` | `{expectedRevision?}` | detail + `published` flag | `product_presentations` (RLS) | 404 `PRESENTATION_NOT_FOUND` without a row; no-op when the draft equals the live copy; no history |
+| 106 | store-design | Reset a product to the default design | DELETE `/store/product-presentations/:productId` | JWT+Org | `store:manage` | productId | default detail | `product_presentations` (RLS) | removes draft and live copy at once; idempotent |
+| 107 | public | Find the store an address names | GET `/public/hosts/:subdomain` | Public | - | subdomain (host label `{store slug}-{public id}`) | `{slug, publicId}` or 404 | `get_public_store_by_subdomain()` (reads `stores.subdomain`) | unknown/inactive/suspended look identical (404); no identity; used by the web proxy to resolve a store host |
+
+## Studio foundation (migration 0037)
+
+Rollout flag, legal gate, attestations and Studio media. Store routes are `JWT+Org`; platform routes are Platform Admin only (403 otherwise, enforced again inside the SQL functions). The tables behind the rollout flag and the legal wording are not reachable by the app role at all.
+
+| # | Module | Feature | Method + endpoint | Auth | Permission | Request | Response | DB | Logic |
+|---|---|---|---|---|---|---|---|---|---|
+| 108 | studio | Studio status for my store | GET `/store/studio/status` | JWT+Org | `design:view` | - | `{enabled, schemaV2Capable, schemaVersion, pointOfNoReturnAt, features}` | `studio_rollout_status()`, `is_feature_approved()` | default disabled (no row = off); `features` is `unavailable` until legal approval exists |
+| 109 | studio | Turn Studio on/off for an organization | PUT `/platform/organizations/:id/studio-rollout` | JWT + Platform Admin | any Platform Admin | `{enabled, reason}` (reason 1-500) | `{storeId, enabled, enabledAt, pointOfNoReturnAt}` | `platform_set_studio_rollout()` | primary store; history row + audit entry `store.studio_rollout_changed` in the same transaction; disabling deletes nothing |
+| 110 | studio | Rollout history | GET `/platform/organizations/:id/studio-rollout/events` | JWT + Platform Admin | any Platform Admin | `page, limit` | paginated events (action, reason, previous, new, actorId) | `platform_list_studio_rollout_events()` | append-only table; unknown organization 404 |
+| 111 | studio | Read an approved wording | GET `/store/legal/wordings/:key` | JWT+Org | `design:view` | key | newest approved `{id,key,version,languageTag,text,status}` | `get_approved_legal_wording()` | drafts and retired versions never returned; none approved 404 |
+| 112 | studio | Add a legal wording version | POST `/platform/legal/wordings` | JWT + Platform Admin | any Platform Admin | `{key, languageTag, text, status?: draft\|approved}` | wording (201) | `platform_create_legal_wording()` | server assigns the next version; approved rows are immutable (only retire) |
+| 113 | studio | Record a legal approval | POST `/platform/legal/approvals` | JWT + Platform Admin | any Platform Admin | `{featureKey, wordingKey, wordingVersion, approverRef, approvedAt, release}` | approval (201) | `platform_record_feature_approval()` | wording must be approved (400 `WORDING_NOT_APPROVED`); append-only; nothing is ever seeded |
+| 114 | studio | Record an attestation | POST `/store/attestations` | JWT+Org | `design:attest` (capability; Owner implicit) | `{type: badge_upload\|review_import, wordingKey, wordingVersion, assetId?, importId?, context?}` | attestation (201) | `attestations` (RLS insert policy), `resolve_approved_legal_wording()` | exact wording version pinned; unknown/unapproved/retired wording 400; append-only |
+| 115 | studio | Ask to upload a Studio image | POST `/store/media-assets/upload-requests` | JWT+Org | `design:edit` | `{kind: badge_image, mimeType: jpeg\|png\|webp, sizeBytes<=5 MiB, width, height<=8192, altText?}` | `{id, path, token, signedUrl}` (201) | `media_assets` (RLS), Storage | SVG and other types 400; path `{tenant}/{uuid}.{ext}` chosen by the server; any client path field 400 |
+| 116 | studio | Finish a Studio image upload | POST `/store/media-assets/:id/finalize` | JWT+Org | `design:edit` | `{attestationId?}` | media asset | `media_assets` (RLS), Storage | type and size re-read from Storage (mismatch 400, object removed); attestation must be this file's, the same person's; linked once (409); repeat is safe |
+| 117 | studio | Check my design before publishing | POST `/store/studio/readiness` | JWT+Org | `design:view` | `{templateId?}` | `{issues[{key,ruleId,severity,message,messageKey,target{documentId,nodeId},fixAction,controlPath}], counts, canPublish, evaluatedAt, enforced}` | `templates` (RLS), `studio_rollout_status()`, `is_feature_approved()` | read-only; rule registry in `src/modules/studio/readiness`; blockers first. When Studio is ON for the store, `POST /store/theme/publish` and `POST /store/templates/:id/publish` rerun the rules inside the publish transaction before any write: blockers refused (400 `READINESS_BLOCKED`, no override), unacknowledged warnings refused (400 `READINESS_ACKNOWLEDGEMENT_REQUIRED`; send `acknowledgedWarnings: string[]` of issue keys), and one append-only `studio_publishes` row (publisher, items, acknowledgements, readiness summary, schema version) is written in the same transaction. Studio OFF: publish behaves exactly as before |
+
+## Reviews, recommendations, Studio workflow and public additions (Store Forge Studio, Releases 2-4)
+
+Routes added by the Studio releases after the foundation above. The request and response columns name the DTOs and results the live OpenAPI document describes; `test/swagger.e2e-spec.ts` compares this table with the registered routes in both directions.
+
+| # | Module | Feature | Method + endpoint | Auth | Permission | Request | Response |
+|---|---|---|---|---|---|---|---|
+| 118 | recommendations | Read merchant-picked recommendations for a product | GET `/store/products/:productId/recommendations` | JWT+Org | `catalog:view` | productId | merchant-picked recommendations |
+| 119 | recommendations | Set merchant-picked recommendations for a product | PUT `/store/products/:productId/recommendations` | JWT+Org | `catalog:manage` | `SetRecommendationsDto` (a product cannot recommend itself) | updated recommendations |
+| 120 | reviews | List reviews | GET `/reviews` | JWT+Org | `catalog:view` | filters, `page, limit` | paginated reviews |
+| 121 | reviews | Create a review | POST `/reviews` | JWT+Org | `catalog:manage` | `CreateReviewDto` | review |
+| 122 | reviews | Review CSV import template | GET `/reviews/import-template` | JWT+Org | `catalog:view` | - | CSV header row |
+| 123 | reviews | Import reviews | POST `/reviews/import` | JWT+Org | `catalog:manage` | `ReviewImportRequestDto`; validate-only mode checks every row without inserting; a real import needs an attestation id and is all-or-nothing | import result |
+| 124 | reviews | Update a review | PATCH `/reviews/:id` | JWT+Org | `catalog:manage` | `UpdateReviewDto` | review |
+| 125 | reviews | Delete a review | DELETE `/reviews/:id` | JWT+Org | `catalog:delete` | id | `{}` |
+| 126 | reviews | Publish a review | POST `/reviews/:id/publish` | JWT+Org | `catalog:manage` | - (id only) | review |
+| 127 | reviews | Unpublish a review | POST `/reviews/:id/unpublish` | JWT+Org | `catalog:manage` | - (id only) | review |
+| 128 | studio | Read Studio settings | GET `/store/studio/settings` | JWT+Org | `design:view` | - | review disclosure wording and language |
+| 129 | studio | Update Studio settings | PATCH `/store/studio/settings` | JWT+Org | `design:edit` | `UpdateStudioSettingsDto` | settings |
+| 130 | studio | Web Vitals statistics | GET `/store/studio/speed` | JWT+Org | `design:view` | - | aggregated Web Vitals from real visitor sessions |
+| 131 | studio | Mark drafts ready for review | POST `/store/studio/review-requests` | JWT+Org | `design:edit` | - (acts on the store's current drafts) | review request with its revision fingerprint |
+| 132 | studio | Current review request | GET `/store/studio/review-requests/current` | JWT+Org | `design:view` | - | the pending review request, if any |
+| 133 | studio | Unpublished draft changes | GET `/store/studio/changes` | JWT+Org | `design:view` | - | drafts compared with the published versions |
+| 134 | studio | Change ledger | GET `/store/studio/ledger` | JWT+Org | `design:view` | - | recent ledger entries |
+| 135 | studio | Discard draft changes | POST `/store/studio/discard` | JWT+Org | `design:edit` (and the discard capability) | `DiscardDraftDto` | template back at its published version |
+| 136 | studio | List reusable sections | GET `/store/studio/reusable-sections` | JWT+Org | `design:view` | - | sections with usage counts and current versions |
+| 137 | studio | Create a reusable section | POST `/store/studio/reusable-sections` | JWT+Org | `design:edit` | `CreateReusableSectionDto` | section and its first version (201) |
+| 138 | studio | Read a reusable section | GET `/store/studio/reusable-sections/:id` | JWT+Org | `design:view` | id | section with its current version |
+| 139 | studio | Update a reusable section | PUT `/store/studio/reusable-sections/:id` | JWT+Org | `design:edit` | `UpdateReusableSectionDto` | section; may add a new immutable version |
+| 140 | studio | Archive a reusable section | DELETE `/store/studio/reusable-sections/:id` | JWT+Org | `design:edit` | id | `{}`; 409 while an active template uses it |
+| 141 | studio | Reusable section versions | GET `/store/studio/reusable-sections/:id/versions` | JWT+Org | `design:view` | id | full version history |
+| 142 | studio | Restore a section version | POST `/store/studio/reusable-sections/:id/restore` | JWT+Org | `design:edit` | `RestoreReusableSectionVersionDto` | a new version carrying the restored content |
+| 143 | public | Published reviews for a product | GET `/public/storefronts/:slug/products/:productSlug/reviews` | Public | - | slug, productSlug | published reviews and disclosure wording; unpublished reviews are never returned |
+| 144 | public | Product recommendations | GET `/public/storefronts/:slug/recommendations` | Public | - | slug, source (related, merchant_picked, collection, newest, recently_viewed) | recommended products |
+| 145 | public | Record a Web Vitals sample | POST `/public/vitals` | Public | - | `RecordWebVitalsDto` (LCP, CLS, INP, TTFB, FCP) | daily histogram sample recorded |
+| 146 | public | Published landing page | GET `/public/storefronts/:slug/landing-pages/:pageSlug` | Public | - | slug, pageSlug | section-based landing page document; 404 when unpublished |
+
+## Payments (Owner-only Razorpay configuration)
+
+| # | Module | Feature | Method + endpoint | Permission | Auth | Request | Response | DB | Logic |
+|---|---|---|---|---|---|---|---|---|---|
+| 147 | payments | See the Razorpay settings | GET `/payments/razorpay` | `payments:manage` | org (header required) | - | `{ configured }` plus, when saved, masked Key ID, mode, updatedAt, updatedByName | `tenant_razorpay_config` (RLS, column grants) | Owner only; never returns the secret; 400 `ORGANIZATION_REQUIRED` without `X-Organization-Id` |
+| 148 | payments | Save the Razorpay settings | PUT `/payments/razorpay` | `payments:manage` | org (header required) | keyId, keySecret (both required) | same safe status | `tenant_razorpay_config` (RLS, column grants) | encrypts (AES-256-GCM) before storing; one atomic upsert; 503 `PAYMENTS_UNAVAILABLE` and nothing written when the key is unusable; throttled |
+| 149 | payments | Remove the Razorpay settings | DELETE `/payments/razorpay` | `payments:manage` | org (header required) | - | `{ configured: false }` | `tenant_razorpay_config` (RLS, column grants) | hard delete, idempotent, needs no key; throttled |
