@@ -1,7 +1,10 @@
 import { ConflictException, Injectable } from '@nestjs/common';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { invalid, notFound } from '../../../common/app.exception.js';
-import type { AuthUser, OrgContext } from '../../../common/interfaces/request-context.js';
+import type {
+  AuthUser,
+  OrgContext,
+} from '../../../common/interfaces/request-context.js';
 import { DatabaseService, rowsOf } from '../../../database/database.service.js';
 import {
   reusableSections,
@@ -52,7 +55,9 @@ export class ReusableSectionsService {
       );
 
       const usageMap = new Map<string, number>();
-      for (const row of rowsOf<{ reusable_id: string; count: string | number }>(usageCounts)) {
+      for (const row of rowsOf<{ reusable_id: string; count: string | number }>(
+        usageCounts,
+      )) {
         usageMap.set(row.reusable_id, Number(row.count));
       }
 
@@ -66,13 +71,17 @@ export class ReusableSectionsService {
           ? await tx
               .select()
               .from(reusableSectionVersions)
-              .where(sql`${reusableSectionVersions.id} = ANY(${currentVersionIds}::uuid[])`)
+              .where(
+                sql`${reusableSectionVersions.id} = ANY(${currentVersionIds}::uuid[])`,
+              )
           : [];
 
       const versionMap = new Map(versions.map((v) => [v.id, v]));
 
       return sections.map((s) => {
-        const cur = s.currentVersionId ? versionMap.get(s.currentVersionId) : null;
+        const cur = s.currentVersionId
+          ? versionMap.get(s.currentVersionId)
+          : null;
         return {
           id: s.id,
           componentId: s.componentId,
@@ -152,7 +161,10 @@ export class ReusableSectionsService {
         );
 
       if (!sec) {
-        throw notFound('Reusable section not found.', 'REUSABLE_SECTION_NOT_FOUND');
+        throw notFound(
+          'Reusable section not found.',
+          'REUSABLE_SECTION_NOT_FOUND',
+        );
       }
 
       let cur = null;
@@ -178,7 +190,12 @@ export class ReusableSectionsService {
   }
 
   /** Update a reusable section (creates a new immutable version if content is provided). */
-  async update(org: OrgContext, user: AuthUser, id: string, dto: UpdateReusableSectionDto) {
+  async update(
+    org: OrgContext,
+    user: AuthUser,
+    id: string,
+    dto: UpdateReusableSectionDto,
+  ) {
     return this.db.withUser(user.id, async (tx) => {
       const store = await requireStore(tx, org);
 
@@ -195,7 +212,10 @@ export class ReusableSectionsService {
         );
 
       if (!sec) {
-        throw notFound('Reusable section not found.', 'REUSABLE_SECTION_NOT_FOUND');
+        throw notFound(
+          'Reusable section not found.',
+          'REUSABLE_SECTION_NOT_FOUND',
+        );
       }
 
       let newVersionId = sec.currentVersionId;
@@ -228,7 +248,8 @@ export class ReusableSectionsService {
         .update(reusableSections)
         .set({
           name: dto.name ?? sec.name,
-          description: dto.description !== undefined ? dto.description : sec.description,
+          description:
+            dto.description !== undefined ? dto.description : sec.description,
           currentVersionId: newVersionId,
           updatedAt: new Date(),
         })
@@ -255,7 +276,10 @@ export class ReusableSectionsService {
         );
 
       if (!sec) {
-        throw notFound('Reusable section not found.', 'REUSABLE_SECTION_NOT_FOUND');
+        throw notFound(
+          'Reusable section not found.',
+          'REUSABLE_SECTION_NOT_FOUND',
+        );
       }
 
       return tx
@@ -289,7 +313,10 @@ export class ReusableSectionsService {
         );
 
       if (!sec) {
-        throw notFound('Reusable section not found.', 'REUSABLE_SECTION_NOT_FOUND');
+        throw notFound(
+          'Reusable section not found.',
+          'REUSABLE_SECTION_NOT_FOUND',
+        );
       }
 
       const [target] = await tx

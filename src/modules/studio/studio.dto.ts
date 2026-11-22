@@ -403,4 +403,3 @@ export class DiscardDraftDto {
   @MaxLength(500)
   reason!: string;
 }
-

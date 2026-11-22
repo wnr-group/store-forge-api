@@ -28,11 +28,8 @@ describe.skipIf(!migrationsAvailable)(
     });
 
     const product = async (name: string, status: 'active' | 'draft') =>
-      (
-        await alice
-          .post('/products', { name, price: '10', status })
-          .expect(201)
-      ).body.data as { id: string; slug: string };
+      (await alice.post('/products', { name, price: '10', status }).expect(201))
+        .body.data as { id: string; slug: string };
 
     const publicNames = async (collectionSlug: string) => {
       const res = await anonymous(t)
