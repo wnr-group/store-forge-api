@@ -11,6 +11,7 @@ export const AUDIT_ACTIONS = [
   'organization.suspended',
   'organization.reactivated',
   'store.updated',
+  'store.studio_rollout_changed',
   'team_member.added',
   'team_member.disabled',
   'team_member.reactivated',

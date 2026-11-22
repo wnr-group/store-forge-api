@@ -6,6 +6,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   MaxLength,
 } from 'class-validator';
 import {
@@ -121,4 +122,42 @@ export class UpdateCollectionDto {
   @ArrayMaxSize(500, { message: 'At most 500 products per collection.' })
   @IsUUID('all', { each: true })
   productIds?: string[];
+}
+
+export class CollectionUsageRefDto {
+  @ApiProperty({ format: 'uuid' }) templateId!: string;
+  @ApiProperty() templateName!: string;
+  @ApiProperty() kind!: string;
+  @ApiProperty({
+    description: 'The page kind, or the generated page ("cart page").',
+  })
+  location!: string;
+  @ApiProperty() sectionId!: string;
+  @ApiProperty() inDraft!: boolean;
+  @ApiProperty({
+    description: 'True when the live (published) design also uses it.',
+  })
+  inPublished!: boolean;
+}
+
+export class CollectionUsageDto {
+  @ApiProperty({ description: 'Number of sections that use this collection.' })
+  total!: number;
+  @ApiProperty({
+    description:
+      'Send this back as `usage` when deleting to confirm you saw the current list.',
+  })
+  hash!: string;
+  @ApiProperty({ type: [CollectionUsageRefDto] })
+  references!: CollectionUsageRefDto[];
+}
+
+export class DeleteCollectionQueryDto {
+  @ApiPropertyOptional({
+    description:
+      'The `hash` from the usage check you confirmed. Required when the collection is used.',
+  })
+  @IsOptional()
+  @Matches(/^[a-f0-9]{64}$/)
+  usage?: string;
 }

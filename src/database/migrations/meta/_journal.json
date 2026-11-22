@@ -253,6 +253,48 @@
       "when": 1794300018000,
       "tag": "0035_store_subdomain_column",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1794300019000,
+      "tag": "0036_design_permissions",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1794300020000,
+      "tag": "0037_studio_foundation",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1794300021000,
+      "tag": "0038_studio_release_2",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1794300022000,
+      "tag": "0039_studio_release_3",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1794300023000,
+      "tag": "0040_studio_release_4",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1794300024000,
+      "tag": "0041_studio_cart_drawer_layout",
+      "breakpoints": true
     }
   ]
 }

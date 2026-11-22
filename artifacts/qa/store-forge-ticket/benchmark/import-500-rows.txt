@@ -1,0 +1,6 @@
+run=bench-1795249144656
+status=201
+duration_ms=1337
+target_ms=30000
+result=WITHIN TARGET
+response={"success":true,"message":"Products imported successfully","data":{"count":500}}

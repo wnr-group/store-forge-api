@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { isDeepStrictEqual } from 'node:util';
 import { conflict, invalid } from '../../common/app.exception.js';
+import { can } from '../../common/constants/permissions.js';
 import { mapErrors } from '../../common/db-errors.js';
 import type { OrgContext } from '../../common/interfaces/request-context.js';
 import { DatabaseService, type DbTx } from '../../database/database.service.js';
@@ -21,6 +22,10 @@ import type {
   TemplateSummaryDto,
   TemplateVersionDto,
 } from './themes.dto.js';
+import {
+  ReadinessService,
+  type PublishedItem,
+} from '../studio/readiness/readiness.service.js';
 import { ProductPresentationsService } from './product-presentations.service.js';
 import { ThemesRepository, type TemplateRow } from './themes.repository.js';
 import {
@@ -55,6 +60,7 @@ export class TemplatesService {
     private readonly db: DatabaseService,
     private readonly repo: ThemesRepository,
     private readonly presentations: ProductPresentationsService,
+    private readonly readiness: ReadinessService,
   ) {}
 
   async list(ctx: OrgContext): Promise<TemplateSummaryDto[]> {
@@ -124,10 +130,34 @@ export class TemplatesService {
           tenantId: ctx.tenantId,
         });
         if (issues.length) throw documentInvalid(current.kind, issues);
+        // Schema 2 (display rules) is only for stores Studio is switched on for; others keep writing schema 1.
+        const toV2 = isSchema2(dto.document);
+        const studioOn = toV2
+          ? await this.readiness.isEnforced(tx, ctx)
+          : false;
+        if (toV2 && !studioOn)
+          throw documentInvalid(current.kind, [
+            {
+              path: 'schemaVersion',
+              message:
+                'Schema version 2 is available only when Studio is turned on for this store.',
+            },
+          ]);
         if (current.revision !== dto.expectedRevision)
           throw revisionConflict(current.revision);
         // An unchanged draft is not a write: the revision must not move, or two tabs would conflict for nothing.
         if (!isDeepStrictEqual(current.draft, dto.document)) {
+          // First move from schema 1 to 2: keep the previous document as a 'migration' version (a version row needs
+          // design:publish, so it is written when the saver holds it; the live version is kept in any case).
+          if (toV2 && !isSchema2(current.draft) && can(ctx, 'design:publish'))
+            await this.repo.insertVersion(tx, {
+              tenantId: ctx.tenantId,
+              storeId: store.id,
+              templateId: id,
+              document: current.draft,
+              source: 'migration',
+              label: 'Before display rules',
+            });
           const saved = await this.repo.updateDraft(tx, {
             tenantId: ctx.tenantId,
             storeId: store.id,
@@ -164,6 +194,25 @@ export class TemplatesService {
           dto.expectedRevision !== current.revision
         )
           throw revisionConflict(current.revision);
+        // Studio stores: the readiness rules run here, before any write, and refuse blockers or unacknowledged warnings.
+        let gate: Awaited<
+          ReturnType<ReadinessService['enforcePublish']>
+        > | null = null;
+        if (await this.readiness.isEnforced(tx, ctx)) {
+          const row = await this.repo.getTemplate(
+            tx,
+            ctx.tenantId,
+            store.id,
+            id,
+          );
+          gate = await this.readiness.enforcePublish(
+            tx,
+            ctx,
+            store,
+            row ? [row] : [],
+            dto.acknowledgedWarnings,
+          );
+        }
         const outcome = await this.publishOne(
           tx,
           ctx,
@@ -171,6 +220,14 @@ export class TemplatesService {
           current,
           dto.label,
         );
+        if (gate && outcome.published)
+          await this.readiness.recordPublish(
+            tx,
+            ctx,
+            store,
+            [outcome.published],
+            gate,
+          );
         return {
           published: outcome.published ? [outcome.published] : [],
           unchanged: outcome.published ? 0 : 1,
@@ -201,6 +258,17 @@ export class TemplatesService {
               ? t.isDefault
               : true),
         );
+
+        // Studio stores: the readiness rules run here, before any write, and refuse blockers or unacknowledged warnings.
+        const gate = (await this.readiness.isEnforced(tx, ctx))
+          ? await this.readiness.enforcePublish(
+              tx,
+              ctx,
+              store,
+              candidates,
+              dto.acknowledgedWarnings,
+            )
+          : null;
 
         // Validate everything before writing anything.
         const problems: Record<string, string> = {};
@@ -259,6 +327,15 @@ export class TemplatesService {
           pending.candidates,
         );
         if (presentationsLive && !published.length) at = new Date();
+        if (gate)
+          await this.readiness.recordPublish(
+            tx,
+            ctx,
+            store,
+            published as PublishedItem[],
+            gate,
+            { productPresentations: presentationsLive },
+          );
         return {
           published,
           unchanged,
@@ -433,6 +510,11 @@ export class TemplatesService {
     };
   }
 }
+
+const isSchema2 = (doc: unknown): boolean =>
+  typeof doc === 'object' &&
+  doc !== null &&
+  (doc as { schemaVersion?: unknown }).schemaVersion === 2;
 
 const revisionConflict = (currentRevision: number) =>
   conflict(

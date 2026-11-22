@@ -35,7 +35,7 @@ export class ProductPresentationsController {
   constructor(private readonly presentations: ProductPresentationsService) {}
 
   @Get()
-  @RequirePermission('dashboard:view')
+  @RequirePermission('design:view')
   @ApiEndpoint({
     summary: 'List customized products',
     description:
@@ -54,7 +54,7 @@ export class ProductPresentationsController {
   }
 
   @Get(':productId')
-  @RequirePermission('dashboard:view')
+  @RequirePermission('design:view')
   @ApiParam({ name: 'productId', format: 'uuid' })
   @ApiEndpoint({
     summary: "Open one product's design settings",
@@ -74,7 +74,7 @@ export class ProductPresentationsController {
   }
 
   @Put(':productId/draft')
-  @RequirePermission('store:manage')
+  @RequirePermission('design:edit')
   @Throttle({ default: { limit: 120, ttl: 60_000 } })
   @ApiParam({ name: 'productId', format: 'uuid' })
   @ApiEndpoint({
@@ -97,7 +97,7 @@ export class ProductPresentationsController {
   }
 
   @Post(':productId/publish')
-  @RequirePermission('store:manage')
+  @RequirePermission('design:publish')
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @ApiParam({ name: 'productId', format: 'uuid' })
   @ApiEndpoint({
@@ -120,7 +120,7 @@ export class ProductPresentationsController {
   }
 
   @Delete(':productId')
-  @RequirePermission('store:manage')
+  @RequirePermission('design:edit')
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @ApiParam({ name: 'productId', format: 'uuid' })
   @ApiEndpoint({

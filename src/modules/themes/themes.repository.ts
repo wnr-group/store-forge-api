@@ -305,7 +305,7 @@ export class ThemesRepository {
       storeId: string;
       templateId: string;
       document: unknown;
-      source: 'publish' | 'rollback';
+      source: 'publish' | 'rollback' | 'migration';
       rolledBackFrom?: string;
       label?: string | null;
     },

@@ -12,3 +12,4 @@ export * from './platform-settings.js';
 export * from './rate-limits.js';
 export * from './templates.js';
 export * from './product-presentations.js';
+export * from './studio.js';

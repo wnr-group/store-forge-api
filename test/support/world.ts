@@ -24,24 +24,28 @@ const PERMISSIONS = {
     orders: 'read',
     customers: 'read',
     settings: 'read',
+    design: 'read',
   },
   writer: {
     products: 'write',
     orders: 'read',
     customers: 'write',
     settings: 'write',
+    design: 'publish',
   },
   nothing: {
     products: 'none',
     orders: 'none',
     customers: 'none',
     settings: 'read',
+    design: 'none',
   },
   disabled: {
     products: 'write',
     orders: 'read',
     customers: 'write',
     settings: 'write',
+    design: 'publish',
   },
 } as const;
 

@@ -35,7 +35,7 @@ export class TemplatesController {
   constructor(private readonly templates: TemplatesService) {}
 
   @Get()
-  @RequirePermission('dashboard:view')
+  @RequirePermission('design:view')
   @ApiEndpoint({
     summary: 'List your store pages',
     description:
@@ -50,7 +50,7 @@ export class TemplatesController {
   }
 
   @Get(':id')
-  @RequirePermission('dashboard:view')
+  @RequirePermission('design:view')
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiEndpoint({
     summary: 'Open one page for editing',
@@ -67,7 +67,7 @@ export class TemplatesController {
   }
 
   @Get(':id/preview')
-  @RequirePermission('dashboard:view')
+  @RequirePermission('design:view')
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiEndpoint({
     summary: 'Get everything needed to preview a draft',
@@ -87,7 +87,7 @@ export class TemplatesController {
   }
 
   @Put(':id/draft')
-  @RequirePermission('store:manage')
+  @RequirePermission('design:edit')
   @Throttle({ default: { limit: 120, ttl: 60_000 } })
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiEndpoint({
@@ -110,7 +110,7 @@ export class TemplatesController {
   }
 
   @Post(':id/publish')
-  @RequirePermission('store:manage')
+  @RequirePermission('design:publish')
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiEndpoint({
@@ -133,7 +133,7 @@ export class TemplatesController {
   }
 
   @Get(':id/versions')
-  @RequirePermission('dashboard:view')
+  @RequirePermission('design:view')
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiEndpoint({
     summary: 'See the publishing history of a page',
@@ -153,7 +153,7 @@ export class TemplatesController {
   }
 
   @Post(':id/rollback')
-  @RequirePermission('store:manage')
+  @RequirePermission('design:publish')
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiEndpoint({

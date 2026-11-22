@@ -20,6 +20,8 @@ import { CollectionsModule } from './modules/collections/collections.module.js';
 import { CustomersModule } from './modules/customers/customers.module.js';
 import { InventoryModule } from './modules/inventory/inventory.module.js';
 import { ProductsModule } from './modules/products/products.module.js';
+import { RecommendationsModule } from './modules/recommendations/recommendations.module.js';
+import { ReviewsModule } from './modules/reviews/reviews.module.js';
 import { PlatformAdminModule } from './modules/platform-admin/platform-admin.module.js';
 import { PublicModule } from './modules/public/public.module.js';
 import { TeamModule } from './modules/team/team.module.js';
@@ -29,6 +31,7 @@ import { HealthModule } from './modules/health/health.module.js';
 import { OrganizationsModule } from './modules/organizations/organizations.module.js';
 import { StorageModule } from './modules/storage/storage.module.js';
 import { StoreModule } from './modules/store/store.module.js';
+import { StudioModule } from './modules/studio/studio.module.js';
 import { UsersModule } from './modules/users/users.module.js';
 
 @Module({
@@ -57,11 +60,14 @@ import { UsersModule } from './modules/users/users.module.js';
     CategoriesModule,
     CollectionsModule,
     ProductsModule,
+    RecommendationsModule,
+    ReviewsModule,
     InventoryModule,
     CustomersModule,
     AnalyticsModule,
     TeamModule,
     ThemesModule,
+    StudioModule,
     PagesModule,
     PublicModule,
     PlatformAdminModule,

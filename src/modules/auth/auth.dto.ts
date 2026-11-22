@@ -68,6 +68,12 @@ export class MembershipDto {
       'The access level the Owner has given you for each part (module) of the store.',
   })
   permissions!: Record<string, string>;
+  @ApiProperty({
+    type: [String],
+    example: ['attest'],
+    description: 'Independent capabilities (attest, discard).',
+  })
+  capabilities!: string[];
   @ApiProperty() joinedAt!: Date;
 }
 

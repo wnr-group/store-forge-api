@@ -134,6 +134,55 @@ export class StorageService {
     });
   }
 
+  /** One signed upload link for an exact, already validated object path (Studio media chooses its own file name). */
+  async createUploadTargetAt(
+    token: string,
+    path: string,
+  ): Promise<UploadTarget> {
+    const { data, error } = await this.clientFor(token)
+      .storage.from(PRODUCT_BUCKET)
+      .createSignedUploadUrl(path);
+    if (error || !data) {
+      this.logger.error(`createSignedUploadUrl failed: ${error?.message}`);
+      throw forbidden('You are not allowed to upload here.');
+    }
+    return { path, token: data.token, signedUrl: data.signedUrl };
+  }
+
+  /**
+   * Like verifyObjects for ONE file, but asks Storage for that name only: a tenant folder can hold more than the
+   * 1000 entries a plain listing returns (every product has its own sub-folder there).
+   */
+  async verifyChildObject(
+    token: string,
+    folder: string,
+    path: string,
+  ): Promise<VerifiedObject> {
+    if (!isDirectChild(path, folder))
+      throw invalid('An uploaded image has an invalid path.');
+    const name = path.slice(folder.length + 1);
+    const { data, error } = await this.clientFor(token)
+      .storage.from(PRODUCT_BUCKET)
+      .list(folder, { limit: 100, search: name });
+    if (error) {
+      this.logger.error(`storage list failed: ${error.message}`);
+      throw new AppException(
+        'UNKNOWN',
+        'Could not verify the uploaded image. Please try again.',
+      );
+    }
+    const obj = (data ?? []).find((o) => o.name === name);
+    const meta = obj?.metadata as { mimetype?: string; size?: number } | null;
+    if (!obj || !meta?.mimetype || !meta.size)
+      throw invalid('The image upload did not finish. Please upload it again.');
+    if (
+      !(IMAGE_TYPES as readonly string[]).includes(meta.mimetype) ||
+      meta.size > IMAGE_MAX_BYTES
+    )
+      throw invalid('The uploaded image is not an allowed type or size.');
+    return { path, mimeType: meta.mimetype, sizeBytes: meta.size };
+  }
+
   /** Best-effort removal; a failure leaves an unreferenced object, never a dangling DB reference. */
   async removeObjects(token: string, paths: string[]): Promise<void> {
     if (paths.length === 0) return;
