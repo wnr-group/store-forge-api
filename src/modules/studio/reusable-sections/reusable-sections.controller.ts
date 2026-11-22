@@ -10,8 +10,16 @@ import {
 } from '@nestjs/common';
 import { ApiParam, ApiTags } from '@nestjs/swagger';
 import { ApiEndpoint } from '../../../common/decorators/api-endpoint.decorator.js';
-import { CurrentOrg, CurrentUser, OrgScoped, RequirePermission } from '../../../common/decorators/decorators.js';
-import type { AuthUser, OrgContext } from '../../../common/interfaces/request-context.js';
+import {
+  CurrentOrg,
+  CurrentUser,
+  OrgScoped,
+  RequirePermission,
+} from '../../../common/decorators/decorators.js';
+import type {
+  AuthUser,
+  OrgContext,
+} from '../../../common/interfaces/request-context.js';
 import {
   CreateReusableSectionDto,
   RestoreReusableSectionVersionDto,
@@ -29,7 +37,8 @@ export class ReusableSectionsController {
   @RequirePermission('design:view')
   @ApiEndpoint({
     summary: 'List reusable sections',
-    description: 'List all active reusable sections with their usage counts and current versions.',
+    description:
+      'List all active reusable sections with their usage counts and current versions.',
     auth: 'org',
     permission: 'design:view',
     message: 'Reusable sections retrieved successfully',
@@ -78,7 +87,8 @@ export class ReusableSectionsController {
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiEndpoint({
     summary: 'Update reusable section',
-    description: 'Update metadata and optionally create a new immutable version.',
+    description:
+      'Update metadata and optionally create a new immutable version.',
     auth: 'org',
     permission: 'design:edit',
     body: UpdateReusableSectionDto,
@@ -105,7 +115,10 @@ export class ReusableSectionsController {
     message: 'Reusable section versions retrieved successfully',
     errors: [404],
   })
-  getVersions(@CurrentOrg() org: OrgContext, @Param('id', ParseUUIDPipe) id: string) {
+  getVersions(
+    @CurrentOrg() org: OrgContext,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.service.getVersions(org, id);
   }
 
@@ -114,7 +127,8 @@ export class ReusableSectionsController {
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiEndpoint({
     summary: 'Restore previous version',
-    description: 'Restore a previous version by creating a new version with its content.',
+    description:
+      'Restore a previous version by creating a new version with its content.',
     auth: 'org',
     permission: 'design:edit',
     body: RestoreReusableSectionVersionDto,
@@ -135,13 +149,17 @@ export class ReusableSectionsController {
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiEndpoint({
     summary: 'Delete reusable section',
-    description: 'Archive a reusable section. Refuses with 409 Conflict if used by any active template.',
+    description:
+      'Archive a reusable section. Refuses with 409 Conflict if used by any active template.',
     auth: 'org',
     permission: 'design:edit',
     message: 'Reusable section deleted successfully',
     errors: [403, 404, 409],
   })
-  delete(@CurrentOrg() org: OrgContext, @Param('id', ParseUUIDPipe) id: string) {
+  delete(
+    @CurrentOrg() org: OrgContext,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
     return this.service.delete(org, id);
   }
 }
