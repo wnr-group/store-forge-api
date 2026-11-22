@@ -19,6 +19,7 @@
     "lint": "oxlint --type-aware src/ test/",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
+    "format:check:changed": "node scripts/format-check-changed.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",

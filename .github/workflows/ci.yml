@@ -34,8 +34,12 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Format check
-        run: npm run format:check
+      # A pull request or branch is checked on the files it changes, so formatting debt already on main cannot fail an unrelated
+      # change; a push to main is checked on the files in that push. `npm run format:check` still checks the whole repository.
+      - name: Format check (changed files)
+        env:
+          FORMAT_BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || (github.ref == 'refs/heads/main' && github.event.before || 'origin/main') }}
+        run: npm run format:check:changed
 
       - name: Unit tests
         run: npm test
