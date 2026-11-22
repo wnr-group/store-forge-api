@@ -37,8 +37,7 @@ export class ReviewsController {
   @RequirePermission('catalog:view')
   @ApiEndpoint({
     summary: 'List reviews for the store',
-    description:
-      'Returns paginated reviews matching filter options. Requires products read.',
+    description: 'Returns paginated reviews matching filter options. Requires products read.',
     auth: 'org',
     response: [ReviewDto],
     message: 'Reviews retrieved successfully',
@@ -80,8 +79,7 @@ export class ReviewsController {
   @RequirePermission('catalog:manage')
   @ApiEndpoint({
     summary: 'Create a new review',
-    description:
-      'Creates a merchant-entered review for a product in this store. Requires products write.',
+    description: 'Creates a merchant-entered review for a product in this store. Requires products write.',
     auth: 'org',
     response: ReviewDto,
     message: 'Review created successfully',
@@ -95,8 +93,7 @@ export class ReviewsController {
   @ApiParam({ name: 'id' })
   @ApiEndpoint({
     summary: 'Update a review',
-    description:
-      'Updates review text, rating, or status. Requires products write.',
+    description: 'Updates review text, rating, or status. Requires products write.',
     auth: 'org',
     response: ReviewDto,
     message: 'Review updated successfully',
@@ -114,8 +111,7 @@ export class ReviewsController {
   @ApiParam({ name: 'id' })
   @ApiEndpoint({
     summary: 'Publish a review',
-    description:
-      'Sets review status to published so it appears on storefronts.',
+    description: 'Sets review status to published so it appears on storefronts.',
     auth: 'org',
     response: ReviewDto,
     message: 'Review published successfully',
@@ -132,8 +128,7 @@ export class ReviewsController {
   @ApiParam({ name: 'id' })
   @ApiEndpoint({
     summary: 'Unpublish a review',
-    description:
-      'Sets review status to unpublished so it is hidden from storefronts.',
+    description: 'Sets review status to unpublished so it is hidden from storefronts.',
     auth: 'org',
     response: ReviewDto,
     message: 'Review unpublished successfully',

@@ -192,8 +192,7 @@ export class StudioController {
   @RequirePermission('design:view')
   @ApiEndpoint({
     summary: 'Get store studio settings',
-    description:
-      'Get the store studio settings such as review disclosure wording and language.',
+    description: 'Get the store studio settings such as review disclosure wording and language.',
     auth: 'org',
     permission: 'design:view',
     response: StudioSettingsDto,
@@ -207,8 +206,7 @@ export class StudioController {
   @RequirePermission('design:edit')
   @ApiEndpoint({
     summary: 'Update store studio settings',
-    description:
-      'Update the review disclosure wording or language for the store.',
+    description: 'Update the review disclosure wording or language for the store.',
     auth: 'org',
     permission: 'design:edit',
     body: UpdateStudioSettingsDto,
@@ -228,8 +226,7 @@ export class StudioController {
   @RequirePermission('design:view')
   @ApiEndpoint({
     summary: 'Get Web Vitals performance statistics',
-    description:
-      'Aggregated Web Vitals performance statistics for the store from real visitor sessions.',
+    description: 'Aggregated Web Vitals performance statistics for the store from real visitor sessions.',
     auth: 'org',
     permission: 'design:view',
     message: 'Web vitals retrieved successfully',
@@ -242,8 +239,7 @@ export class StudioController {
   @RequirePermission('design:edit')
   @ApiEndpoint({
     summary: 'Mark drafts ready for review',
-    description:
-      'Submit current store draft templates for review and lock their revision fingerprint.',
+    description: 'Submit current store draft templates for review and lock their revision fingerprint.',
     auth: 'org',
     permission: 'design:edit',
     message: 'Review request submitted successfully',
@@ -257,8 +253,7 @@ export class StudioController {
   @RequirePermission('design:view')
   @ApiEndpoint({
     summary: 'Get current active review request',
-    description:
-      'Get the active review request and draft revision fingerprint if one is pending.',
+    description: 'Get the active review request and draft revision fingerprint if one is pending.',
     auth: 'org',
     permission: 'design:view',
     message: 'Current review request retrieved successfully',
@@ -271,8 +266,7 @@ export class StudioController {
   @RequirePermission('design:view')
   @ApiEndpoint({
     summary: 'Get summary of unpublished draft changes',
-    description:
-      'Compare all active templates against published versions to list changes.',
+    description: 'Compare all active templates against published versions to list changes.',
     auth: 'org',
     permission: 'design:view',
     message: 'Draft changes retrieved successfully',
@@ -285,8 +279,7 @@ export class StudioController {
   @RequirePermission('design:view')
   @ApiEndpoint({
     summary: 'View change ledger',
-    description:
-      'Query recent change ledger entries for templates and sections.',
+    description: 'Query recent change ledger entries for templates and sections.',
     auth: 'org',
     permission: 'design:view',
     message: 'Change ledger retrieved successfully',
@@ -302,8 +295,7 @@ export class StudioController {
   @RequirePermission('design:edit')
   @ApiEndpoint({
     summary: 'Discard draft changes',
-    description:
-      'Discard draft changes for a template back to published version. Requires discard capability.',
+    description: 'Discard draft changes for a template back to published version. Requires discard capability.',
     auth: 'org',
     permission: 'design:edit',
     body: DiscardDraftDto,

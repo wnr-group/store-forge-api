@@ -1,16 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { and, asc, desc, eq, inArray, ne, notInArray, sql } from 'drizzle-orm';
 import { invalid, notFound } from '../../common/app.exception.js';
-import type {
-  AuthUser,
-  OrgContext,
-} from '../../common/interfaces/request-context.js';
+import type { AuthUser, OrgContext } from '../../common/interfaces/request-context.js';
 import { DatabaseService, rowsOf } from '../../database/database.service.js';
-import {
-  collections,
-  collectionProducts,
-  products,
-} from '../../database/schema/catalog.js';
+import { collections, collectionProducts, products } from '../../database/schema/catalog.js';
 import { productRecommendations } from '../../database/schema/studio.js';
 import { requireStore } from '../themes/themes.shared.js';
 import type {
@@ -48,9 +41,7 @@ export class RecommendationsService {
           productSlug: products.slug,
           priceMinor: products.priceMinor,
           compareAtPriceMinor: products.compareAtPriceMinor,
-          imagePath: sql<
-            string | null
-          >`(SELECT storage_path FROM public.product_images pi WHERE pi.product_id = ${products.id} AND pi.is_primary LIMIT 1)`,
+          imagePath: sql<string | null>`(SELECT storage_path FROM public.product_images pi WHERE pi.product_id = ${products.id} AND pi.is_primary LIMIT 1)`,
           status: products.status,
         })
         .from(productRecommendations)
@@ -100,9 +91,7 @@ export class RecommendationsService {
       const existingProduct = await tx
         .select({ id: products.id })
         .from(products)
-        .where(
-          and(eq(products.tenantId, org.tenantId), eq(products.id, productId)),
-        )
+        .where(and(eq(products.tenantId, org.tenantId), eq(products.id, productId)))
         .limit(1);
 
       if (existingProduct.length === 0) {
@@ -124,20 +113,12 @@ export class RecommendationsService {
         const validProducts = await tx
           .select({ id: products.id })
           .from(products)
-          .where(
-            and(
-              eq(products.tenantId, org.tenantId),
-              inArray(products.id, recIds),
-            ),
-          );
+          .where(and(eq(products.tenantId, org.tenantId), inArray(products.id, recIds)));
 
         if (validProducts.length !== recIds.length) {
-          throw invalid(
-            'One or more recommended products do not exist in this store.',
-            {
-              recommendations: 'Invalid product ID.',
-            },
-          );
+          throw invalid('One or more recommended products do not exist in this store.', {
+            recommendations: 'Invalid product ID.',
+          });
         }
       }
 
@@ -198,10 +179,7 @@ export class RecommendationsService {
       let currentCategoryId: string | null = null;
 
       if (query.productSlug) {
-        const currentProdRows = rowsOf<{
-          id: string;
-          category_id: string | null;
-        }>(
+        const currentProdRows = rowsOf<{ id: string; category_id: string | null }>(
           await tx.execute(
             sql`SELECT id, category_id FROM public.products WHERE tenant_id = ${store.tenant_id} AND slug = ${query.productSlug} AND status = 'active'`,
           ),

@@ -116,10 +116,7 @@ describe.skipIf(!migrationsAvailable)(
       await saveRefs([c.slug]);
       await publish();
       const u = await usageOf(c.id);
-      expect(u.references[0]).toMatchObject({
-        inDraft: true,
-        inPublished: true,
-      });
+      expect(u.references[0]).toMatchObject({ inDraft: true, inPublished: true });
     });
 
     it('URLs or text that merely mention the collection are not references', async () => {
@@ -127,9 +124,8 @@ describe.skipIf(!migrationsAvailable)(
       await saveRefs(['']);
       const tpl = await home();
       const doc = structuredClone(tpl.document);
-      (
-        doc.sections.usage0 as { settings: Record<string, unknown> }
-      ).settings.title = `/collections/${c.slug}`;
+      (doc.sections.usage0 as { settings: Record<string, unknown> }).settings.title =
+        `/collections/${c.slug}`;
       await alice
         .put(`/store/templates/${tpl.id}/draft`, {
           document: doc,
@@ -150,9 +146,7 @@ describe.skipIf(!migrationsAvailable)(
         .expect(409);
       const fresh = await usageOf(c.id);
       expect(fresh.hash).not.toBe(before.hash);
-      await alice
-        .delete(`/collections/${c.id}?usage=${fresh.hash}`)
-        .expect(200);
+      await alice.delete(`/collections/${c.id}?usage=${fresh.hash}`).expect(200);
       expect(await exists(c.id)).toBe(false);
       expect(JSON.stringify((await home()).document)).toContain(c.id);
     });
@@ -189,7 +183,7 @@ describe.skipIf(!migrationsAvailable)(
       ).toBe(1);
     });
 
-    it('is tenant-scoped: another organization gets 404 for usage and delete', async () => {
+    it("is tenant-scoped: another organization gets 404 for usage and delete", async () => {
       const c = await collection('Tenant A Only');
       await bob.get(`/collections/${c.id}/usage`).expect(404);
       await bob.delete(`/collections/${c.id}`).expect(404);

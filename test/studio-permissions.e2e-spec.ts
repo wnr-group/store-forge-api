@@ -65,9 +65,7 @@ describe.skipIf(!migrationsAvailable)('Studio permission matrix (e2e)', () => {
       })
       .expect(200);
     await owner
-      .post(`/store/templates/${tplId}/publish`, {
-        expectedRevision: d.revision,
-      })
+      .post(`/store/templates/${tplId}/publish`, { expectedRevision: d.revision })
       .expect(200);
     versionId = (
       (await owner.get(`/store/templates/${tplId}/versions`).expect(200)).body
@@ -101,10 +99,7 @@ describe.skipIf(!migrationsAvailable)('Studio permission matrix (e2e)', () => {
       'rollback',
       async () => c.post(`/store/templates/${tplId}/rollback`, { versionId }),
     ],
-    [
-      'apply theme',
-      async () => c.post('/store/theme', { themeSlug: 'atelier' }),
-    ],
+    ['apply theme', async () => c.post('/store/theme', { themeSlug: 'atelier' })],
     [
       'product presentation draft',
       async () => {
@@ -123,8 +118,7 @@ describe.skipIf(!migrationsAvailable)('Studio permission matrix (e2e)', () => {
   const catalog = (c: Client): Op[] => [
     [
       'create product',
-      async () =>
-        c.post('/products', { name: `P ${Math.random()}`, price: '1' }),
+      async () => c.post('/products', { name: `P ${Math.random()}`, price: '1' }),
     ],
     [
       'create category',
@@ -144,9 +138,7 @@ describe.skipIf(!migrationsAvailable)('Studio permission matrix (e2e)', () => {
   ];
   const statuses = async (ops: Op[]) =>
     Object.fromEntries(
-      await Promise.all(
-        ops.map(async ([n, f]) => [n, (await f()).status] as const),
-      ),
+      await Promise.all(ops.map(async ([n, f]) => [n, (await f()).status] as const)),
     );
   /** Authorized: success, or a business conflict (409, e.g. rolling back to the live version) - never 401/403/5xx. */
   const allowed = (s: Record<string, number>) =>
@@ -190,9 +182,8 @@ describe.skipIf(!migrationsAvailable)('Studio permission matrix (e2e)', () => {
     await designOnly.get('/products').expect(403);
   });
   it('collection delete needs the products module like other catalogue writes', async () => {
-    const c = (
-      await owner.post('/collections', { name: 'Del perm' }).expect(201)
-    ).body.data.id;
+    const c = (await owner.post('/collections', { name: 'Del perm' }).expect(201))
+      .body.data.id;
     await designOnly.delete(`/collections/${c}`).expect(403);
     await readAll.delete(`/collections/${c}`).expect(403);
     await catalogOnly.delete(`/collections/${c}`).expect(200);
@@ -201,12 +192,7 @@ describe.skipIf(!migrationsAvailable)('Studio permission matrix (e2e)', () => {
     const bob = await as(t, w.bob);
     await bob
       .put(`/store/templates/${tplId}/draft`, {
-        document: {
-          schemaVersion: 1,
-          layout: 'classic',
-          sections: {},
-          order: [],
-        },
+        document: { schemaVersion: 1, layout: 'classic', sections: {}, order: [] },
         expectedRevision: 1,
       })
       .expect(404);

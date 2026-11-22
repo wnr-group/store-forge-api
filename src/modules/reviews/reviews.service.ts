@@ -119,9 +119,7 @@ export class ReviewsService {
           rating: dto.rating,
           title: sanitizeCsvCell(dto.title),
           body: sanitizeCsvCell(dto.body),
-          originLabel: dto.originLabel
-            ? sanitizeCsvCell(dto.originLabel)
-            : null,
+          originLabel: dto.originLabel ? sanitizeCsvCell(dto.originLabel) : null,
           status: dto.status ?? 'published',
           source: 'merchant_entered',
           verifiedPurchase: false,
@@ -157,15 +155,11 @@ export class ReviewsService {
         updatedAt: new Date(),
       };
 
-      if (dto.authorName !== undefined)
-        updates.authorName = sanitizeCsvCell(dto.authorName);
+      if (dto.authorName !== undefined) updates.authorName = sanitizeCsvCell(dto.authorName);
       if (dto.rating !== undefined) updates.rating = dto.rating;
       if (dto.title !== undefined) updates.title = sanitizeCsvCell(dto.title);
       if (dto.body !== undefined) updates.body = sanitizeCsvCell(dto.body);
-      if (dto.originLabel !== undefined)
-        updates.originLabel = dto.originLabel
-          ? sanitizeCsvCell(dto.originLabel)
-          : null;
+      if (dto.originLabel !== undefined) updates.originLabel = dto.originLabel ? sanitizeCsvCell(dto.originLabel) : null;
       if (dto.status !== undefined) updates.status = dto.status;
 
       const [updated] = await tx
@@ -202,11 +196,7 @@ export class ReviewsService {
     });
   }
 
-  async setStatus(
-    org: OrgContext,
-    id: string,
-    status: 'published' | 'unpublished',
-  ) {
+  async setStatus(org: OrgContext, id: string, status: 'published' | 'unpublished') {
     return this.update(org, id, { status });
   }
 
@@ -225,10 +215,7 @@ export class ReviewsService {
         if (!dto.attestationId) {
           throw invalid(
             'Attestation is required before importing reviews.',
-            {
-              attestationId:
-                'An attestation by an authorized user must be recorded.',
-            },
+            { attestationId: 'An attestation by an authorized user must be recorded.' },
             'ATTESTATION_REQUIRED',
           );
         }
@@ -276,24 +263,13 @@ export class ReviewsService {
       if (lines.length <= 1) {
         return {
           valid: false,
-          errors: [
-            {
-              row: 1,
-              column: 'csv',
-              reason: 'CSV must contain a header and at least one data row.',
-            },
-          ],
+          errors: [{ row: 1, column: 'csv', reason: 'CSV must contain a header and at least one data row.' }],
           totalRows: 0,
         };
       }
 
       const headerLine = lines[0];
-      const headers = headerLine.split(',').map((h) =>
-        h
-          .replace(/^["']|["']$/g, '')
-          .trim()
-          .toLowerCase(),
-      );
+      const headers = headerLine.split(',').map((h) => h.replace(/^["']|["']$/g, '').trim().toLowerCase());
 
       const authorIdx = headers.indexOf('author_name');
       const ratingIdx = headers.indexOf('rating');
@@ -303,22 +279,14 @@ export class ReviewsService {
       const productSlugIdx = headers.indexOf('product_slug');
       const originIdx = headers.indexOf('origin_label');
 
-      if (
-        authorIdx === -1 ||
-        ratingIdx === -1 ||
-        titleIdx === -1 ||
-        bodyIdx === -1
-      ) {
+      if (authorIdx === -1 || ratingIdx === -1 || titleIdx === -1 || bodyIdx === -1) {
         return {
           valid: false,
-          errors: [
-            {
-              row: 1,
-              column: 'header',
-              reason:
-                'CSV header must include author_name, rating, title, body, and either product_id or product_slug.',
-            },
-          ],
+          errors: [{
+            row: 1,
+            column: 'header',
+            reason: 'CSV header must include author_name, rating, title, body, and either product_id or product_slug.',
+          }],
           totalRows: lines.length - 1,
         };
       }
@@ -364,37 +332,20 @@ export class ReviewsService {
         const origin = originIdx >= 0 ? cols[originIdx] : null;
 
         if (!author || author.length > 80) {
-          errors.push({
-            row: rowNum,
-            column: 'author_name',
-            reason: 'Author name must be between 1 and 80 characters.',
-          });
+          errors.push({ row: rowNum, column: 'author_name', reason: 'Author name must be between 1 and 80 characters.' });
         }
 
         const ratingNum = parseInt(ratingStr, 10);
         if (isNaN(ratingNum) || ratingNum < 1 || ratingNum > 5) {
-          errors.push({
-            row: rowNum,
-            column: 'rating',
-            reason:
-              'Rating must be an integer between 1 and 5 (0 and 6 are rejected).',
-          });
+          errors.push({ row: rowNum, column: 'rating', reason: 'Rating must be an integer between 1 and 5 (0 and 6 are rejected).' });
         }
 
         if (!title || title.length > 120) {
-          errors.push({
-            row: rowNum,
-            column: 'title',
-            reason: 'Title must be between 1 and 120 characters.',
-          });
+          errors.push({ row: rowNum, column: 'title', reason: 'Title must be between 1 and 120 characters.' });
         }
 
         if (!body || body.length > 5000) {
-          errors.push({
-            row: rowNum,
-            column: 'body',
-            reason: 'Body must be between 1 and 5000 characters.',
-          });
+          errors.push({ row: rowNum, column: 'body', reason: 'Body must be between 1 and 5000 characters.' });
         }
 
         // Product resolution
@@ -406,20 +357,11 @@ export class ReviewsService {
         }
 
         if (!resolvedProductId) {
-          errors.push({
-            row: rowNum,
-            column: 'product',
-            reason:
-              'Specified product_id or product_slug does not exist in this store.',
-          });
+          errors.push({ row: rowNum, column: 'product', reason: 'Specified product_id or product_slug does not exist in this store.' });
         }
 
         if (origin && origin.length > 60) {
-          errors.push({
-            row: rowNum,
-            column: 'origin_label',
-            reason: 'Origin label cannot exceed 60 characters.',
-          });
+          errors.push({ row: rowNum, column: 'origin_label', reason: 'Origin label cannot exceed 60 characters.' });
         }
 
         if (resolvedProductId) {

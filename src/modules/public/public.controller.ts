@@ -201,8 +201,7 @@ export class PublicController {
   @ApiQuery({ name: 'offset', required: false, example: 0 })
   @ApiEndpoint({
     summary: 'Get published reviews for a product',
-    description:
-      'Get published reviews and disclosure wording for a product. Unpublished reviews are never returned.',
+    description: 'Get published reviews and disclosure wording for a product. Unpublished reviews are never returned.',
     auth: 'public',
     message: 'Product reviews retrieved successfully',
     errors: [404],
@@ -225,8 +224,7 @@ export class PublicController {
   @ApiParam({ name: 'slug', example: 'acme-store' })
   @ApiEndpoint({
     summary: 'Get product recommendations',
-    description:
-      'Get product recommendations by source (related, merchant_picked, collection, newest, recently_viewed).',
+    description: 'Get product recommendations by source (related, merchant_picked, collection, newest, recently_viewed).',
     auth: 'public',
     message: 'Recommendations retrieved successfully',
     errors: [404],
@@ -241,8 +239,7 @@ export class PublicController {
   @Post('vitals')
   @ApiEndpoint({
     summary: 'Record client-side Web Vitals',
-    description:
-      'Record a performance measurement sample (LCP, CLS, INP, TTFB, FCP) into the daily histogram.',
+    description: 'Record a performance measurement sample (LCP, CLS, INP, TTFB, FCP) into the daily histogram.',
     auth: 'public',
     body: RecordWebVitalsDto,
     message: 'Web vitals recorded successfully',
@@ -256,8 +253,7 @@ export class PublicController {
   @ApiParam({ name: 'pageSlug', example: 'summer-sale' })
   @ApiEndpoint({
     summary: 'View a published landing page',
-    description:
-      'Get the published section-based landing page document. Unpublished pages give 404.',
+    description: 'Get the published section-based landing page document. Unpublished pages give 404.',
     auth: 'public',
     message: 'Landing page retrieved successfully',
     errors: [404],

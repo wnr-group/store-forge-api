@@ -22,10 +22,7 @@ export class RecommendationItemDto {
   @IsUUID()
   recommendedProductId!: string;
 
-  @ApiPropertyOptional({
-    enum: RECOMMENDATION_RELATIONS,
-    default: 'cross_sell',
-  })
+  @ApiPropertyOptional({ enum: RECOMMENDATION_RELATIONS, default: 'cross_sell' })
   @IsOptional()
   @IsIn(RECOMMENDATION_RELATIONS)
   relationKind?: RecommendationRelation = 'cross_sell';
@@ -48,33 +45,14 @@ export class SetRecommendationsDto {
 
 export class PublicRecommendationsQueryDto {
   @ApiPropertyOptional({
-    enum: [
-      'related',
-      'merchant_picked',
-      'collection',
-      'newest',
-      'recently_viewed',
-    ],
+    enum: ['related', 'merchant_picked', 'collection', 'newest', 'recently_viewed'],
     default: 'related',
   })
   @IsOptional()
-  @IsIn([
-    'related',
-    'merchant_picked',
-    'collection',
-    'newest',
-    'recently_viewed',
-  ])
-  source?:
-    | 'related'
-    | 'merchant_picked'
-    | 'collection'
-    | 'newest'
-    | 'recently_viewed' = 'related';
+  @IsIn(['related', 'merchant_picked', 'collection', 'newest', 'recently_viewed'])
+  source?: 'related' | 'merchant_picked' | 'collection' | 'newest' | 'recently_viewed' = 'related';
 
-  @ApiPropertyOptional({
-    description: 'Current product slug (excluded from results)',
-  })
+  @ApiPropertyOptional({ description: 'Current product slug (excluded from results)' })
   @IsOptional()
   @IsString()
   productSlug?: string;
@@ -84,10 +62,7 @@ export class PublicRecommendationsQueryDto {
   @IsString()
   collectionSlug?: string;
 
-  @ApiPropertyOptional({
-    description:
-      'Comma-separated slugs for recently_viewed source (browser-stored)',
-  })
+  @ApiPropertyOptional({ description: 'Comma-separated slugs for recently_viewed source (browser-stored)' })
   @IsOptional()
   @IsString()
   viewedSlugs?: string;

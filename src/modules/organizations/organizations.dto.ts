@@ -31,9 +31,7 @@ export class OrganizationSummaryDto {
 }
 
 export class AccessEntryDto {
-  @ApiProperty({
-    enum: ['products', 'orders', 'customers', 'settings', 'design'],
-  })
+  @ApiProperty({ enum: ['products', 'orders', 'customers', 'settings', 'design'] })
   module!: string;
   @ApiProperty({ example: 'Products & inventory' }) label!: string;
   @ApiProperty({ enum: ['read', 'write', 'publish'] }) level!: string;

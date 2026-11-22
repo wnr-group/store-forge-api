@@ -208,11 +208,7 @@ export const REVIEW_STATUSES = ['published', 'unpublished'] as const;
 export type ReviewStatus = (typeof REVIEW_STATUSES)[number];
 export const REVIEW_SOURCES = ['merchant_entered', 'imported'] as const;
 export type ReviewSource = (typeof REVIEW_SOURCES)[number];
-export const RECOMMENDATION_RELATIONS = [
-  'cross_sell',
-  'upsell',
-  'related',
-] as const;
+export const RECOMMENDATION_RELATIONS = ['cross_sell', 'upsell', 'related'] as const;
 export type RecommendationRelation = (typeof RECOMMENDATION_RELATIONS)[number];
 
 export const storeStudioSettings = pgTable(
@@ -220,16 +216,10 @@ export const storeStudioSettings = pgTable(
   {
     storeId: uuid('store_id').primaryKey(),
     tenantId: uuid('tenant_id').notNull(),
-    reviewDisclosureText: text('review_disclosure_text')
-      .notNull()
-      .default('Feedback collected by the store.'),
-    reviewDisclosureLanguage: text('review_disclosure_language')
-      .notNull()
-      .default('en'),
+    reviewDisclosureText: text('review_disclosure_text').notNull().default('Feedback collected by the store.'),
+    reviewDisclosureLanguage: text('review_disclosure_language').notNull().default('en'),
     updatedBy: uuid('updated_by').notNull(),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index('store_studio_settings_tenant_idx').on(t.tenantId)],
 ).enableRLS();
@@ -245,39 +235,20 @@ export const productReviews = pgTable(
     rating: integer('rating').notNull(),
     title: text('title').notNull(),
     body: text('body').notNull(),
-    reviewedAt: timestamp('reviewed_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    status: text('status', { enum: REVIEW_STATUSES })
-      .notNull()
-      .default('published'),
-    source: text('source', { enum: REVIEW_SOURCES })
-      .notNull()
-      .default('merchant_entered'),
+    reviewedAt: timestamp('reviewed_at', { withTimezone: true }).notNull().defaultNow(),
+    status: text('status', { enum: REVIEW_STATUSES }).notNull().default('published'),
+    source: text('source', { enum: REVIEW_SOURCES }).notNull().default('merchant_entered'),
     originLabel: text('origin_label'),
     verifiedPurchase: boolean('verified_purchase').notNull().default(false),
     importId: uuid('import_id'),
     createdBy: uuid('created_by').notNull(),
     updatedBy: uuid('updated_by'),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    index('product_reviews_product_status_idx').on(
-      t.tenantId,
-      t.productId,
-      t.status,
-      t.reviewedAt.desc(),
-    ),
-    index('product_reviews_store_idx').on(
-      t.tenantId,
-      t.storeId,
-      t.reviewedAt.desc(),
-    ),
+    index('product_reviews_product_status_idx').on(t.tenantId, t.productId, t.status, t.reviewedAt.desc()),
+    index('product_reviews_store_idx').on(t.tenantId, t.storeId, t.reviewedAt.desc()),
   ],
 ).enableRLS();
 
@@ -293,13 +264,9 @@ export const reviewImports = pgTable(
     fileName: text('file_name').notNull(),
     rowsTotal: integer('rows_total').notNull(),
     rowsImported: integer('rows_imported').notNull(),
-    status: text('status', {
-      enum: ['success', 'partial', 'failed'],
-    }).notNull(),
+    status: text('status', { enum: ['success', 'partial', 'failed'] }).notNull(),
     attestationId: uuid('attestation_id').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index('review_imports_store_idx').on(t.tenantId, t.storeId)],
 ).enableRLS();
@@ -312,21 +279,13 @@ export const productRecommendations = pgTable(
     storeId: uuid('store_id').notNull(),
     productId: uuid('product_id').notNull(),
     recommendedProductId: uuid('recommended_product_id').notNull(),
-    relationKind: text('relation_kind', { enum: RECOMMENDATION_RELATIONS })
-      .notNull()
-      .default('cross_sell'),
+    relationKind: text('relation_kind', { enum: RECOMMENDATION_RELATIONS }).notNull().default('cross_sell'),
     position: integer('position').notNull().default(0),
     createdBy: uuid('created_by').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    index('product_recommendations_product_idx').on(
-      t.tenantId,
-      t.productId,
-      t.position,
-    ),
+    index('product_recommendations_product_idx').on(t.tenantId, t.productId, t.position),
   ],
 ).enableRLS();
 
@@ -340,16 +299,13 @@ export const webVitalsDaily = pgTable(
     deviceClass: text('device_class').notNull(),
     metric: text('metric').notNull(),
     day: date('day').notNull(),
-    bucketCounts: jsonb('bucket_counts')
-      .$type<Record<string, number>>()
-      .notNull()
-      .default({}),
+    bucketCounts: jsonb('bucket_counts').$type<Record<string, number>>().notNull().default({}),
     sampleCount: integer('sample_count').notNull().default(0),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index('web_vitals_store_day_idx').on(t.storeId, t.day)],
+  (t) => [
+    index('web_vitals_store_day_idx').on(t.storeId, t.day),
+  ],
 ).enableRLS();
 
 /* ==================================================================================================
@@ -366,20 +322,12 @@ export const reusableSections = pgTable(
     name: text('name').notNull(),
     description: text('description'),
     currentVersionId: uuid('current_version_id'),
-    status: text('status', { enum: ['active', 'archived'] })
-      .notNull()
-      .default('active'),
+    status: text('status', { enum: ['active', 'archived'] }).notNull().default('active'),
     createdBy: uuid('created_by').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [
-    index('reusable_sections_store_idx').on(t.tenantId, t.storeId, t.status),
-  ],
+  (t) => [index('reusable_sections_store_idx').on(t.tenantId, t.storeId, t.status)],
 ).enableRLS();
 
 export const reusableSectionVersions = pgTable(
@@ -390,13 +338,9 @@ export const reusableSectionVersions = pgTable(
     versionNumber: integer('version_number').notNull(),
     content: jsonb('content').$type<Record<string, unknown>>().notNull(),
     createdBy: uuid('created_by').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [
-    index('reusable_versions_reusable_idx').on(t.reusableId, t.versionNumber),
-  ],
+  (t) => [index('reusable_versions_reusable_idx').on(t.reusableId, t.versionNumber)],
 ).enableRLS();
 
 export const draftReviewRequests = pgTable(
@@ -408,9 +352,7 @@ export const draftReviewRequests = pgTable(
     fingerprint: text('fingerprint').notNull(),
     items: jsonb('items').$type<unknown[]>().notNull(),
     submittedBy: uuid('submitted_by').notNull(),
-    submittedAt: timestamp('submitted_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    submittedAt: timestamp('submitted_at', { withTimezone: true }).notNull().defaultNow(),
     clearedAt: timestamp('cleared_at', { withTimezone: true }),
     clearedReason: text('cleared_reason'),
   },
@@ -431,20 +373,10 @@ export const changeLedger = pgTable(
     beforeHash: text('before_hash'),
     afterHash: text('after_hash').notNull(),
     draftRevision: integer('draft_revision').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     resolvedAt: timestamp('resolved_at', { withTimezone: true }),
   },
-  (t) => [
-    index('change_ledger_node_idx').on(
-      t.tenantId,
-      t.storeId,
-      t.documentType,
-      t.documentId,
-      t.nodeId,
-    ),
-  ],
+  (t) => [index('change_ledger_node_idx').on(t.tenantId, t.storeId, t.documentType, t.documentId, t.nodeId)],
 ).enableRLS();
 
 export const draftDiscardAudit = pgTable(
@@ -462,15 +394,7 @@ export const draftDiscardAudit = pgTable(
     reason: text('reason').notNull(),
     beforeHash: text('before_hash'),
     afterHash: text('after_hash'),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [
-    index('draft_discard_audit_store_idx').on(
-      t.tenantId,
-      t.storeId,
-      t.createdAt.desc(),
-    ),
-  ],
+  (t) => [index('draft_discard_audit_store_idx').on(t.tenantId, t.storeId, t.createdAt.desc())],
 ).enableRLS();

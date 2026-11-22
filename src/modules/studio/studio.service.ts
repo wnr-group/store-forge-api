@@ -1,17 +1,9 @@
 import { createHash } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
-import {
-  AppException,
-  forbidden,
-  invalid,
-  notFound,
-} from '../../common/app.exception.js';
+import { AppException, forbidden, invalid, notFound } from '../../common/app.exception.js';
 import { errorChain, mapDbError } from '../../common/db-errors.js';
-import type {
-  AuthUser,
-  OrgContext,
-} from '../../common/interfaces/request-context.js';
+import type { AuthUser, OrgContext } from '../../common/interfaces/request-context.js';
 import {
   DatabaseService,
   rowsOf,
@@ -241,8 +233,7 @@ export class StudioService {
   ): Promise<StudioSettingsDto> {
     return this.db.withUser(user.id, async (tx) => {
       const store = await requireStore(tx, org);
-      const text =
-        dto.reviewDisclosureText ?? 'Feedback collected by the store.';
+      const text = dto.reviewDisclosureText ?? 'Feedback collected by the store.';
       const lang = dto.reviewDisclosureLanguage ?? 'en';
 
       await tx.execute(
@@ -329,9 +320,7 @@ export class StudioService {
           doc: t.draft_document,
         })),
       );
-      const fingerprint = createHash('sha256')
-        .update(hashPayload)
-        .digest('hex');
+      const fingerprint = createHash('sha256').update(hashPayload).digest('hex');
 
       // Clear any prior active review requests
       await tx.execute(
@@ -428,8 +417,7 @@ export class StudioService {
 
         const hasChanges =
           !r.published_version_id ||
-          JSON.stringify(r.draft_document) !==
-            JSON.stringify(r.published_document);
+          JSON.stringify(r.draft_document) !== JSON.stringify(r.published_document);
 
         return {
           templateId: r.id,
@@ -437,12 +425,8 @@ export class StudioService {
           kind: r.kind,
           publishedVersionId: r.published_version_id,
           hasChanges,
-          draftSectionCount: Array.isArray(draftSections)
-            ? draftSections.length
-            : 0,
-          publishedSectionCount: Array.isArray(pubSections)
-            ? pubSections.length
-            : 0,
+          draftSectionCount: Array.isArray(draftSections) ? draftSections.length : 0,
+          publishedSectionCount: Array.isArray(pubSections) ? pubSections.length : 0,
         };
       });
     });
@@ -474,10 +458,7 @@ export class StudioService {
       const store = await requireStore(tx, org);
 
       // Verify permission/capability: user must have 'discard' in capabilities or role = 'owner'
-      const memberRows = rowsOf<{
-        role: string;
-        capabilities: string[] | null;
-      }>(
+      const memberRows = rowsOf<{ role: string; capabilities: string[] | null }>(
         await tx.execute(
           sql`SELECT role, capabilities FROM public.memberships
               WHERE tenant_id = ${org.tenantId} AND user_id = ${user.id} AND status = 'active'`,
@@ -486,13 +467,10 @@ export class StudioService {
       const member = memberRows[0];
       const hasDiscardCap =
         member &&
-        (member.role === 'owner' ||
-          (member.capabilities && member.capabilities.includes('discard')));
+        (member.role === 'owner' || (member.capabilities && member.capabilities.includes('discard')));
 
       if (!hasDiscardCap) {
-        throw forbidden(
-          'You do not have permission to discard draft changes. The discard capability is required.',
-        );
+        throw forbidden('You do not have permission to discard draft changes. The discard capability is required.');
       }
 
       // Find template
@@ -526,12 +504,8 @@ export class StudioService {
         targetDoc = pubRows[0]?.document;
       }
 
-      const beforeHash = createHash('sha256')
-        .update(JSON.stringify(t.draft_document))
-        .digest('hex');
-      const afterHash = targetDoc
-        ? createHash('sha256').update(JSON.stringify(targetDoc)).digest('hex')
-        : null;
+      const beforeHash = createHash('sha256').update(JSON.stringify(t.draft_document)).digest('hex');
+      const afterHash = targetDoc ? createHash('sha256').update(JSON.stringify(targetDoc)).digest('hex') : null;
       const discardedRevision = t.draft_revision ?? 1;
 
       // Reset draft document

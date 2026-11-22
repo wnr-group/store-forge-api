@@ -244,19 +244,15 @@ export class PublicService {
 
   /** Published reviews for a product with mandatory disclosure wording. */
   async reviews(slug: string, productSlug: string, limit = 20, offset = 0) {
-    const raw = await this.db.withPublic(
-      async (tx) =>
-        rowsOf<{ r: unknown }>(
-          await tx.execute(
-            sql`select public.get_public_product_reviews(${slug}, ${productSlug}, ${limit}, ${offset}) as r`,
-          ),
-        )[0]?.r,
+    const raw = await this.db.withPublic(async (tx) =>
+      rowsOf<{ r: unknown }>(
+        await tx.execute(
+          sql`select public.get_public_product_reviews(${slug}, ${productSlug}, ${limit}, ${offset}) as r`,
+        ),
+      )[0]?.r,
     );
     if (!raw) throw notFound('Product or store not found.', 'NOT_FOUND');
-    return (typeof raw === 'string' ? JSON.parse(raw) : raw) as Record<
-      string,
-      unknown
-    >;
+    return (typeof raw === 'string' ? JSON.parse(raw) : raw) as Record<string, unknown>;
   }
 
   /** Recommendations for a product / collection on the storefront. */
@@ -311,18 +307,14 @@ export class PublicService {
 
   /** One published landing page (kind = 'page'). */
   async landingPage(slug: string, pageSlug: string) {
-    const raw = await this.db.withPublic(
-      async (tx) =>
-        rowsOf<{ p: unknown }>(
-          await tx.execute(
-            sql`select public.get_public_landing_page(${slug}, ${pageSlug}) as p`,
-          ),
-        )[0]?.p,
+    const raw = await this.db.withPublic(async (tx) =>
+      rowsOf<{ p: unknown }>(
+        await tx.execute(
+          sql`select public.get_public_landing_page(${slug}, ${pageSlug}) as p`,
+        ),
+      )[0]?.p,
     );
     if (!raw) throw notFound('Landing page not found.', 'PAGE_NOT_FOUND');
-    return (typeof raw === 'string' ? JSON.parse(raw) : raw) as Record<
-      string,
-      unknown
-    >;
+    return (typeof raw === 'string' ? JSON.parse(raw) : raw) as Record<string, unknown>;
   }
 }

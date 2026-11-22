@@ -43,12 +43,7 @@ export const THEME_DOCUMENT_KINDS = [
 export type ThemeDocumentKind = (typeof THEME_DOCUMENT_KINDS)[number];
 
 /** Page kinds render a storefront page; the others are one-per-store shared documents. */
-export const PAGE_TEMPLATE_KINDS = [
-  'index',
-  'product',
-  'collection',
-  'page',
-] as const;
+export const PAGE_TEMPLATE_KINDS = ['index', 'product', 'collection', 'page'] as const;
 
 export const THEME_INDUSTRIES = [
   'fashion',
