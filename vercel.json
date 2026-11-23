@@ -1,0 +1,11 @@
+{
+  "framework": null,
+  "regions": ["bom1"],
+  "buildCommand": "npm run build:vercel",
+  "functions": {
+    "api/index.js": {
+      "includeFiles": "node_modules/swagger-ui-dist/**"
+    }
+  },
+  "rewrites": [{ "source": "/(.*)", "destination": "/api" }]
+}
