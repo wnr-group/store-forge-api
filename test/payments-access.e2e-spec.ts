@@ -603,7 +603,7 @@ describe.skipIf(!migrationsAvailable)(
         expect(JSON.stringify(res.body)).not.toMatch(/razorpay|rzp_/i);
       });
 
-      it('AC-REG-13: the OpenAPI document gained exactly the three payments operations and no other route changed', async () => {
+      it('AC-REG-13: the baseline routes are unchanged; the payments settings operations are exactly the reviewed set', async () => {
         const { default: request } = await import('supertest');
         const doc = (
           await request(h.t.app.getHttpServer()).get('/api/docs-json')
@@ -612,13 +612,33 @@ describe.skipIf(!migrationsAvailable)(
         const ops = Object.entries(doc.paths).flatMap(([path, item]) =>
           methods.filter((m) => item[m]).map((m) => `${m} ${path}`),
         );
-        const payments = ops.filter((o) => o.includes('/payments/'));
+        // The Owner's payment settings routes: exactly these.
+        const payments = ops.filter((o) => o.includes(' /api/v1/payments/'));
+        // The order lifecycle (migration 0045+) added the checkout, order-management and shopper payment routes.
+        const orderRoutes = ops.filter(
+          (o) =>
+            /\/api\/v1\/orders(\/|$)/.test(o) ||
+            o.includes('/public/stores/') ||
+            o.includes('/api/v1/webhooks/') ||
+            o.includes('/api/v1/shipping/') ||
+            /\/api\/v1\/shipments(\/|$)/.test(o) ||
+            o.includes('/api/v1/tax/'),
+        );
         // 148 is the operation count of the baseline (origin/main) application, Store Forge Studio included.
-        expect(ops.length - payments.length).toBe(148);
+        expect(ops.length - payments.length - orderRoutes.length).toBe(148);
         expect(payments.sort()).toEqual([
           'delete /api/v1/payments/razorpay',
+          'get /api/v1/payments/cod',
           'get /api/v1/payments/razorpay',
+          'get /api/v1/payments/refunds',
+          'get /api/v1/payments/transactions',
+          'get /api/v1/payments/transactions/{id}',
+          'post /api/v1/payments/razorpay/verify',
+          'post /api/v1/payments/refunds/{id}/sync',
+          'post /api/v1/payments/transactions/{id}/refunds',
+          'put /api/v1/payments/cod',
           'put /api/v1/payments/razorpay',
+          'put /api/v1/payments/razorpay/enabled',
         ]);
       });
 

@@ -99,7 +99,11 @@ describe('payments static scans', () => {
         `payments barrels: ${barrels.length}`,
       ],
       () => {
-        expect(hits).toEqual(['src/modules/payments/credentials-crypto.ts']);
+        expect(hits).toEqual([
+          'src/modules/payments/credentials-crypto.ts',
+          'src/modules/payments/razorpay-credentials.ts',
+          'src/modules/shipping/carrier-credentials.ts',
+        ]);
         expect(barrels).toEqual([]);
       },
     );
@@ -281,23 +285,37 @@ describe('payments static scans', () => {
     );
   });
 
-  it('AC-SCOPE-02 [layer:STATIC]: no Razorpay SDK, outbound Razorpay call, webhook or payment-processing route (API)', async () => {
+  it('AC-SCOPE-02 [layer:STATIC]: Razorpay is the only online payment gateway, reached only from its client, and no other gateway exists (API)', async () => {
     const pkg = JSON.parse(read(join(ROOT, 'package.json'))) as Record<
       string,
       Record<string, string> | undefined
     >;
-    const deps = Object.keys({
+    const OTHER_GATEWAYS =
+      /stripe|paypal|braintree|adyen|payu|cashfree|paytm|phonepe|instamojo|ccavenue|billdesk|worldpay|mollie|klarna|square(up)?\b|authorize\.net|2checkout|checkout\.com/i;
+    const allDeps = Object.keys({
       ...pkg.dependencies,
       ...pkg.devDependencies,
-    }).filter((d) => /razorpay/i.test(d));
+    });
+    const otherGatewayDeps = allDeps.filter((d) => OTHER_GATEWAYS.test(d));
+    // Razorpay's REST API is called directly (one reviewed client): no SDK is installed.
+    const razorpaySdk = allDeps.filter((d) => /razorpay/i.test(d));
     const src = source().filter(
       (f) => !f.includes(`${sep}database${sep}migrations${sep}`),
     );
-    const hosts = src.filter((f) => /razorpay\.com/i.test(read(f))).map(norm);
-    const payments = src.filter((f) =>
-      f.includes(`${sep}modules${sep}payments${sep}`),
+    const otherGatewayHosts = src
+      .filter((f) =>
+        /(stripe|paypal|braintreegateway|adyen|payu|cashfree|paytm|phonepe|instamojo|ccavenue)\.(com|in|net)/i.test(
+          read(f),
+        ),
+      )
+      .map(norm);
+    const razorpayHosts = src
+      .filter((f) => /razorpay\.com/i.test(read(f)))
+      .map(norm);
+    const money = src.filter((f) =>
+      /\/modules\/(payments|checkout-payments|orders)\//.test(norm(f)),
     );
-    const outbound = payments
+    const outbound = money
       .filter((f) =>
         /\bfetch\(|axios|https?\.request|from 'node:https?'/.test(read(f)),
       )
@@ -310,22 +328,35 @@ describe('payments static scans', () => {
             read(f).match(/@Controller\([^)]*\)/)?.[0] ?? '',
           ),
       )
-      .map(norm);
+      .map(norm)
+      .sort();
     await evidence(
       'AC-SCOPE-02',
-      'no razorpay dependency, razorpay host, outbound HTTP in the payments module, or payment/webhook/checkout/refund controller other than payments/razorpay',
+      'no other payment gateway dependency or host; Razorpay is called only from razorpay.client.ts and only by REST (no SDK); payment-related controllers are exactly the reviewed set',
       [
-        `razorpay dependencies: ${deps.length}`,
-        `razorpay hosts: ${hosts.length}`,
-        `outbound calls: ${outbound.length}`,
+        `other gateway dependencies: ${otherGatewayDeps.length}`,
+        `razorpay sdk dependencies: ${razorpaySdk.length}`,
+        `other gateway hosts: ${otherGatewayHosts.length}`,
+        `razorpay hosts: ${razorpayHosts.join(', ')}`,
+        `outbound calls in money modules: ${outbound.join(', ')}`,
         `controllers: ${controllers.join(', ')}`,
       ],
       () => {
-        expect(deps).toEqual([]);
-        expect(hosts).toEqual([]);
-        expect(outbound).toEqual([]);
+        expect(otherGatewayDeps).toEqual([]);
+        expect(razorpaySdk).toEqual([]);
+        expect(otherGatewayHosts).toEqual([]);
+        expect(razorpayHosts).toEqual([
+          'src/modules/payments/razorpay.client.ts',
+        ]);
+        expect(outbound).toEqual(['src/modules/payments/razorpay.client.ts']);
         expect(controllers).toEqual([
+          'src/modules/checkout-payments/razorpay-webhook.controller.ts',
+          'src/modules/orders/public-quote.controller.ts',
+          'src/modules/payments/cod.controller.ts',
+          'src/modules/payments/payments-ledger.controller.ts',
           'src/modules/payments/payments.controller.ts',
+          // Carrier tracking pings: not a payment path (no money moves), matched only by the word "webhook".
+          'src/modules/shipments/carrier-webhook.controller.ts',
         ]);
       },
     );

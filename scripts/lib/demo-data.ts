@@ -769,18 +769,18 @@ export function buildDemoPlan(tenantId: string, userId: string, now: Date) {
     const status: OrderStatus =
       daysAgo > 14
         ? r < 0.74
-          ? 'fulfilled'
+          ? 'delivered'
           : r < 0.82
-            ? 'paid'
+            ? 'confirmed'
             : r < 0.9
               ? 'cancelled'
-              : 'refunded'
+              : 'returned'
         : r < 0.35
-          ? 'paid'
+          ? 'confirmed'
           : r < 0.62
-            ? 'pending'
+            ? 'pending_payment'
             : r < 0.92
-              ? 'fulfilled'
+              ? 'delivered'
               : 'cancelled';
     const orderId = id(`order:${n}`);
     const picked = new Set<string>();
@@ -908,7 +908,7 @@ export function buildDemoPlan(tenantId: string, userId: string, now: Date) {
         reason: 'sale',
         note: `Order #${o.orderNumber}`,
       });
-      if (o.status === 'refunded')
+      if (o.status === 'returned')
         evs.push({
           at: Math.min(t0 - 3_600_000, o.placedAt.getTime() + 4 * DAY),
           delta: it.quantity,

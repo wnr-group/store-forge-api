@@ -309,6 +309,69 @@
       "when": 1794300026000,
       "tag": "0043_tenant_customer_auth_flag",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1794300027000,
+      "tag": "0044_tenant_razorpay_webhook_secret",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1794300028000,
+      "tag": "0045_order_lifecycle",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1794300029000,
+      "tag": "0046_checkout_support",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1794300030000,
+      "tag": "0047_payments_core",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1794300031000,
+      "tag": "0048_refunds_webhooks",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1794300032000,
+      "tag": "0049_carrier_connections",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1794300033000,
+      "tag": "0050_shipping_zones_methods",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1794300034000,
+      "tag": "0051_shipments",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1794300035000,
+      "tag": "0052_gst_tax",
+      "breakpoints": true
     }
   ]
 }

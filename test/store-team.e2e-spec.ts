@@ -304,9 +304,9 @@ describe.skipIf(!migrationsAvailable)(
         await alice
           .post('/team/members', {
             ...base,
-            permissions: { ...FULL, orders: 'write' },
+            permissions: { ...FULL, orders: 'admin' },
           })
-          .expect(400); // orders are read-only
+          .expect(400); // unknown orders level
         await alice
           .post('/team/members', {
             ...base,

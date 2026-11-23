@@ -14,6 +14,7 @@ import type { Database } from './database.types.js';
 import { dbSchema } from './database.types.js';
 import {
   rowsOf,
+  withCheckoutContext,
   withPublicContext,
   withUserContext,
   type DbTx,
@@ -79,6 +80,14 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   /** Runs `fn` as the request role with no identity (public storefront / branding only). */
   withPublic<T>(fn: (tx: DbTx) => Promise<T>): Promise<T> {
     return withPublicContext(this.db, fn);
+  }
+
+  /**
+   * Runs `fn` as the tenant-pinned checkout role (guest checkout, payment webhooks, expiry job). `tenantId` must be
+   * resolved server-side; see withCheckoutContext.
+   */
+  withCheckout<T>(tenantId: string, fn: (tx: DbTx) => Promise<T>): Promise<T> {
+    return withCheckoutContext(this.db, tenantId, fn);
   }
 
   async ping(): Promise<boolean> {

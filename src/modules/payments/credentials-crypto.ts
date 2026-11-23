@@ -6,9 +6,9 @@ import { loadKey, loadKeyVersion, type KeyEnv } from './credentials-key.js';
  * authentication tag, and the tenant id is bound in as additional authenticated data, so a stored row copied to
  * another tenant fails to authenticate.
  *
- * This module only encrypts. There is intentionally no decryption path in production code: reading a secret back needs
- * its own reviewed, access-controlled function. The one decrypt helper below exists for the round-trip and tamper tests
- * and is checked by a static test to be unreachable from any other source file.
+ * `decryptSecret` is the single decryption function of the application. It runs in memory only, with the key from the
+ * server environment, and is checked by a static test to be referenced by exactly one other file:
+ * `razorpay-credentials.ts`, the reviewed reader that the checkout role reaches through get_razorpay_credentials().
  */
 
 /** Storage cap for the base64 ciphertext (also a CHECK on the table). 2048 characters hold at most 1536 plaintext bytes. */
@@ -79,8 +79,8 @@ export function encryptSecret(
   };
 }
 
-/** Test-only inverse of `encryptSecret`. Throws if the key, tenant id, IV, tag or ciphertext do not match. */
-function decryptSecret(
+/** Inverse of `encryptSecret`. Throws if the key, tenant id, IV, tag or ciphertext do not match (GCM authentication). */
+export function decryptSecret(
   encrypted: EncryptedSecret,
   tenantId: string,
   env: KeyEnv = process.env,

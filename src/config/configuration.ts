@@ -27,6 +27,9 @@ export interface AppConfig {
     connectTimeoutSeconds: number;
   };
   throttle: { ttlMs: number; limit: number };
+  checkout: { reservationMinutes: number };
+  cron: { secret?: string };
+  razorpay: { apiBaseUrl?: string };
 }
 
 /** Pure mapping from validated environment variables to AppConfig. */
@@ -62,6 +65,9 @@ export function buildConfig(env: EnvironmentVariables): AppConfig {
       ttlMs: env.THROTTLE_TTL_SECONDS * 1000,
       limit: env.THROTTLE_LIMIT,
     },
+    checkout: { reservationMinutes: env.CHECKOUT_RESERVATION_MINUTES },
+    cron: { secret: env.CRON_SECRET },
+    razorpay: { apiBaseUrl: env.RAZORPAY_API_BASE_URL },
   };
 }
 
