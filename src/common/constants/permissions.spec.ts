@@ -1,6 +1,7 @@
 import {
   accessEntries,
   can,
+  canManagePayments,
   presetOf,
   roleLabel,
   ROLE_PRESETS,
@@ -28,6 +29,7 @@ const ALL: Permission[] = [
   'customers:view',
   'customers:manage',
   'customers:delete',
+  'payments:manage',
 ];
 
 describe('permission rules (ported from lib/auth/permissions.ts)', () => {
@@ -106,5 +108,36 @@ describe('permission rules (ported from lib/auth/permissions.ts)', () => {
         settings: 'write',
       }),
     ).toBe('manager');
+  });
+});
+
+describe("payments:manage (AC-PERM-01): the Owner's payment credentials", () => {
+  it('is Owner-only', () => {
+    expect(can(owner, 'payments:manage')).toBe(true);
+    expect(canManagePayments(owner)).toBe(true);
+  });
+
+  it('is refused to every preset, however much access the Owner granted', () => {
+    for (const preset of Object.values(ROLE_PRESETS))
+      expect(can(member(preset.permissions), 'payments:manage')).toBe(false);
+  });
+
+  it('cannot be reached by granting module access, including write on store settings', () => {
+    const everything: Actor['permissions'] = {
+      products: 'write',
+      orders: 'read',
+      customers: 'write',
+      settings: 'write',
+    };
+    expect(can(member(everything), 'payments:manage')).toBe(false);
+    expect(can(member(everything), 'store:manage')).toBe(true); // the contrast
+    expect(canManagePayments(member(everything))).toBe(false);
+    expect(can(member({}), 'payments:manage')).toBe(false);
+  });
+
+  it('is not implied by the store-settings permissions', () => {
+    const settingsWriter = member({ settings: 'write' });
+    expect(can(settingsWriter, 'tenant:manage')).toBe(true);
+    expect(can(settingsWriter, 'payments:manage')).toBe(false);
   });
 });

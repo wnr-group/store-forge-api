@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  boolean,
   check,
   index,
   pgTable,
@@ -25,6 +26,10 @@ export const tenants = pgTable(
       .default('active'),
     contactPhone: text('contact_phone'),
     address: text('address'),
+    /** Dormant switch for future shopper authentication (migration 0043). Nothing reads or writes it yet. */
+    customerAuthEnabled: boolean('customer_auth_enabled')
+      .notNull()
+      .default(false),
     createdBy: uuid('created_by').references(() => authUsers.id, {
       onDelete: 'set null',
     }),

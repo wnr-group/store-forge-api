@@ -32,7 +32,11 @@ export class CreateReviewDto {
   @MaxLength(80)
   authorName!: string;
 
-  @ApiProperty({ description: 'Star rating from 1 to 5', minimum: 1, maximum: 5 })
+  @ApiProperty({
+    description: 'Star rating from 1 to 5',
+    minimum: 1,
+    maximum: 5,
+  })
   @IsInt()
   @Min(1)
   @Max(5)
@@ -51,7 +55,10 @@ export class CreateReviewDto {
   @MaxLength(5000)
   body!: string;
 
-  @ApiPropertyOptional({ description: 'Optional origin or source store name', maxLength: 60 })
+  @ApiPropertyOptional({
+    description: 'Optional origin or source store name',
+    maxLength: 60,
+  })
   @IsOptional()
   @IsString()
   @MaxLength(60)
@@ -118,7 +125,9 @@ export class ReviewFilterQueryDto {
   @IsIn(REVIEW_SOURCES)
   source?: ReviewSource;
 
-  @ApiPropertyOptional({ enum: ['newest', 'oldest', 'rating_desc', 'rating_asc'] })
+  @ApiPropertyOptional({
+    enum: ['newest', 'oldest', 'rating_desc', 'rating_asc'],
+  })
   @IsOptional()
   @IsIn(['newest', 'oldest', 'rating_desc', 'rating_asc'])
   sort?: 'newest' | 'oldest' | 'rating_desc' | 'rating_asc';
@@ -151,12 +160,17 @@ export class ReviewImportRowErrorDto {
 }
 
 export class ReviewImportRequestDto {
-  @ApiPropertyOptional({ description: 'Recorded attestation ID required for real import' })
+  @ApiPropertyOptional({
+    description: 'Recorded attestation ID required for real import',
+  })
   @IsOptional()
   @IsUUID()
   attestationId?: string;
 
-  @ApiPropertyOptional({ default: false, description: 'Dry run validation only' })
+  @ApiPropertyOptional({
+    default: false,
+    description: 'Dry run validation only',
+  })
   @IsOptional()
   @IsBoolean()
   validateOnly?: boolean = false;

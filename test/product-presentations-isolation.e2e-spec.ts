@@ -46,14 +46,21 @@ describe.skipIf(!migrationsAvailable)(
     const url = (id: string, tail = '') =>
       `/store/product-presentations/${id}${tail}`;
     const pub = async (slug: string) =>
-      (await anonymous(t).get(`/public/storefronts/alpha-shop/products/${slug}`))
-        .body.data;
+      (
+        await anonymous(t).get(
+          `/public/storefronts/alpha-shop/products/${slug}`,
+        )
+      ).body.data;
     const productTemplate = async () => {
       const list = (await alice.get('/store/templates').expect(200)).body
         .data as { id: string; kind: string; isDefault: boolean }[];
       const row = list.find((x) => x.kind === 'product' && x.isDefault)!;
       return (await alice.get(`/store/templates/${row.id}`).expect(200)).body
-        .data as { revision: number; document: unknown; publicationState: string };
+        .data as {
+        revision: number;
+        document: unknown;
+        publicationState: string;
+      };
     };
 
     it('customising one product leaves the shared product template untouched', async () => {
@@ -78,8 +85,12 @@ describe.skipIf(!migrationsAvailable)(
       await alice
         .put(url(b.id, '/draft'), { document: THUMBS, expectedRevision: 0 })
         .expect(200);
-      await alice.post(url(a.id, '/publish'), { expectedRevision: 1 }).expect(200);
-      await alice.post(url(b.id, '/publish'), { expectedRevision: 1 }).expect(200);
+      await alice
+        .post(url(a.id, '/publish'), { expectedRevision: 1 })
+        .expect(200);
+      await alice
+        .post(url(b.id, '/publish'), { expectedRevision: 1 })
+        .expect(200);
       expect((await pub(a.slug)).presentation).toEqual(STACKED);
       expect((await pub(b.slug)).presentation).toEqual(THUMBS);
       expect((await pub(c.slug)).presentation).toBeNull();
@@ -87,7 +98,9 @@ describe.skipIf(!migrationsAvailable)(
       await alice.delete(url(a.id)).expect(200);
       expect((await pub(a.slug)).presentation).toBeNull();
       expect((await pub(b.slug)).presentation).toEqual(THUMBS);
-      expect((await alice.get(url(b.id)).expect(200)).body.data.revision).toBe(1);
+      expect((await alice.get(url(b.id)).expect(200)).body.data.revision).toBe(
+        1,
+      );
     });
   },
 );

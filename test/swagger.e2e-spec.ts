@@ -1,4 +1,4 @@
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
@@ -33,7 +33,24 @@ const PUBLIC_ROUTES = new Set([
   'GET /api/v1/public/storefronts/{slug}/products/{productSlug}',
   'GET /api/v1/public/storefronts/{slug}/pages',
   'GET /api/v1/public/storefronts/{slug}/pages/{pageSlug}',
+  'GET /api/v1/public/storefronts/{slug}/products/{productSlug}/reviews',
+  'GET /api/v1/public/storefronts/{slug}/recommendations',
+  'GET /api/v1/public/storefronts/{slug}/landing-pages/{pageSlug}',
+  'POST /api/v1/public/vitals',
 ]);
+
+/**
+ * The routes docs/API_ENDPOINT_INVENTORY.md lists, as `METHOD /api/v1/path/{param}`. A row's query-string suffix is not part of
+ * the route, and `:param` is how the inventory (and Express) spell what OpenAPI spells `{param}`.
+ */
+const inventoryRoutes = (): string[] =>
+  [
+    ...readFileSync('docs/API_ENDPOINT_INVENTORY.md', 'utf8').matchAll(
+      /(GET|POST|PATCH|PUT|DELETE) `(\/[^`?]*)/g,
+    ),
+  ].map(
+    ([, method, path]) => `${method} /api/v1${path.replace(/:(\w+)/g, '{$1}')}`,
+  );
 
 /** "Never leave undocumented endpoints": every route of the real application must be fully described. */
 describe('OpenAPI coverage (e2e)', () => {
@@ -80,8 +97,12 @@ describe('OpenAPI coverage (e2e)', () => {
     await app.close();
   });
 
-  it('documents every endpoint listed in docs/API_ENDPOINT_INVENTORY.md (74 migrated + 1 bulk import + 4 cookie-session + 12 theme store + 4 public design routes + 5 store pages routes + 2 public page routes + 5 product presentation routes + 1 collection usage route + 9 studio foundation routes + 1 studio readiness route)', () => {
-    expect(operations.length).toBe(119);
+  it('documents every endpoint listed in docs/API_ENDPOINT_INVENTORY.md, and lists every registered endpoint there', () => {
+    const registered = operations.map((o) => o.key).sort();
+    const listed = inventoryRoutes().sort();
+    expect(new Set(listed).size).toBe(listed.length);
+    expect(registered.filter((k) => !listed.includes(k))).toEqual([]);
+    expect(listed.filter((k) => !registered.includes(k))).toEqual([]);
   });
 
   it('gives every operation a summary, a description, a tag, a success and an error response', () => {
@@ -123,6 +144,9 @@ describe('OpenAPI coverage (e2e)', () => {
   it('documents the request body of every POST / PATCH that takes one, and the path params of every route', () => {
     const noBody = new Set([
       'POST /api/v1/products/{id}/duplicate',
+      'POST /api/v1/reviews/{id}/publish', // state change on the id alone
+      'POST /api/v1/reviews/{id}/unpublish',
+      'POST /api/v1/store/studio/review-requests', // acts on the store's current drafts
       'POST /api/v1/auth/logout', // the session is the cookie
       'POST /api/v1/auth/refresh',
     ]);
@@ -191,6 +215,7 @@ describe('OpenAPI coverage (e2e)', () => {
         .filter((p) => /template|theme/i.test(p))
         .sort(),
     ).toEqual([
+      '/api/v1/reviews/import-template', // the review CSV header row, not a Theme Store template
       '/api/v1/store/templates',
       '/api/v1/store/templates/{id}',
       '/api/v1/store/templates/{id}/draft',

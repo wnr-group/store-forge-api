@@ -19,6 +19,7 @@
     "lint": "oxlint --type-aware src/ test/",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
+    "format:check:changed": "node scripts/format-check-changed.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
@@ -32,6 +33,7 @@
     "db:seed:demo": "tsx --env-file-if-exists=.env scripts/seed-demo-data.ts",
     "db:seed:themes": "tsx --env-file-if-exists=.env scripts/seed-themes.ts",
     "test:int": "vitest run --config ./vitest.config.integration.ts",
+    "test:real": "vitest run --config ./vitest.config.real.ts",
     "auth:token": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/get-access-token.ps1"
   },
   "dependencies": {

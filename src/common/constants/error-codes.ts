@@ -7,6 +7,8 @@ export const ERROR_STATUS = {
   CONFLICT: 409,
   RATE_LIMITED: 429,
   UNKNOWN: 500,
+  /** A feature that is configured on the server is temporarily unusable (e.g. a missing encryption key). */
+  UNAVAILABLE: 503,
 } as const;
 
 export type ErrorKind = keyof typeof ERROR_STATUS;
@@ -20,6 +22,7 @@ export const DEFAULT_ERROR_CODE: Record<ErrorKind, string> = {
   CONFLICT: 'CONFLICT',
   RATE_LIMITED: 'RATE_LIMITED',
   UNKNOWN: 'INTERNAL_ERROR',
+  UNAVAILABLE: 'SERVICE_UNAVAILABLE',
 };
 
 export const ORGANIZATION_HEADER = 'x-organization-id';

@@ -58,7 +58,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const exception = raw instanceof HttpException ? raw : mapDbError(raw);
     const { status, code, message, details } = this.describe(exception);
 
-    if (status >= 500) {
+    // An UNAVAILABLE AppException is an expected, already-explained condition (for example a feature whose server-side
+    // key is not configured). The code that raises it logs its own category-only event and the HTTP request logger
+    // records the 503, so no generic "unhandled" error line (with a stack) is added. Every other 5xx is logged as before.
+    const expected =
+      exception instanceof AppException && exception.kind === 'UNAVAILABLE';
+    if (status >= 500 && !expected) {
       this.logger.error(
         `Unhandled exception on ${request.method} ${path}`,
         exception instanceof Error ? exception.stack : String(exception),

@@ -1,0 +1,191 @@
+import { createHash } from 'node:crypto';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { join, relative } from 'node:path';
+
+/**
+ * Secret-leakage scan for QA evidence. A run uses synthetic secrets generated for that run and passes them in the
+ * environment (never written to disk); every file under the evidence folder (logs, API captures, reports, screenshots and
+ * any other binary) is then searched for each of them in the forms a leak usually takes. The result names the file, the
+ * sentinel's position in the list and the form it appeared in, and never contains a sentinel value.
+ */
+
+export type LeakForm = 'raw' | 'url' | 'json' | 'base64';
+
+export interface ScanFinding {
+  /** Forward-slash path relative to the scanned root. */
+  file: string;
+  sentinelIndex: number;
+  form: LeakForm;
+}
+
+export interface ScanResult {
+  scannedFiles: number;
+  scannedBytes: number;
+  sentinelCount: number;
+  /**
+   * SHA-256 over every scanned file's path and content (the scan and manifest results themselves excluded). A later reader
+   * recomputes it to prove the folder is still exactly what was scanned.
+   */
+  filesDigest: string;
+  findings: ScanFinding[];
+}
+
+/** Written by the scan and the manifest builder; they describe the folder and are not part of what is scanned or digested. */
+const DERIVED_FILES = new Set([
+  'summary/secret-scan.json',
+  'summary/manifest.json',
+]);
+
+const MIN_SENTINEL_LENGTH = 8;
+
+/** Parses `QA_SENTINELS` (a JSON array of strings). Errors never repeat a sentinel. */
+export function loadSentinels(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): string[] {
+  const raw = env.QA_SENTINELS;
+  if (raw === undefined || raw === '') return [];
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error('QA_SENTINELS must be a JSON array of strings');
+  }
+  if (!Array.isArray(parsed))
+    throw new Error('QA_SENTINELS must be a JSON array of strings');
+  return parsed.map((value) => {
+    if (typeof value !== 'string')
+      throw new Error('every QA_SENTINELS entry must be a string');
+    if (value.length < MIN_SENTINEL_LENGTH)
+      throw new Error(
+        `every QA_SENTINELS entry must be at least ${MIN_SENTINEL_LENGTH} characters`,
+      );
+    return value;
+  });
+}
+
+/**
+ * Base64 of `value` as it appears when embedded at any of the three possible byte offsets inside a larger encoded blob:
+ * the characters that mix in neighbouring bytes are trimmed, leaving the stable middle.
+ */
+function base64Forms(value: string): string[] {
+  const bytes = Buffer.from(value, 'utf8');
+  const forms = new Set<string>([bytes.toString('base64')]);
+  for (const offset of [0, 1, 2]) {
+    let encoded = Buffer.concat([Buffer.alloc(offset), bytes]).toString(
+      'base64',
+    );
+    encoded = encoded.slice(Math.ceil((offset * 8) / 6));
+    if (encoded.endsWith('='))
+      encoded = encoded.replace(/=+$/, '').slice(0, -1);
+    if (encoded.length >= 8) forms.add(encoded);
+  }
+  return [...forms];
+}
+
+function variantsOf(value: string): { form: LeakForm; text: string }[] {
+  return [
+    { form: 'raw' as const, text: value },
+    { form: 'url' as const, text: encodeURIComponent(value) },
+    // How the value looks inside a serialized JSON string (quotes, backslashes and control characters escaped).
+    { form: 'json' as const, text: JSON.stringify(value).slice(1, -1) },
+    ...base64Forms(value).map((text) => ({ form: 'base64' as const, text })),
+  ];
+}
+
+/** Every distinct string a sentinel is searched for. */
+export function sentinelVariants(value: string): string[] {
+  return [...new Set(variantsOf(value).map((v) => v.text))];
+}
+
+/** The first sentinel found in `content`, if any. Used to vet a single artifact before it is written. */
+export function findSentinel(
+  content: Buffer | string,
+  sentinels: readonly string[],
+): { sentinelIndex: number; form: LeakForm } | undefined {
+  const bytes =
+    typeof content === 'string' ? Buffer.from(content, 'utf8') : content;
+  for (const [sentinelIndex, sentinel] of sentinels.entries()) {
+    const hit = variantsOf(sentinel).find((v) =>
+      bytes.includes(Buffer.from(v.text, 'utf8')),
+    );
+    if (hit) return { sentinelIndex, form: hit.form };
+  }
+  return undefined;
+}
+
+function* filesUnder(
+  dir: string,
+  root: string,
+): Generator<{ abs: string; rel: string }> {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name === 'node_modules') continue;
+    const abs = join(dir, entry.name);
+    if (entry.isDirectory()) yield* filesUnder(abs, root);
+    // `relative` resolves both sides, so a trailing separator on the root cannot shift or truncate the path.
+    else if (entry.isFile())
+      yield { abs, rel: relative(root, abs).replaceAll('\\', '/') };
+  }
+}
+
+/** SHA-256 over file paths and contents, in path order, leaving out the scan and manifest results. */
+function digestOf(files: { rel: string; content: Buffer }[]): string {
+  const digest = createHash('sha256');
+  for (const { rel, content } of files
+    .filter((f) => !DERIVED_FILES.has(f.rel))
+    .sort((a, b) => (a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0)))
+    digest.update(
+      `${rel}\n${createHash('sha256').update(content).digest('hex')}\n`,
+    );
+  return digest.digest('hex');
+}
+
+/** SHA-256 over every file's path and content under `root`, in path order, leaving out the scan and manifest results. */
+export function digestTree(root: string): string {
+  return digestOf(
+    [...filesUnder(root, root)].map(({ abs, rel }) => ({
+      rel,
+      content: readFileSync(abs),
+    })),
+  );
+}
+
+/** Throws when there is nothing to search for, so an unset sentinel list can never be mistaken for a clean scan. */
+export function scanTree(
+  root: string,
+  sentinels: readonly string[],
+): ScanResult {
+  if (sentinels.length === 0)
+    throw new Error(
+      'no sentinels were provided, so nothing could be scanned for',
+    );
+  if (!existsSync(root)) throw new Error('the folder to scan does not exist');
+
+  const variants = sentinels.map((s) =>
+    variantsOf(s).map((v) => ({
+      form: v.form,
+      needle: Buffer.from(v.text, 'utf8'),
+    })),
+  );
+  const findings: ScanFinding[] = [];
+  let scannedFiles = 0;
+  let scannedBytes = 0;
+  const read: { rel: string; content: Buffer }[] = [];
+  for (const { abs, rel } of filesUnder(root, root)) {
+    const content = readFileSync(abs);
+    read.push({ rel, content });
+    scannedFiles += 1;
+    scannedBytes += content.length;
+    variants.forEach((forms, sentinelIndex) => {
+      const hit = forms.find((v) => content.includes(v.needle));
+      if (hit) findings.push({ file: rel, sentinelIndex, form: hit.form });
+    });
+  }
+  return {
+    scannedFiles,
+    scannedBytes,
+    sentinelCount: sentinels.length,
+    // From the very buffers that were matched, so findings and digest describe the same bytes even if a file changes mid-scan.
+    filesDigest: digestOf(read),
+    findings,
+  };
+}

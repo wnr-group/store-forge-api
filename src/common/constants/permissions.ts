@@ -81,6 +81,8 @@ const PERMISSIONS = {
   'tenant:delete': { ownerOnly: true },
   // Creating accounts is Owner-only: it needs the privileged Admin Auth API and must stay inside the Owner's own tenant.
   'members:manage': { ownerOnly: true },
+  // A tenant's own payment credentials: Owner-only, and no module grant (not even settings write) can reach it.
+  'payments:manage': { ownerOnly: true },
   // Products, categories, collections, inventory.
   'catalog:view': { module: 'products', need: 'read' },
   'catalog:manage': { module: 'products', need: 'write' },
@@ -131,11 +133,7 @@ export const canViewCustomers = (a: Actor) => can(a, 'customers:view');
 export const canManageCustomers = (a: Actor) => can(a, 'customers:manage');
 export const canDeleteCustomers = (a: Actor) => can(a, 'customers:delete');
 export const canManageMembers = (a: Actor) => can(a, 'members:manage');
-export const canViewDesign = (a: Actor) => can(a, 'design:view');
-export const canEditDesign = (a: Actor) => can(a, 'design:edit');
-export const canPublishDesign = (a: Actor) => can(a, 'design:publish');
-export const canAttestDesign = (a: Actor) => can(a, 'design:attest');
-export const canDiscardDesign = (a: Actor) => can(a, 'design:discard');
+export const canManagePayments = (a: Actor) => can(a, 'payments:manage');
 
 /** Members are stored with the broadest non-owner role; what they can actually do is decided by their permissions. */
 export const MEMBER_ROLE = 'admin' as const satisfies Role;
