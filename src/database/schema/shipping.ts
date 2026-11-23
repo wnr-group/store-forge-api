@@ -465,6 +465,53 @@ export const shipmentEvents = pgTable(
 export type Shipment = typeof shipments.$inferSelect;
 export type ShipmentEvent = typeof shipmentEvents.$inferSelect;
 
+/** The seller's GST settings (migration 0052). Tax is only charged while `enabled`, which needs a valid GSTIN. */
+export const tenantTaxSettings = pgTable('tenant_tax_settings', {
+  tenantId: uuid('tenant_id')
+    .primaryKey()
+    .references(() => tenants.id, { onDelete: 'cascade' }),
+  enabled: boolean('enabled').notNull().default(false),
+  gstin: text('gstin'),
+  legalName: text('legal_name'),
+  stateCode: text('state_code'),
+  pricesIncludeTax: boolean('prices_include_tax').notNull().default(false),
+  defaultRateBps: integer('default_rate_bps').notNull().default(1800),
+  chargesTaxable: boolean('charges_taxable').notNull().default(true),
+  chargesRateBps: integer('charges_rate_bps').notNull().default(1800),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedBy: uuid('updated_by').references(() => authUsers.id, {
+    onDelete: 'set null',
+  }),
+}).enableRLS();
+
+/** One taxed line of an order (an item, the delivery charge or the cash-on-delivery charge), saved with the order. */
+export const orderTaxLines = pgTable(
+  'order_tax_lines',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    orderId: uuid('order_id').notNull(),
+    orderItemId: uuid('order_item_id'),
+    kind: text('kind', { enum: ['item', 'shipping', 'cod_fee'] }).notNull(),
+    description: text('description').notNull(),
+    hsnCode: text('hsn_code'),
+    taxableMinor: bigint('taxable_minor', { mode: 'number' }).notNull(),
+    rateBps: integer('rate_bps').notNull(),
+    cgstMinor: bigint('cgst_minor', { mode: 'number' }).notNull().default(0),
+    sgstMinor: bigint('sgst_minor', { mode: 'number' }).notNull().default(0),
+    igstMinor: bigint('igst_minor', { mode: 'number' }).notNull().default(0),
+    taxMinor: bigint('tax_minor', { mode: 'number' }).notNull(),
+    sortOrder: integer('sort_order').notNull().default(0),
+  },
+  (t) => [
+    index('order_tax_lines_order_idx').on(t.tenantId, t.orderId, t.sortOrder),
+  ],
+).enableRLS();
+
 export type ShippingZone = typeof shippingZones.$inferSelect;
 export type ShippingMethod = typeof shippingMethods.$inferSelect;
 export type ShippingRateTier = typeof shippingRateTiers.$inferSelect;

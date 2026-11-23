@@ -2,6 +2,8 @@ import { randomBytes } from 'node:crypto';
 import { NoAdjustments } from '../../src/modules/orders/checkout-hooks.js';
 import type { PlaceOrderDto } from '../../src/modules/orders/checkout.dto.js';
 import { CheckoutService } from '../../src/modules/orders/checkout.service.js';
+import { CheckoutTaxService } from '../../src/modules/tax/checkout-tax.service.js';
+import { TaxService } from '../../src/modules/tax/tax.service.js';
 import { ShippingAdjuster } from '../../src/modules/orders/shipping-adjuster.js';
 import { CodService } from '../../src/modules/payments/cod.service.js';
 import { PaymentMethodsPolicy } from '../../src/modules/payments/payment-methods.policy.js';
@@ -176,6 +178,15 @@ export async function createShippingWorld() {
       new PaymentMethodsPolicy(),
       adjuster,
     ),
+    /** Checkout with GST worked out, as in the application. */
+    checkoutWithTax: new CheckoutService(
+      t.service,
+      config,
+      new PaymentMethodsPolicy(),
+      adjuster,
+      new CheckoutTaxService(),
+    ),
+    taxService: new TaxService(t.service),
     checkoutWithoutShipping: new CheckoutService(
       t.service,
       config,

@@ -23,6 +23,9 @@ export interface CatalogProduct {
   quantity: number;
   /** Shipping weight of one unit, in grams. 0 = not set. */
   weightGrams: number;
+  /** GST rate in basis points, or null for the organization's default. */
+  taxRateBps: number | null;
+  hsnCode: string | null;
 }
 
 export interface CatalogVariant {
@@ -46,6 +49,8 @@ export interface PricedLine {
   trackInventory: boolean;
   /** Shipping weight of ONE unit, in grams. 0 = not set. */
   weightGrams: number;
+  taxRateBps: number | null;
+  hsnCode: string | null;
 }
 
 export type CheckoutIssueCode =
@@ -151,6 +156,8 @@ export function priceLines(
       totalMinor: unitPriceMinor * line.quantity,
       trackInventory: product.trackInventory,
       weightGrams: product.weightGrams,
+      taxRateBps: product.taxRateBps,
+      hsnCode: product.hsnCode,
     });
   }
 

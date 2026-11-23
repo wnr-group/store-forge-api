@@ -18,6 +18,8 @@ const product = (over: Partial<CatalogProduct> = {}): CatalogProduct => ({
   trackInventory: true,
   quantity: 10,
   weightGrams: 0,
+  taxRateBps: null,
+  hsnCode: null,
   ...over,
 });
 const variant = (over: Partial<CatalogVariant> = {}): CatalogVariant => ({

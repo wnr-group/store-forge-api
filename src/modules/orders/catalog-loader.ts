@@ -29,9 +29,11 @@ export async function loadCatalog(
     track_inventory: boolean;
     quantity: number;
     weight_grams: number;
+    tax_rate_bps: number | null;
+    hsn_code: string | null;
   }>(
     await tx.execute(sql`
-      select id, slug, name, sku, status, price_minor::float8 as price_minor, has_variants, track_inventory, quantity, weight_grams
+      select id, slug, name, sku, status, price_minor::float8 as price_minor, has_variants, track_inventory, quantity, weight_grams, tax_rate_bps, hsn_code
       from public.products
       where tenant_id = ${tenantId}::uuid and slug in (${sql.join(
         slugs.map((s) => sql`${s}`),
@@ -49,6 +51,8 @@ export async function loadCatalog(
     trackInventory: p.track_inventory,
     quantity: p.quantity,
     weightGrams: p.weight_grams,
+    taxRateBps: p.tax_rate_bps,
+    hsnCode: p.hsn_code,
   }));
 
   const variantIds = [

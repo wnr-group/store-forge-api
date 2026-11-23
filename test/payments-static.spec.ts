@@ -351,6 +351,7 @@ describe('payments static scans', () => {
         expect(outbound).toEqual(['src/modules/payments/razorpay.client.ts']);
         expect(controllers).toEqual([
           'src/modules/checkout-payments/razorpay-webhook.controller.ts',
+          'src/modules/orders/public-quote.controller.ts',
           'src/modules/payments/cod.controller.ts',
           'src/modules/payments/payments-ledger.controller.ts',
           'src/modules/payments/payments.controller.ts',

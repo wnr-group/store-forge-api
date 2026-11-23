@@ -1,5 +1,5 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { sql } from 'drizzle-orm';
 import { AppException, invalid, notFound } from '../../common/app.exception.js';
@@ -13,10 +13,15 @@ import { loadCatalog } from './catalog-loader.js';
 import { priceLines, type RequestedLine } from './checkout-pricing.js';
 import {
   CHECKOUT_ADJUSTER,
+  CHECKOUT_TAX,
+  itemKeyOf,
   PAYMENT_METHOD_POLICY,
   type CheckoutAdjuster,
+  type CheckoutTaxCalculator,
+  type CheckoutTaxResult,
   type PaymentMethodPolicy,
 } from './checkout-hooks.js';
+import { loadOrderTax } from '../tax/order-tax.js';
 import type {
   CheckoutAddressDto,
   PlacedOrderDto,
@@ -95,6 +100,10 @@ export class CheckoutService {
     @Inject(PAYMENT_METHOD_POLICY)
     private readonly payments: PaymentMethodPolicy,
     @Inject(CHECKOUT_ADJUSTER) private readonly adjuster: CheckoutAdjuster,
+    /** Without it no tax is charged (the tax module provides it in the application). */
+    @Optional()
+    @Inject(CHECKOUT_TAX)
+    private readonly tax?: CheckoutTaxCalculator,
   ) {}
 
   /** Store slug -> tenant. Unknown, inactive and suspended stores are indistinguishable (not found). */
@@ -339,12 +348,40 @@ export class CheckoutService {
         ? { codAllowed: adjustment.shipping.codAllowed }
         : null,
     });
+    // Tax last: it is charged on the items AND on the delivery and cash-on-delivery charges, which are only known by now.
+    const tax: CheckoutTaxResult = this.tax
+      ? await this.tax.compute(tx, {
+          tenantId,
+          lines: priced.lines,
+          discountMinor: adjustment.discountMinor,
+          shippingMinor: adjustment.shippingMinor,
+          codFeeMinor,
+          destination: {
+            stateCode: shipping.stateCode,
+            stateName: shipping.stateName,
+            city: shipping.city,
+            postalCode: shipping.postalCode,
+          },
+        })
+      : {
+          regime: 'none',
+          stateTaxKind: 'sgst',
+          inclusive: adjustment.taxInclusive,
+          sellerGstin: null,
+          sellerStateCode: null,
+          supplyStateCode: null,
+          cgstMinor: 0,
+          sgstMinor: 0,
+          igstMinor: 0,
+          taxMinor: adjustment.taxMinor,
+          lines: [],
+        };
     const totalMinor =
       priced.subtotalMinor -
       adjustment.discountMinor +
       adjustment.shippingMinor +
       codFeeMinor +
-      (adjustment.taxInclusive ? 0 : adjustment.taxMinor);
+      (tax.inclusive ? 0 : tax.taxMinor);
     // Razorpay cannot take less than one rupee, and a COD order must have something to collect.
     const minimumMinor = dto.paymentMethod === 'cod' ? 1 : 100;
     if (Number.isSafeInteger(totalMinor) && totalMinor < minimumMinor)
@@ -376,13 +413,16 @@ export class CheckoutService {
       await tx.execute(sql`
         insert into public.orders (tenant_id, customer_id, order_number, status, payment_method, payment_status, currency,
           subtotal_minor, discount_minor, shipping_minor, cod_fee_minor, tax_minor, tax_inclusive, total_minor,
+          tax_regime, state_tax_kind, cgst_minor, sgst_minor, igst_minor, seller_gstin, seller_state_code, supply_state_code,
           customer_name, customer_email, customer_phone, idempotency_key, access_token_hash,
           shipping_method_id, shipping_method_name, shipping_zone_name, shipping_carrier_code, shipping_service_code,
           shipping_days_min, shipping_days_max, shipping_weight_grams)
         values (${tenantId}::uuid, ${customerId}::uuid, ${orderNumber}, ${cod ? 'confirmed' : 'pending_payment'},
           ${dto.paymentMethod}, ${cod ? 'pending_collection' : 'unpaid'}, ${currency},
           ${priced.subtotalMinor}, ${adjustment.discountMinor}, ${adjustment.shippingMinor}, ${codFeeMinor},
-          ${adjustment.taxMinor}, ${adjustment.taxInclusive}, ${totalMinor},
+          ${tax.taxMinor}, ${tax.inclusive}, ${totalMinor},
+          ${tax.regime}, ${tax.stateTaxKind}, ${tax.cgstMinor}, ${tax.sgstMinor}, ${tax.igstMinor},
+          ${tax.sellerGstin}, ${tax.sellerStateCode}, ${tax.supplyStateCode},
           ${dto.customer.fullName}, ${dto.customer.email}, ${dto.customer.phone}, ${key}, ${hashToken(accessToken)},
           ${adjustment.shipping?.methodId ?? null}::uuid, ${adjustment.shipping?.methodName ?? null}, ${adjustment.shipping?.zoneName ?? null},
           ${adjustment.shipping?.carrierCode ?? null}, ${adjustment.shipping?.serviceCode ?? null},
@@ -390,11 +430,30 @@ export class CheckoutService {
         returning id`),
     )[0].id;
 
-    for (const l of priced.lines)
+    const itemIds = new Map<string, string>();
+    for (const l of priced.lines) {
+      const taxed = tax.lines.find((t) => t.itemKey === itemKeyOf(l));
+      itemIds.set(
+        itemKeyOf(l),
+        rowsOf<{ id: string }>(
+          await tx.execute(sql`
+            insert into public.order_items (tenant_id, order_id, product_id, variant_id, name, sku, quantity, unit_price_minor, total_minor,
+              weight_grams, tax_minor, tax_rate_bps, hsn_code)
+            values (${tenantId}::uuid, ${orderId}::uuid, ${l.productId}::uuid, ${l.variantId}::uuid, ${l.name}, ${l.sku},
+              ${l.quantity}, ${l.unitPriceMinor}, ${l.totalMinor}, ${l.weightGrams},
+              ${taxed?.taxMinor ?? 0}, ${taxed?.rateBps ?? 0}, ${taxed ? l.hsnCode : null})
+            returning id`),
+        )[0].id,
+      );
+    }
+    // The tax of every line, saved with the order exactly as worked out (it adds up to the order's tax, by construction).
+    for (const [i, t] of tax.lines.entries())
       await tx.execute(sql`
-        insert into public.order_items (tenant_id, order_id, product_id, variant_id, name, sku, quantity, unit_price_minor, total_minor, weight_grams)
-        values (${tenantId}::uuid, ${orderId}::uuid, ${l.productId}::uuid, ${l.variantId}::uuid, ${l.name}, ${l.sku},
-          ${l.quantity}, ${l.unitPriceMinor}, ${l.totalMinor}, ${l.weightGrams})`);
+        insert into public.order_tax_lines (tenant_id, order_id, order_item_id, kind, description, hsn_code, taxable_minor, rate_bps,
+          cgst_minor, sgst_minor, igst_minor, tax_minor, sort_order)
+        values (${tenantId}::uuid, ${orderId}::uuid, ${t.itemKey ? (itemIds.get(t.itemKey) ?? null) : null}::uuid, ${t.kind},
+          ${t.description.slice(0, 300)}, ${t.hsnCode}, ${t.taxableMinor}, ${t.rateBps},
+          ${t.cgstMinor}, ${t.sgstMinor}, ${t.igstMinor}, ${t.taxMinor}, ${i})`);
     for (const [kind, a] of [
       ['shipping', shipping],
       ['billing', billing],
@@ -589,6 +648,7 @@ export class CheckoutService {
         country: address?.country ?? 'IN',
       },
       shipments,
+      tax: await loadOrderTax(tx, tenantId, o.id),
       reservationExpiresAt: hold?.expires_at ? new Date(hold.expires_at) : null,
       accessToken,
       replayed,

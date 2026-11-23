@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { DbTx } from '../../database/database.service.js';
 import type { OrderPaymentMethod } from '../../database/schema/enums.js';
+import type { TaxedLine } from '../tax/gst.js';
 import type { PricedLine, RequestedLine } from './checkout-pricing.js';
 
 /**
@@ -105,3 +106,39 @@ export class NoAdjustments implements CheckoutAdjuster {
     });
   }
 }
+
+/** What the tax calculator is given: the priced cart and every charge on top of it. */
+export interface CheckoutTaxInput {
+  tenantId: string;
+  lines: readonly PricedLine[];
+  discountMinor: number;
+  shippingMinor: number;
+  codFeeMinor: number;
+  destination: CheckoutDestination;
+}
+
+/** The tax of an order, line by line, ready to be saved with it. Item lines are matched to cart lines by `itemKey`. */
+export interface CheckoutTaxResult {
+  regime: 'none' | 'intra' | 'inter';
+  stateTaxKind: 'sgst' | 'utgst';
+  /** The prices already contain the tax, so it is not added to the total. */
+  inclusive: boolean;
+  sellerGstin: string | null;
+  sellerStateCode: string | null;
+  supplyStateCode: string | null;
+  cgstMinor: number;
+  sgstMinor: number;
+  igstMinor: number;
+  taxMinor: number;
+  lines: (TaxedLine & { itemKey: string | null })[];
+}
+
+/** Implemented by the tax module from the tenant's own GST settings and the products' own rates. */
+export interface CheckoutTaxCalculator {
+  compute(tx: DbTx, input: CheckoutTaxInput): Promise<CheckoutTaxResult>;
+}
+export const CHECKOUT_TAX = Symbol('CHECKOUT_TAX');
+
+/** The key that ties a priced cart line to its tax line. */
+export const itemKeyOf = (l: Pick<PricedLine, 'productId' | 'variantId'>) =>
+  `${l.productId}:${l.variantId ?? '-'}`;

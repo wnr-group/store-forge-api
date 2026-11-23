@@ -16,6 +16,8 @@ const base = (over: Partial<ProductValues> = {}): ProductValues => ({
   quantity: 0,
   lowStockThreshold: 5,
   weightGrams: 0,
+  taxRateBps: null,
+  hsnCode: null,
   status: 'draft',
   options: [],
   variants: [],

@@ -88,6 +88,10 @@ const PERMISSIONS = {
   // Zones, methods, rates and the shipping origin follow the store settings: read to look, write to change.
   'shipping:view': { module: 'settings', need: 'read' },
   'shipping:manage': { module: 'settings', need: 'write' },
+  // GST settings follow the store settings; the tax report is sales data, so it follows orders.
+  'tax:view': { module: 'settings', need: 'read' },
+  'tax:manage': { module: 'settings', need: 'write' },
+  'tax:report': { module: 'orders', need: 'read' },
   // Products, categories, collections, inventory.
   'catalog:view': { module: 'products', need: 'read' },
   'catalog:manage': { module: 'products', need: 'write' },
@@ -145,6 +149,9 @@ export const canManagePayments = (a: Actor) => can(a, 'payments:manage');
 export const canManageCarriers = (a: Actor) => can(a, 'carriers:manage');
 export const canViewShipping = (a: Actor) => can(a, 'shipping:view');
 export const canManageShipping = (a: Actor) => can(a, 'shipping:manage');
+export const canViewTax = (a: Actor) => can(a, 'tax:view');
+export const canManageTax = (a: Actor) => can(a, 'tax:manage');
+export const canViewTaxReport = (a: Actor) => can(a, 'tax:report');
 
 /** Members are stored with the broadest non-owner role; what they can actually do is decided by their permissions. */
 export const MEMBER_ROLE = 'admin' as const satisfies Role;

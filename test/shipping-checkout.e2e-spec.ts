@@ -432,6 +432,8 @@ describe.skipIf(!migrationsAvailable)(
                       totalMinor: 100000,
                       trackInventory: false,
                       weightGrams: 400,
+                      taxRateBps: null,
+                      hsnCode: null,
                     },
                   ],
                   subtotalMinor: 100000,

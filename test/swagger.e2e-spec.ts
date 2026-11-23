@@ -27,6 +27,7 @@ const PUBLIC_ROUTES = new Set([
   'GET /api/v1/public/branding',
   'POST /api/v1/public/stores/{slug}/orders',
   'POST /api/v1/public/stores/{slug}/shipping/options',
+  'POST /api/v1/public/stores/{slug}/checkout/quote',
   'POST /api/v1/webhooks/razorpay/{tenantPublicId}',
   'POST /api/v1/webhooks/carriers/{providerCode}',
   'GET /api/v1/public/stores/{slug}/payment-methods',

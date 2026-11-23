@@ -10,6 +10,7 @@ import {
   type DbTx,
 } from '../../database/database.service.js';
 import type { OrderStatus } from '../../database/schema/enums.js';
+import { loadOrderTax } from '../tax/order-tax.js';
 import { cancelOrder } from './order-cancellation.js';
 import { nextStatuses } from './order-state.js';
 import {
@@ -183,6 +184,7 @@ export class OrdersService {
             }
           : null,
       shippingWeightGrams: Number(o.shipping_weight_grams ?? 0),
+      tax: await loadOrderTax(tx, tenantId, id),
       items: items.map((i) => ({
         name: i.name as string,
         sku: (i.sku as string | null) ?? null,

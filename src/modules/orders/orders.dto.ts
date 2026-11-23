@@ -14,6 +14,7 @@ import {
   ORDER_STATUSES,
   type OrderStatus,
 } from '../../database/schema/enums.js';
+import { OrderTaxDto } from '../tax/tax.dto.js';
 import { OrderAddressViewDto, OrderItemViewDto } from './checkout.dto.js';
 
 const trim = ({ value }: { value: unknown }) =>
@@ -90,6 +91,11 @@ export class OrderDetailDto extends OrderSummaryDto {
       'The parcel weight the shipping charge was based on, in grams. 0 = not known.',
   })
   shippingWeightGrams!: number;
+  @ApiProperty({
+    type: OrderTaxDto,
+    description: 'The GST charged, line by line, as it was at checkout.',
+  })
+  tax!: OrderTaxDto;
   @ApiProperty({ type: [OrderItemViewDto] }) items!: OrderItemViewDto[];
   @ApiPropertyOptional({ type: OrderAddressViewDto, nullable: true })
   shippingAddress!: OrderAddressViewDto | null;

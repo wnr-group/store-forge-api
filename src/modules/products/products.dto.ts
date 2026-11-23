@@ -6,10 +6,12 @@ import {
   IsArray,
   IsBoolean,
   IsIn,
+  IsInt,
   IsObject,
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   MaxLength,
   MinLength,
   ValidateNested,
@@ -131,6 +133,18 @@ export class ProductDetailDto {
       'Shipping weight in grams. 0 means it is not set; weight-priced shipping is not offered for a cart that contains such a product.',
   })
   weightGrams!: number;
+  @ApiPropertyOptional({
+    nullable: true,
+    enum: [0, 25, 300, 500, 1200, 1800, 2800, 4000],
+    description:
+      'GST rate in basis points (1800 = 18%). Null means the organization default rate is used.',
+  })
+  taxRateBps!: number | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'HSN (goods) or SAC (services) code: 4, 6 or 8 digits.',
+  })
+  hsnCode!: string | null;
   @ApiProperty({ enum: PRODUCT_STATUSES }) status!: string;
   @ApiProperty() createdAt!: Date;
   @ApiProperty() updatedAt!: Date;
@@ -337,6 +351,34 @@ class ProductWritableFields {
   @IsOptional()
   @WholeNumber('Weight', { max: 1_000_000 })
   weightGrams?: number;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    enum: [0, 25, 300, 500, 1200, 1800, 2800, 4000],
+    description:
+      'GST rate in basis points (1800 = 18%). Leave out or send null to use the organization default rate.',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'Choose a GST rate.' })
+  @IsIn([0, 25, 300, 500, 1200, 1800, 2800, 4000], {
+    message:
+      'Choose a valid GST rate: 0%, 0.25%, 3%, 5%, 12%, 18%, 28% or 40%.',
+  })
+  taxRateBps?: number | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'HSN (goods) or SAC (services) code: 4, 6 or 8 digits.',
+  })
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim() || null : value,
+  )
+  @Matches(/^(\d{4}|\d{6}|\d{8})$/, {
+    message: 'Enter a 4, 6 or 8 digit HSN/SAC code.',
+  })
+  hsnCode?: string | null;
 
   @ApiPropertyOptional({ enum: PRODUCT_STATUSES, default: 'draft' })
   @IsOptional()

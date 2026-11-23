@@ -123,6 +123,19 @@ export const orders = pgTable(
     shippingDaysMin: integer('shipping_days_min'),
     shippingDaysMax: integer('shipping_days_max'),
     shippingWeightGrams: integer('shipping_weight_grams').notNull().default(0),
+    /** The GST charged, as it was at checkout (migration 0052). `tax_minor` is always cgst + sgst + igst. */
+    taxRegime: text('tax_regime', { enum: ['none', 'intra', 'inter'] })
+      .notNull()
+      .default('none'),
+    stateTaxKind: text('state_tax_kind', { enum: ['sgst', 'utgst'] })
+      .notNull()
+      .default('sgst'),
+    cgstMinor: minor('cgst_minor').notNull().default(0),
+    sgstMinor: minor('sgst_minor').notNull().default(0),
+    igstMinor: minor('igst_minor').notNull().default(0),
+    sellerGstin: text('seller_gstin'),
+    sellerStateCode: text('seller_state_code'),
+    supplyStateCode: text('supply_state_code'),
     updatedAt: timestamp('updated_at', { withTimezone: true })
       .notNull()
       .defaultNow(),

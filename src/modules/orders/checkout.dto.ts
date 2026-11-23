@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { OrderTaxDto } from '../tax/tax.dto.js';
 import { Transform, Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -224,6 +225,12 @@ export class OrderAddressViewDto {
 
 /** What the shopper gets back. The Razorpay payment step (Phase 4) adds its own fields to this. */
 export class PlacedOrderDto {
+  @ApiProperty({
+    type: OrderTaxDto,
+    description:
+      'The GST charged, line by line, as it was worked out at checkout.',
+  })
+  tax!: OrderTaxDto;
   @ApiProperty() orderNumber!: number;
   @ApiProperty({ enum: ORDER_STATUSES }) status!: string;
   @ApiProperty({ enum: ORDER_PAYMENT_STATUSES }) paymentStatus!: string;
