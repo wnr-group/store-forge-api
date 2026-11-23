@@ -575,6 +575,7 @@ export class ProductsService {
       trackInventory: v.trackInventory,
       quantity: hasVariants ? 0 : v.quantity,
       lowStockThreshold: v.lowStockThreshold,
+      weightGrams: v.weightGrams,
       status: v.status,
     };
   }
@@ -621,6 +622,7 @@ export class ProductsService {
       trackInventory: dto.trackInventory ?? true,
       quantity: dto.quantity ?? 0,
       lowStockThreshold: dto.lowStockThreshold ?? 5,
+      weightGrams: dto.weightGrams ?? 0,
       status: dto.status ?? 'draft',
       options: (dto.options ?? []).map((o) => ({
         name: o.name,
@@ -703,6 +705,7 @@ export class ProductsService {
       trackInventory: dto.trackInventory ?? p.trackInventory,
       quantity: dto.quantity ?? p.quantity,
       lowStockThreshold: dto.lowStockThreshold ?? p.lowStockThreshold,
+      weightGrams: dto.weightGrams ?? p.weightGrams,
       status: dto.status ?? p.status,
       options: dto.options
         ? dto.options.map((o) => ({ name: o.name, values: o.values }))

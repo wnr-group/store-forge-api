@@ -15,6 +15,7 @@ const base = (over: Partial<ProductValues> = {}): ProductValues => ({
   trackInventory: true,
   quantity: 0,
   lowStockThreshold: 5,
+  weightGrams: 0,
   status: 'draft',
   options: [],
   variants: [],

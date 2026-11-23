@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import type { DbTx } from '../../database/database.service.js';
 import type { OrderPaymentMethod } from '../../database/schema/enums.js';
-import type { PricedLine } from './checkout-pricing.js';
+import type { PricedLine, RequestedLine } from './checkout-pricing.js';
 
 /**
  * Seams the checkout asks about things other modules own. The payment policy is implemented by the payments module (the
- * tenant's own Razorpay and COD settings); the adjuster adds nothing until shipping and tax are configured.
+ * tenant's own Razorpay and COD settings); the adjuster by shipping (and, in the tax phase, tax).
  */
 
 export interface PaymentPolicyInput {
@@ -13,6 +13,8 @@ export interface PaymentPolicyInput {
   method: OrderPaymentMethod;
   subtotalMinor: number;
   currency: string;
+  /** The delivery option chosen for the order, when the organization uses shipping zones. */
+  shipping?: { codAllowed: boolean } | null;
 }
 
 export interface PaymentMethodPolicy {
@@ -24,12 +26,46 @@ export interface PaymentMethodPolicy {
 }
 export const PAYMENT_METHOD_POLICY = Symbol('PAYMENT_METHOD_POLICY');
 
+/** Where the order is going, as the zone rules need it. */
+export interface CheckoutDestination {
+  stateCode: string;
+  stateName: string;
+  city: string;
+  postalCode: string;
+}
+
+/** What shipping was chosen and priced; saved on the order exactly as it was. */
+export interface ShippingSnapshot {
+  methodId: string;
+  methodName: string;
+  zoneId: string;
+  zoneName: string;
+  carrierCode: string | null;
+  serviceCode: string | null;
+  daysMin: number | null;
+  daysMax: number | null;
+  weightGrams: number;
+  /** Whether the zone AND the method allow cash on delivery. */
+  codAllowed: boolean;
+}
+
+/** What the checkout can say about the cart BEFORE its database transaction opens, so the adjuster may call outside services. */
+export interface PrepareInput {
+  tenantId: string;
+  currency: string;
+  destination: CheckoutDestination;
+  shippingMethodId: string | null;
+  paymentMethod: OrderPaymentMethod;
+  requested: readonly RequestedLine[];
+}
+
 export interface CheckoutAdjustmentInput {
   tenantId: string;
   lines: readonly PricedLine[];
   subtotalMinor: number;
-  shippingState: string;
-  shippingPostalCode: string;
+  destination: CheckoutDestination;
+  shippingMethodId: string | null;
+  paymentMethod: OrderPaymentMethod;
   currency: string;
 }
 
@@ -38,14 +74,26 @@ export interface CheckoutAdjustment {
   shippingMinor: number;
   taxMinor: number;
   taxInclusive: boolean;
+  /** Present when the organization uses shipping zones. */
+  shipping?: ShippingSnapshot | null;
 }
 
 export interface CheckoutAdjuster {
-  adjust(tx: DbTx, input: CheckoutAdjustmentInput): Promise<CheckoutAdjustment>;
+  /**
+   * Optional, may call outside services (carrier prices). It runs with no database transaction open and returns whatever
+   * `adjust` needs; `adjust` must work, and fail safely, without it.
+   */
+  prepare?(input: PrepareInput): Promise<unknown>;
+  /** Runs inside the order transaction: database work only. */
+  adjust(
+    tx: DbTx,
+    input: CheckoutAdjustmentInput,
+    prepared?: unknown,
+  ): Promise<CheckoutAdjustment>;
 }
 export const CHECKOUT_ADJUSTER = Symbol('CHECKOUT_ADJUSTER');
 
-/** Until shipping zones and tax rules exist for a tenant there is nothing to add: the total is the subtotal. */
+/** Adds nothing: the total is the subtotal. Used where shipping and tax are not part of what is being tested. */
 @Injectable()
 export class NoAdjustments implements CheckoutAdjuster {
   adjust(): Promise<CheckoutAdjustment> {

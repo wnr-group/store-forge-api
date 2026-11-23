@@ -126,6 +126,11 @@ export class ProductDetailDto {
   @ApiProperty() trackInventory!: boolean;
   @ApiProperty() quantity!: number;
   @ApiProperty() lowStockThreshold!: number;
+  @ApiProperty({
+    description:
+      'Shipping weight in grams. 0 means it is not set; weight-priced shipping is not offered for a cart that contains such a product.',
+  })
+  weightGrams!: number;
   @ApiProperty({ enum: PRODUCT_STATUSES }) status!: string;
   @ApiProperty() createdAt!: Date;
   @ApiProperty() updatedAt!: Date;
@@ -321,6 +326,17 @@ class ProductWritableFields {
   @IsOptional()
   @WholeNumber('Low-stock threshold')
   lowStockThreshold?: number;
+
+  @ApiPropertyOptional({
+    minimum: 0,
+    maximum: 1000000,
+    default: 0,
+    description:
+      'Shipping weight in grams (packed, per unit). Needed for weight-based shipping rates.',
+  })
+  @IsOptional()
+  @WholeNumber('Weight', { max: 1_000_000 })
+  weightGrams?: number;
 
   @ApiPropertyOptional({ enum: PRODUCT_STATUSES, default: 'draft' })
   @IsOptional()

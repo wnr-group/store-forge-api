@@ -8,7 +8,6 @@ import { DatabaseService, rowsOf } from '../../database/database.service.js';
 import type { RefundDto } from './refunds.dto.js';
 import type {
   TransactionDetailDto,
-  TransactionDto,
   TransactionListQueryDto,
 } from './transactions.dto.js';
 

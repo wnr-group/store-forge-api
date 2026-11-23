@@ -21,6 +21,8 @@ export interface CatalogProduct {
   hasVariants: boolean;
   trackInventory: boolean;
   quantity: number;
+  /** Shipping weight of one unit, in grams. 0 = not set. */
+  weightGrams: number;
 }
 
 export interface CatalogVariant {
@@ -42,6 +44,8 @@ export interface PricedLine {
   unitPriceMinor: number;
   totalMinor: number;
   trackInventory: boolean;
+  /** Shipping weight of ONE unit, in grams. 0 = not set. */
+  weightGrams: number;
 }
 
 export type CheckoutIssueCode =
@@ -146,6 +150,7 @@ export function priceLines(
       unitPriceMinor,
       totalMinor: unitPriceMinor * line.quantity,
       trackInventory: product.trackInventory,
+      weightGrams: product.weightGrams,
     });
   }
 
@@ -157,4 +162,15 @@ export function priceLines(
       variantId: null,
     });
   return { lines, subtotalMinor, issues };
+}
+
+/**
+ * The shipping weight of a cart, in grams: the sum of unit weight x quantity. If ANY line has no weight set the total is unknown
+ * and this returns 0, so a weight-based price is never worked out from a partial weight.
+ */
+export function cartWeightGrams(
+  lines: readonly Pick<PricedLine, 'weightGrams' | 'quantity'>[],
+): number {
+  if (lines.length === 0 || lines.some((l) => l.weightGrams <= 0)) return 0;
+  return lines.reduce((sum, l) => sum + l.weightGrams * l.quantity, 0);
 }

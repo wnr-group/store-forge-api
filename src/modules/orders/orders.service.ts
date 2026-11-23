@@ -121,7 +121,8 @@ export class OrdersService {
       await tx.execute(sql`
         select ${SUMMARY}, subtotal_minor::float8 as subtotal_minor, discount_minor::float8 as discount_minor,
           shipping_minor::float8 as shipping_minor, cod_fee_minor::float8 as cod_fee_minor, tax_minor::float8 as tax_minor,
-          tax_inclusive, customer_phone, cancel_reason
+          tax_inclusive, customer_phone, cancel_reason, shipping_method_name, shipping_zone_name,
+          shipping_carrier_code, shipping_service_code, shipping_days_min, shipping_days_max, shipping_weight_grams
         from public.orders where tenant_id = ${tenantId}::uuid and id = ${id}::uuid`),
     )[0];
     if (!o) throw notFound('Order not found.', 'ORDER_NOT_FOUND');
@@ -165,6 +166,18 @@ export class OrdersService {
       taxInclusive: o.tax_inclusive as boolean,
       customerPhone: (o.customer_phone as string | null) ?? null,
       cancelReason: (o.cancel_reason as string | null) ?? null,
+      shippingMethodName: (o.shipping_method_name as string | null) ?? null,
+      shippingZoneName: (o.shipping_zone_name as string | null) ?? null,
+      shippingCarrierCode: (o.shipping_carrier_code as string | null) ?? null,
+      shippingServiceCode: (o.shipping_service_code as string | null) ?? null,
+      shippingDays:
+        o.shipping_days_min !== null && o.shipping_days_max !== null
+          ? {
+              min: Number(o.shipping_days_min),
+              max: Number(o.shipping_days_max),
+            }
+          : null,
+      shippingWeightGrams: Number(o.shipping_weight_grams ?? 0),
       items: items.map((i) => ({
         name: i.name as string,
         sku: (i.sku as string | null) ?? null,

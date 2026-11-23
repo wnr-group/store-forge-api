@@ -67,6 +67,29 @@ export class OrderDetailDto extends OrderSummaryDto {
   @ApiProperty() taxInclusive!: boolean;
   @ApiPropertyOptional({ nullable: true }) customerPhone!: string | null;
   @ApiPropertyOptional({ nullable: true }) cancelReason!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'The delivery option the shopper chose.',
+  })
+  shippingMethodName!: string | null;
+  @ApiPropertyOptional({ nullable: true }) shippingZoneName!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'The carrier whose live price the shipping charge was based on, if any.',
+  })
+  shippingCarrierCode!: string | null;
+  @ApiPropertyOptional({ nullable: true }) shippingServiceCode!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Estimated delivery time in days, as shown at checkout.',
+  })
+  shippingDays!: { min: number; max: number } | null;
+  @ApiProperty({
+    description:
+      'The parcel weight the shipping charge was based on, in grams. 0 = not known.',
+  })
+  shippingWeightGrams!: number;
   @ApiProperty({ type: [OrderItemViewDto] }) items!: OrderItemViewDto[];
   @ApiPropertyOptional({ type: OrderAddressViewDto, nullable: true })
   shippingAddress!: OrderAddressViewDto | null;

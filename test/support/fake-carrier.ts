@@ -37,6 +37,8 @@ type Route = {
 
 export class FakeCarrier {
   readonly requests: FakeRequest[] = [];
+  /** Called for every request as it arrives, before it is answered. */
+  onRequest?: (req: FakeRequest) => void;
   private readonly routes: Route[] = [];
 
   /** Register an answer (or a list of answers, used in turn; the last repeats). */
@@ -89,6 +91,7 @@ export class FakeCarrier {
     }
     const req: FakeRequest = { method, url, headers, raw, json, form };
     this.requests.push(req);
+    this.onRequest?.(req);
 
     const route = this.routes.find(
       (r) =>

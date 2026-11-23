@@ -236,13 +236,16 @@ describe('no decryption path in production code', () => {
     ]);
   });
 
-  it('lets only the carrier connection service use the carrier credentials reader (AC-ENC-09) [layer:STATIC]', () => {
+  it('lets only the carrier connection and selection services use the carrier credentials reader (AC-ENC-09) [layer:STATIC]', () => {
     const users = files
       .filter((f) =>
         /from '[^']*carrier-credentials\.js'/.test(readFileSync(f, 'utf8')),
       )
       .map((f) => relative(root, f).split(sep).join('/'));
-    expect(users).toEqual(['modules/shipping/carriers.service.ts']);
+    expect(users).toEqual([
+      'modules/shipping/carrier-selection.service.ts',
+      'modules/shipping/carriers.service.ts',
+    ]);
   });
 
   it('never re-exports the crypto module from a barrel or wires it as a provider (AC-ENC-09) [layer:STATIC]', () => {

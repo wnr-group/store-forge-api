@@ -4,6 +4,7 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   IsBoolean,
+  IsDefined,
   IsEmail,
   IsIn,
   IsInt,
@@ -15,8 +16,8 @@ import {
   MaxLength,
   Min,
   MinLength,
-  ValidateNested,
   Validate,
+  ValidateNested,
   ValidatorConstraint,
   type ValidatorConstraintInterface,
 } from 'class-validator';
@@ -163,11 +164,13 @@ export class PlaceOrderDto {
   lines!: CheckoutLineDto[];
 
   @ApiProperty({ type: CheckoutCustomerDto })
+  @IsDefined({ message: 'Enter your details.' })
   @ValidateNested()
   @Type(() => CheckoutCustomerDto)
   customer!: CheckoutCustomerDto;
 
   @ApiProperty({ type: CheckoutAddressDto })
+  @IsDefined({ message: 'Enter the delivery address.' })
   @ValidateNested()
   @Type(() => CheckoutAddressDto)
   shippingAddress!: CheckoutAddressDto;
@@ -189,6 +192,15 @@ export class PlaceOrderDto {
   @ApiProperty({ enum: ORDER_PAYMENT_METHODS })
   @IsIn(ORDER_PAYMENT_METHODS, { message: 'Choose a payment method.' })
   paymentMethod!: OrderPaymentMethod;
+
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description:
+      'The delivery option chosen from the shipping options for this cart and address. Required when the store has shipping zones set up; the price is worked out by the server, never taken from here.',
+  })
+  @IsOptional()
+  @IsUUID('4', { message: 'Choose a delivery option.' })
+  shippingMethodId?: string;
 }
 
 export class OrderItemViewDto {
@@ -224,6 +236,21 @@ export class PlacedOrderDto {
   @ApiProperty() taxMinor!: number;
   @ApiProperty() taxInclusive!: boolean;
   @ApiProperty() totalMinor!: number;
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'The delivery option the order was placed with.',
+  })
+  shippingMethodName!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'The delivery zone the address fell in.',
+  })
+  shippingZoneName!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Estimated delivery time in days, as shown at checkout.',
+  })
+  shippingDays!: { min: number; max: number } | null;
   @ApiProperty({ type: [OrderItemViewDto] }) items!: OrderItemViewDto[];
   @ApiPropertyOptional({
     nullable: true,

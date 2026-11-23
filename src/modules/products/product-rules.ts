@@ -29,6 +29,7 @@ export interface ProductValues {
   trackInventory: boolean;
   quantity: number;
   lowStockThreshold: number;
+  weightGrams: number;
   status: 'draft' | 'active';
   options: { name: string; values: string[] }[];
   variants: VariantValues[];

@@ -82,6 +82,12 @@ export class PaymentMethodsPolicy implements PaymentMethodPolicy {
         throw unavailable('Online payment is not available for this store.');
       return { codFeeMinor: 0 };
     }
+    // The delivery zone or method may not allow cash on delivery at all (some areas cannot collect cash).
+    if (input.shipping && !input.shipping.codAllowed)
+      throw unavailable(
+        'Cash on delivery is not available for this delivery option or area.',
+        'COD_NOT_AVAILABLE',
+      );
     if (!options.cod.available)
       throw unavailable(
         options.cod.reason ?? 'Cash on delivery is not available.',

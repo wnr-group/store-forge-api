@@ -77,3 +77,25 @@ sandbox correction is a small, local change.
 - **Preferences:** manual or automatic selection, and the strategy (lowest cost, fastest, or the default carrier first). Phase 8
   applies them.
 - Owner only (`carriers:manage`).
+
+## Zones, methods, rates and carrier selection (Phase 8)
+
+- **Zones** group destinations by country, state, city, single PIN code or PIN range. An address belongs to the zone holding its
+  **most specific** matching area (PIN, then range, then city, then state, then country). Two zones can never hold the same area
+  and PIN ranges cannot overlap, so there is always at most one winner. A zone switched off means "not served" (the address does
+  not fall back to a wider zone). **Once an organization has any zone, shipping is enforced**: an address no enabled zone covers
+  cannot check out. An organization with no zones is unaffected.
+- **Methods** belong to a zone and are priced flat, free, by weight bands, by order-value bands, or live from the connected
+  carriers (plus handling). Each can have a free-shipping threshold, order value and weight limits, a delivery estimate and a
+  cash-on-delivery switch (the zone has one too: COD needs both).
+- **Weight** comes from the products (`weightGrams`). If any product in a cart has no weight, the total is unknown and no
+  weight-priced or carrier-priced method is offered for it (a flat method still is). Variants use their product's weight.
+- **Carrier-priced methods** ask the connected carriers before the checkout transaction opens (never while stock is locked) and
+  use the tenant's strategy (lowest cost, fastest, or default carrier first). Only a carrier that **confirmed delivery and quoted
+  a price** is used; with none, the method is not offered. Carriers that cannot confirm delivery (Blue Dart) are never chosen
+  automatically. Prices are fetched for a specific weight and are ignored if the cart's weight is different when the order is placed.
+- **Cash on delivery** is available only where the zone, the delivery method and the Owner's COD limits all allow it.
+- The order records the method, zone, estimate, carrier and weight it was priced with, so later changes never alter old orders.
+- Known limits: carrier prices are quoted as prepaid unless the shopper's payment method is known to be COD (then COD-capable
+  couriers are priced); Delhivery gives no delivery-time estimate, so "fastest" ignores it; variants cannot have their own weight yet;
+  zone matching on city compares normalised names (spelling variants do not match).

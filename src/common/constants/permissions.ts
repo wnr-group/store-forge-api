@@ -85,6 +85,9 @@ const PERMISSIONS = {
   'payments:manage': { ownerOnly: true },
   // A tenant's own shipping carrier accounts and how carriers are chosen: Owner-only, like the payment credentials.
   'carriers:manage': { ownerOnly: true },
+  // Zones, methods, rates and the shipping origin follow the store settings: read to look, write to change.
+  'shipping:view': { module: 'settings', need: 'read' },
+  'shipping:manage': { module: 'settings', need: 'write' },
   // Products, categories, collections, inventory.
   'catalog:view': { module: 'products', need: 'read' },
   'catalog:manage': { module: 'products', need: 'write' },
@@ -140,6 +143,8 @@ export const canDeleteCustomers = (a: Actor) => can(a, 'customers:delete');
 export const canManageMembers = (a: Actor) => can(a, 'members:manage');
 export const canManagePayments = (a: Actor) => can(a, 'payments:manage');
 export const canManageCarriers = (a: Actor) => can(a, 'carriers:manage');
+export const canViewShipping = (a: Actor) => can(a, 'shipping:view');
+export const canManageShipping = (a: Actor) => can(a, 'shipping:manage');
 
 /** Members are stored with the broadest non-owner role; what they can actually do is decided by their permissions. */
 export const MEMBER_ROLE = 'admin' as const satisfies Role;

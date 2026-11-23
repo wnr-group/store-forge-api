@@ -114,6 +114,15 @@ export const orders = pgTable(
     accessTokenHash: text('access_token_hash'),
     cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
     cancelReason: text('cancel_reason'),
+    /** What shipping was chosen and priced, as it was (migration 0050). */
+    shippingMethodId: uuid('shipping_method_id'),
+    shippingMethodName: text('shipping_method_name'),
+    shippingZoneName: text('shipping_zone_name'),
+    shippingCarrierCode: text('shipping_carrier_code'),
+    shippingServiceCode: text('shipping_service_code'),
+    shippingDaysMin: integer('shipping_days_min'),
+    shippingDaysMax: integer('shipping_days_max'),
+    shippingWeightGrams: integer('shipping_weight_grams').notNull().default(0),
     updatedAt: timestamp('updated_at', { withTimezone: true })
       .notNull()
       .defaultNow(),

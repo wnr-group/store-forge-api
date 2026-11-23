@@ -145,6 +145,8 @@ export const products = pgTable(
     trackInventory: boolean('track_inventory').notNull().default(true),
     quantity: integer('quantity').notNull().default(0),
     lowStockThreshold: integer('low_stock_threshold').notNull().default(5),
+    /** Shipping weight in grams (migration 0050). 0 means "not set": weight-priced shipping is not offered for it. */
+    weightGrams: integer('weight_grams').notNull().default(0),
     status: text('status', { enum: PRODUCT_STATUSES })
       .notNull()
       .default('draft'),
@@ -195,6 +197,7 @@ export const products = pgTable(
     ),
     check('products_quantity_check', sql`${t.quantity} >= 0`),
     check('products_low_stock_check', sql`${t.lowStockThreshold} >= 0`),
+    check('products_weight_check', sql`${t.weightGrams} between 0 and 1000000`),
     check('products_status_check', sql`${t.status} in ('draft', 'active')`),
     index('products_tenant_status_idx').on(t.tenantId, t.status),
     index('products_tenant_created_idx').on(t.tenantId, t.createdAt.desc()),

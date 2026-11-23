@@ -9,12 +9,8 @@ import {
   rowsOf,
   type DbTx,
 } from '../../database/database.service.js';
-import {
-  priceLines,
-  type CatalogProduct,
-  type CatalogVariant,
-  type RequestedLine,
-} from './checkout-pricing.js';
+import { loadCatalog } from './catalog-loader.js';
+import { priceLines, type RequestedLine } from './checkout-pricing.js';
 import {
   CHECKOUT_ADJUSTER,
   PAYMENT_METHOD_POLICY,
@@ -75,11 +71,16 @@ export interface OrderRow {
   tax_inclusive: boolean;
   total_minor: number;
   placed_at: string | Date;
+  shipping_method_name: string | null;
+  shipping_zone_name: string | null;
+  shipping_days_min: number | null;
+  shipping_days_max: number | null;
 }
 
 const ORDER_COLUMNS = sql`id, order_number, status, payment_status, payment_method, fulfillment_status, currency,
   subtotal_minor::float8 as subtotal_minor, discount_minor::float8 as discount_minor, shipping_minor::float8 as shipping_minor,
-  cod_fee_minor::float8 as cod_fee_minor, tax_minor::float8 as tax_minor, tax_inclusive, total_minor::float8 as total_minor, placed_at`;
+  cod_fee_minor::float8 as cod_fee_minor, tax_minor::float8 as tax_minor, tax_inclusive, total_minor::float8 as total_minor, placed_at,
+  shipping_method_name, shipping_zone_name, shipping_days_min, shipping_days_max`;
 
 /**
  * Guest (and, later, signed-in) checkout. Everything that matters is decided here, on the server, inside ONE transaction that
@@ -123,9 +124,35 @@ export class CheckoutService {
         'IDEMPOTENCY_KEY_REQUIRED',
       );
     const store = await this.resolveStore(slug);
+
+    // A repeat of a finished checkout is answered without asking any carrier anything.
+    const already = await this.db.withCheckout(store.tenantId, (tx) =>
+      this.replay(tx, store.tenantId, idempotencyKey),
+    );
+    if (already) return already;
+
+    // Anything slow (a carrier's live price) is fetched now, while no transaction and no stock lock is held.
+    const address = this.address(dto.shippingAddress, 'shippingAddress');
+    const prepared = await this.adjuster.prepare?.({
+      tenantId: store.tenantId,
+      currency: store.currency,
+      destination: {
+        stateCode: address.stateCode,
+        stateName: address.stateName,
+        city: address.city,
+        postalCode: address.postalCode,
+      },
+      shippingMethodId: dto.shippingMethodId ?? null,
+      paymentMethod: dto.paymentMethod,
+      requested: dto.lines.map((l) => ({
+        productSlug: l.productSlug,
+        variantId: l.variantId ?? null,
+        quantity: l.quantity,
+      })),
+    });
     try {
       return await this.db.withCheckout(store.tenantId, (tx) =>
-        this.place(tx, store, dto, idempotencyKey),
+        this.place(tx, store, dto, idempotencyKey, prepared),
       );
     } catch (error) {
       // Two requests with the same key raced: the loser hits the unique index and returns the winner's order.
@@ -237,6 +264,7 @@ export class CheckoutService {
     store: Store,
     dto: PlaceOrderDto,
     key: string,
+    prepared: unknown,
   ): Promise<PlacedOrderDto> {
     const { tenantId, currency } = store;
     const replayed = await this.replay(tx, tenantId, key);
@@ -259,68 +287,12 @@ export class CheckoutService {
       quantity: l.quantity,
       expectedUnitPriceMinor: l.expectedUnitPriceMinor,
     }));
-    const slugs = [...new Set(requested.map((l) => l.productSlug))];
-    const products = rowsOf<{
-      id: string;
-      slug: string;
-      name: string;
-      sku: string | null;
-      status: string;
-      price_minor: number;
-      has_variants: boolean;
-      track_inventory: boolean;
-      quantity: number;
-    }>(
-      await tx.execute(sql`
-        select id, slug, name, sku, status, price_minor::float8 as price_minor, has_variants, track_inventory, quantity
-        from public.products
-        where tenant_id = ${tenantId}::uuid and slug in (${sql.join(
-          slugs.map((s) => sql`${s}`),
-          sql`, `,
-        )})
-        order by id for update`),
-    ).map((p): CatalogProduct => ({
-      id: p.id,
-      slug: p.slug,
-      name: p.name,
-      sku: p.sku,
-      status: p.status,
-      priceMinor: Number(p.price_minor),
-      hasVariants: p.has_variants,
-      trackInventory: p.track_inventory,
-      quantity: p.quantity,
-    }));
-    const variantIds = [
-      ...new Set(requested.flatMap((l) => (l.variantId ? [l.variantId] : []))),
-    ];
-    const variants = variantIds.length
-      ? rowsOf<{
-          id: string;
-          product_id: string;
-          title: string;
-          sku: string | null;
-          price_minor: number;
-          is_active: boolean;
-          quantity: number;
-        }>(
-          await tx.execute(sql`
-            select id, product_id, title, sku, price_minor::float8 as price_minor, is_active, quantity
-            from public.product_variants
-            where tenant_id = ${tenantId}::uuid and id in (${sql.join(
-              variantIds.map((v) => sql`${v}::uuid`),
-              sql`, `,
-            )})
-            order by id for update`),
-        ).map((v): CatalogVariant => ({
-          id: v.id,
-          productId: v.product_id,
-          title: v.title,
-          sku: v.sku,
-          priceMinor: Number(v.price_minor),
-          isActive: v.is_active,
-          quantity: v.quantity,
-        }))
-      : [];
+    const { products, variants } = await loadCatalog(
+      tx,
+      tenantId,
+      requested,
+      true,
+    );
 
     // 2. Price and check stock against what other unpaid orders are holding (rows are locked, so this cannot race).
     const held = await heldQuantities(
@@ -340,19 +312,32 @@ export class CheckoutService {
       );
 
     // 3. Shipping, tax, discounts and COD fee are decided by the server-side rules of the tenant.
-    const adjustment = await this.adjuster.adjust(tx, {
-      tenantId,
-      lines: priced.lines,
-      subtotalMinor: priced.subtotalMinor,
-      shippingState: shipping.stateName,
-      shippingPostalCode: shipping.postalCode,
-      currency,
-    });
+    const adjustment = await this.adjuster.adjust(
+      tx,
+      {
+        tenantId,
+        lines: priced.lines,
+        subtotalMinor: priced.subtotalMinor,
+        destination: {
+          stateCode: shipping.stateCode,
+          stateName: shipping.stateName,
+          city: shipping.city,
+          postalCode: shipping.postalCode,
+        },
+        shippingMethodId: dto.shippingMethodId ?? null,
+        paymentMethod: dto.paymentMethod,
+        currency,
+      },
+      prepared,
+    );
     const { codFeeMinor } = await this.payments.resolve(tx, {
       tenantId,
       method: dto.paymentMethod,
       subtotalMinor: priced.subtotalMinor,
       currency,
+      shipping: adjustment.shipping
+        ? { codAllowed: adjustment.shipping.codAllowed }
+        : null,
     });
     const totalMinor =
       priced.subtotalMinor -
@@ -391,12 +376,17 @@ export class CheckoutService {
       await tx.execute(sql`
         insert into public.orders (tenant_id, customer_id, order_number, status, payment_method, payment_status, currency,
           subtotal_minor, discount_minor, shipping_minor, cod_fee_minor, tax_minor, tax_inclusive, total_minor,
-          customer_name, customer_email, customer_phone, idempotency_key, access_token_hash)
+          customer_name, customer_email, customer_phone, idempotency_key, access_token_hash,
+          shipping_method_id, shipping_method_name, shipping_zone_name, shipping_carrier_code, shipping_service_code,
+          shipping_days_min, shipping_days_max, shipping_weight_grams)
         values (${tenantId}::uuid, ${customerId}::uuid, ${orderNumber}, ${cod ? 'confirmed' : 'pending_payment'},
           ${dto.paymentMethod}, ${cod ? 'pending_collection' : 'unpaid'}, ${currency},
           ${priced.subtotalMinor}, ${adjustment.discountMinor}, ${adjustment.shippingMinor}, ${codFeeMinor},
           ${adjustment.taxMinor}, ${adjustment.taxInclusive}, ${totalMinor},
-          ${dto.customer.fullName}, ${dto.customer.email}, ${dto.customer.phone}, ${key}, ${hashToken(accessToken)})
+          ${dto.customer.fullName}, ${dto.customer.email}, ${dto.customer.phone}, ${key}, ${hashToken(accessToken)},
+          ${adjustment.shipping?.methodId ?? null}::uuid, ${adjustment.shipping?.methodName ?? null}, ${adjustment.shipping?.zoneName ?? null},
+          ${adjustment.shipping?.carrierCode ?? null}, ${adjustment.shipping?.serviceCode ?? null},
+          ${adjustment.shipping?.daysMin ?? null}, ${adjustment.shipping?.daysMax ?? null}, ${adjustment.shipping?.weightGrams ?? 0})
         returning id`),
     )[0].id;
 
@@ -525,6 +515,12 @@ export class CheckoutService {
       taxMinor: Number(o.tax_minor),
       taxInclusive: o.tax_inclusive,
       totalMinor: Number(o.total_minor),
+      shippingMethodName: o.shipping_method_name,
+      shippingZoneName: o.shipping_zone_name,
+      shippingDays:
+        o.shipping_days_min !== null && o.shipping_days_max !== null
+          ? { min: o.shipping_days_min, max: o.shipping_days_max }
+          : null,
       placedAt: new Date(o.placed_at),
       items: items.map((i) => ({
         name: i.name,

@@ -1,8 +1,11 @@
 import { sql } from 'drizzle-orm';
 import {
+  bigint,
   boolean,
   check,
+  foreignKey,
   index,
+  integer,
   jsonb,
   pgTable,
   smallint,
@@ -145,3 +148,176 @@ export type TenantCarrierConnection =
   typeof tenantCarrierConnections.$inferSelect;
 export type TenantShippingPreferences =
   typeof tenantShippingPreferences.$inferSelect;
+
+// --- Zones, methods and rates (migration 0050) ------------------------------------------------------------------------------
+
+export const ZONE_AREA_KINDS = [
+  'country',
+  'state',
+  'city',
+  'postal_code',
+  'postal_range',
+] as const;
+export type ZoneAreaKind = (typeof ZONE_AREA_KINDS)[number];
+
+export const SHIPPING_PRICING_TYPES = [
+  'flat',
+  'free',
+  'weight',
+  'order_value',
+  'carrier',
+] as const;
+export type ShippingPricingType = (typeof SHIPPING_PRICING_TYPES)[number];
+
+export const SHIPPING_METHOD_KINDS = ['standard', 'express'] as const;
+
+/** A group of destinations that share shipping methods. A destination belongs to the zone with its most specific area. */
+export const shippingZones = pgTable(
+  'shipping_zones',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    enabled: boolean('enabled').notNull().default(true),
+    codAllowed: boolean('cod_allowed').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    unique('shipping_zones_tenant_id_id_key').on(t.tenantId, t.id),
+    unique('shipping_zones_tenant_name_key').on(t.tenantId, t.name),
+  ],
+).enableRLS();
+
+export const shippingZoneAreas = pgTable(
+  'shipping_zone_areas',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    zoneId: uuid('zone_id').notNull(),
+    kind: text('kind', { enum: ZONE_AREA_KINDS }).notNull(),
+    stateCode: text('state_code'),
+    city: text('city'),
+    postalCode: text('postal_code'),
+    postalFrom: text('postal_from'),
+    postalTo: text('postal_to'),
+  },
+  (t) => [
+    foreignKey({
+      columns: [t.tenantId, t.zoneId],
+      foreignColumns: [shippingZones.tenantId, shippingZones.id],
+      name: 'shipping_zone_areas_zone_fk',
+    }).onDelete('cascade'),
+    index('shipping_zone_areas_zone_idx').on(t.zoneId),
+  ],
+).enableRLS();
+
+export const shippingMethods = pgTable(
+  'shipping_methods',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    zoneId: uuid('zone_id').notNull(),
+    name: text('name').notNull(),
+    kind: text('kind', { enum: SHIPPING_METHOD_KINDS })
+      .notNull()
+      .default('standard'),
+    pricingType: text('pricing_type', {
+      enum: SHIPPING_PRICING_TYPES,
+    }).notNull(),
+    flatRateMinor: bigint('flat_rate_minor', { mode: 'number' })
+      .notNull()
+      .default(0),
+    freeOverMinor: bigint('free_over_minor', { mode: 'number' }),
+    handlingMinor: bigint('handling_minor', { mode: 'number' })
+      .notNull()
+      .default(0),
+    minOrderMinor: bigint('min_order_minor', { mode: 'number' })
+      .notNull()
+      .default(0),
+    maxOrderMinor: bigint('max_order_minor', { mode: 'number' }),
+    minWeightGrams: integer('min_weight_grams').notNull().default(0),
+    maxWeightGrams: integer('max_weight_grams'),
+    estDaysMin: integer('est_days_min'),
+    estDaysMax: integer('est_days_max'),
+    codAllowed: boolean('cod_allowed').notNull().default(true),
+    carrierCode: text('carrier_code'),
+    sortOrder: integer('sort_order').notNull().default(0),
+    enabled: boolean('enabled').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    foreignKey({
+      columns: [t.tenantId, t.zoneId],
+      foreignColumns: [shippingZones.tenantId, shippingZones.id],
+      name: 'shipping_methods_zone_fk',
+    }).onDelete('cascade'),
+    unique('shipping_methods_tenant_id_id_key').on(t.tenantId, t.id),
+    unique('shipping_methods_zone_name_key').on(t.zoneId, t.name),
+    index('shipping_methods_zone_idx').on(t.tenantId, t.zoneId, t.sortOrder),
+  ],
+).enableRLS();
+
+/** One rate band of a weight- or order-value-priced method: from (inclusive) up to (exclusive; null = no upper limit). */
+export const shippingRateTiers = pgTable(
+  'shipping_rate_tiers',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    methodId: uuid('method_id').notNull(),
+    fromValue: bigint('from_value', { mode: 'number' }).notNull(),
+    toValue: bigint('to_value', { mode: 'number' }),
+    rateMinor: bigint('rate_minor', { mode: 'number' }).notNull(),
+  },
+  (t) => [
+    foreignKey({
+      columns: [t.tenantId, t.methodId],
+      foreignColumns: [shippingMethods.tenantId, shippingMethods.id],
+      name: 'shipping_rate_tiers_method_fk',
+    }).onDelete('cascade'),
+    unique('shipping_rate_tiers_method_from_key').on(t.methodId, t.fromValue),
+  ],
+).enableRLS();
+
+/** Where parcels are collected: the pickup address for carrier rate lanes and shipments. */
+export const tenantShippingOrigin = pgTable('tenant_shipping_origin', {
+  tenantId: uuid('tenant_id')
+    .primaryKey()
+    .references(() => tenants.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  phone: text('phone').notNull(),
+  email: text('email'),
+  line1: text('line1').notNull(),
+  line2: text('line2'),
+  city: text('city').notNull(),
+  state: text('state').notNull(),
+  stateCode: text('state_code').notNull(),
+  postalCode: text('postal_code').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedBy: uuid('updated_by').references(() => authUsers.id, {
+    onDelete: 'set null',
+  }),
+}).enableRLS();
+
+export type ShippingZone = typeof shippingZones.$inferSelect;
+export type ShippingMethod = typeof shippingMethods.$inferSelect;
+export type ShippingRateTier = typeof shippingRateTiers.$inferSelect;
