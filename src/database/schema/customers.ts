@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   bigint,
+  boolean,
   check,
   foreignKey,
   index,
@@ -12,7 +13,12 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
-import { ORDER_STATUSES } from './enums.js';
+import {
+  ORDER_FULFILLMENT_STATUSES,
+  ORDER_PAYMENT_METHODS,
+  ORDER_PAYMENT_STATUSES,
+  ORDER_STATUSES,
+} from './enums.js';
 import { products, productVariants } from './catalog.js';
 import { tenants } from './tenants.js';
 
@@ -66,10 +72,10 @@ export const customers = pgTable(
 ).enableRLS();
 
 /**
- * Orders are READ-ONLY for merchants in this release: there is no checkout yet,
- * so the dashboard has no way to create them and `authenticated` has no INSERT
- * privilege. Analytics and customer totals read this table and show honest
- * empty states until a checkout service starts writing it.
+ * Orders (migrations 0005, 0045). They are CREATED only by the checkout service, through the tenant-pinned
+ * `storeforge_checkout` role; dashboard users can change the lifecycle columns, never insert or delete.
+ * `status` is the lifecycle (see modules/orders/order-state.ts), `payment_status` the money state, and the amounts keep the
+ * exact breakdown applied at placement, so later setting changes never rewrite history.
  */
 export const orders = pgTable(
   'orders',
@@ -82,10 +88,33 @@ export const orders = pgTable(
     orderNumber: integer('order_number').notNull(),
     status: text('status', { enum: ORDER_STATUSES })
       .notNull()
-      .default('pending'),
+      .default('pending_payment'),
+    paymentMethod: text('payment_method', { enum: ORDER_PAYMENT_METHODS }),
+    paymentStatus: text('payment_status', { enum: ORDER_PAYMENT_STATUSES })
+      .notNull()
+      .default('unpaid'),
+    fulfillmentStatus: text('fulfillment_status', {
+      enum: ORDER_FULFILLMENT_STATUSES,
+    })
+      .notNull()
+      .default('unfulfilled'),
     currency: text('currency').notNull(),
     subtotalMinor: minor('subtotal_minor').notNull(),
+    discountMinor: minor('discount_minor').notNull().default(0),
+    shippingMinor: minor('shipping_minor').notNull().default(0),
+    codFeeMinor: minor('cod_fee_minor').notNull().default(0),
+    taxMinor: minor('tax_minor').notNull().default(0),
+    taxInclusive: boolean('tax_inclusive').notNull().default(false),
     totalMinor: minor('total_minor').notNull(),
+    customerName: text('customer_name'),
+    customerEmail: text('customer_email'),
+    customerPhone: text('customer_phone'),
+    idempotencyKey: text('idempotency_key'),
+    cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
+    cancelReason: text('cancel_reason'),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     placedAt: timestamp('placed_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -98,7 +127,7 @@ export const orders = pgTable(
     unique('orders_tenant_id_order_number_key').on(t.tenantId, t.orderNumber),
     check(
       'orders_status_check',
-      sql`${t.status} in ('pending', 'paid', 'fulfilled', 'cancelled', 'refunded')`,
+      sql`${t.status} in ('pending_payment', 'confirmed', 'processing', 'ready_to_ship', 'shipped', 'out_for_delivery', 'delivered', 'cancelled', 'failed', 'returned')`,
     ),
     check('orders_currency_check', sql`${t.currency} ~ '^[A-Z]{3}$'`),
     check(
@@ -107,6 +136,14 @@ export const orders = pgTable(
     ),
     index('orders_tenant_placed_idx').on(t.tenantId, t.placedAt.desc()),
     index('orders_customer_id_idx').on(t.customerId),
+    uniqueIndex('orders_tenant_idempotency_key')
+      .on(t.tenantId, t.idempotencyKey)
+      .where(sql`${t.idempotencyKey} is not null`),
+    index('orders_tenant_status_idx').on(
+      t.tenantId,
+      t.status,
+      t.placedAt.desc(),
+    ),
   ],
 ).enableRLS();
 
@@ -128,6 +165,10 @@ export const orderItems = pgTable(
     quantity: integer('quantity').notNull(),
     unitPriceMinor: minor('unit_price_minor').notNull(),
     totalMinor: minor('total_minor').notNull(),
+    taxMinor: minor('tax_minor').notNull().default(0),
+    taxRateBps: integer('tax_rate_bps').notNull().default(0),
+    hsnCode: text('hsn_code'),
+    weightGrams: integer('weight_grams').notNull().default(0),
   },
   (t) => [
     foreignKey({

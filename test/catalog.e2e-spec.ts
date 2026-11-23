@@ -773,11 +773,11 @@ describe.skipIf(!migrationsAvailable)(
           .expect(400);
       });
 
-      it('computes order counts and spend from real orders (paid + fulfilled only)', async () => {
-        await insertOrder(t.db, w.tenantA, customer, 1, 'paid', 10000);
-        await insertOrder(t.db, w.tenantA, customer, 2, 'fulfilled', 5000);
+      it('computes order counts and spend from real orders (confirmed through delivered only)', async () => {
+        await insertOrder(t.db, w.tenantA, customer, 1, 'confirmed', 10000);
+        await insertOrder(t.db, w.tenantA, customer, 2, 'delivered', 5000);
         await insertOrder(t.db, w.tenantA, customer, 3, 'cancelled', 99999);
-        await insertOrder(t.db, w.tenantA, customer, 4, 'pending', 777);
+        await insertOrder(t.db, w.tenantA, customer, 4, 'pending_payment', 777);
         const detail = (await alice.get(`/customers/${customer}`).expect(200))
           .body.data;
         expect(detail).toMatchObject({ orderCount: 4, totalSpentMinor: 15000 });
@@ -810,8 +810,8 @@ describe.skipIf(!migrationsAvailable)(
     });
 
     describe('analytics', () => {
-      it('returns zero-filled series, revenue from paid + fulfilled orders only, and best sellers', async () => {
-        await insertOrder(t.db, w.tenantA, null, 10, 'paid', 30000, [
+      it('returns zero-filled series, revenue from confirmed-through-delivered orders only, and best sellers', async () => {
+        await insertOrder(t.db, w.tenantA, null, 10, 'confirmed', 30000, [
           { name: 'Tee', quantity: 3, totalMinor: 30000 },
         ]);
         const res = await alice.get('/analytics?range=7').expect(200);

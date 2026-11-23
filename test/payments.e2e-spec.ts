@@ -18,6 +18,8 @@ const STATUS_KEYS = [
   'mode',
   'updatedAt',
   'updatedByName',
+  'webhookSecretConfigured',
+  'webhookSecretUpdatedAt',
 ];
 
 describe.skipIf(!migrationsAvailable)(
@@ -69,7 +71,7 @@ describe.skipIf(!migrationsAvailable)(
         );
       });
 
-      it('AC-API-02: GET after saving returns exactly the five safe fields', async () => {
+      it('AC-API-02: GET after saving returns exactly the safe fields', async () => {
         await h.clear();
         const id = keyId('live');
         await h.put(owner(), org(), { keyId: id });
@@ -77,7 +79,7 @@ describe.skipIf(!migrationsAvailable)(
         await h.evidence(
           'AC-API-02',
           'api-evidence',
-          'GET configured: exactly configured, keyIdMasked, mode, updatedAt, updatedByName',
+          'GET configured: exactly configured, keyIdMasked, mode, updatedAt, updatedByName, webhookSecretConfigured, webhookSecretUpdatedAt',
           {
             status: res.status,
             keys: Object.keys(res.body.data).sort(),

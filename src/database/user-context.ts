@@ -135,3 +135,50 @@ export async function withPublicContext<T>(
     return fn(tx);
   });
 }
+
+/** Hard-coded on purpose, like the request role: never derived from input. */
+const CHECKOUT_ROLE_SQL = sql.raw('set local role storeforge_checkout');
+
+const checkoutVerified = new WeakSet<object>();
+
+async function assertCheckoutRole(tx: DbTx) {
+  const rows = rowsOf<{ current_user: string; bad: boolean }>(
+    await tx.execute(sql`
+      select current_user,
+        exists (select 1 from pg_roles where rolname = current_user and (rolsuper or rolbypassrls)) as bad`),
+  );
+  if (rows[0]?.current_user !== 'storeforge_checkout')
+    throw new RlsGuardError(
+      `checkout role is "${rows[0]?.current_user}", expected "storeforge_checkout"`,
+    );
+  if (rows[0].bad)
+    throw new RlsGuardError('the checkout role can bypass row level security');
+}
+
+/**
+ * Runs `fn` as the `storeforge_checkout` role with ONE tenant pinned, for flows that have no signed-in user: guest
+ * checkout, payment webhooks and the reservation-expiry job. Every policy of that role requires
+ * `tenant_id = pinned_tenant_id()`, so the transaction can only see and change this tenant's rows.
+ *
+ * `tenantId` MUST be resolved on the server (from the store slug, or from the tenant public id in a webhook URL),
+ * never copied from a request body. It is checked to be a UUID and set transaction-locally.
+ */
+export async function withCheckoutContext<T>(
+  db: Database,
+  tenantId: string,
+  fn: (tx: DbTx) => Promise<T>,
+): Promise<T> {
+  if (!UUID.test(tenantId))
+    throw new Error('withCheckoutContext: tenantId must be a UUID');
+  return db.transaction(async (tx) => {
+    await tx.execute(
+      sql`select set_config('app.tenant_id', ${tenantId.toLowerCase()}, true), set_config('request.jwt.claims', '', true), set_config('request.jwt.claim.sub', '', true)`,
+    );
+    await tx.execute(CHECKOUT_ROLE_SQL);
+    if (!checkoutVerified.has(db)) {
+      await assertCheckoutRole(tx);
+      checkoutVerified.add(db);
+    }
+    return fn(tx);
+  });
+}
