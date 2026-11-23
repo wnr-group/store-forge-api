@@ -99,3 +99,35 @@ sandbox correction is a small, local change.
 - Known limits: carrier prices are quoted as prepaid unless the shopper's payment method is known to be COD (then COD-capable
   couriers are priced); Delhivery gives no delivery-time estimate, so "fastest" ignores it; variants cannot have their own weight yet;
   zone matching on city compares normalised names (spelling variants do not match).
+
+## Shipments, labels and tracking (Phase 9)
+
+- **Booking** (`POST /orders/:orderId/shipments`): the order must be confirmed and paid (online) or cash on delivery. Everything
+  the carrier is sent comes from what the order saved (items, weights, prices, delivery address) plus the pickup address, never from
+  the live catalogue. The carrier is the one named in the request, else the one priced at checkout, else the one the Owner's
+  settings choose automatically; with manual selection and nothing named, the Owner is asked.
+- **Never books twice, never loses a parcel.** The shipment is saved as `creating` BEFORE the carrier is called, with no database
+  transaction open during the call. If the answer is lost, the saved shipment keeps what was attempted (503 `SHIPMENT_PENDING`);
+  `POST /shipments/:id/retry` resumes at the carrier from the ids it already gave (the adapters accept a `resume`), and only one
+  `creating` shipment per order can exist.
+- **Parts.** A prepaid order can ship in several parcels (each item and quantity can be on one live shipment at most). A
+  cash-on-delivery order ships in ONE parcel carrying everything, because the courier collects the whole amount.
+- **Orders follow shipments.** Booked: order to ready to ship (through processing). Picked up / in transit: shipped. Out for delivery
+  and delivered only when every item is on a parcel that is. Returned only when every live parcel came back. Each step is recorded in
+  the order's history (booking by the Owner, the rest by the carrier). An order with a parcel in the carrier's hands cannot be
+  cancelled or moved by hand (409 `ORDER_HAS_SHIPMENT`); cancel the shipment first (possible until pickup).
+- **Tracking** is kept current three ways, all doing the same thing (asking the carrier's tracking API with the shop's own
+  credentials and recording the answer): the Owner's refresh button, carrier webhooks (`POST /webhooks/carriers/:providerCode`) and a
+  scheduled check (`GET /internal/jobs/sync-shipments`, Vercel Cron with `CRON_SECRET`, about every 15-30 minutes). A webhook body is
+  used ONLY to find waybill numbers; its claims are never believed, so a forged webhook can cause nothing but an extra lookup.
+  A parcel only moves forward; every update is recorded once.
+- **Labels.** A PDF the carrier returns is stored (private, only after the permission check) and downloadable; a link is kept as the
+  carrier's own and only if it is https. Nothing is fetched from a URL the carrier supplied.
+- **Carrier accounts.** A connection cannot be disconnected while parcels are still with that carrier (409 `CARRIER_IN_USE`);
+  switching it off stops new bookings but tracking and cancelling keep working.
+- **COD cash** is not marked collected automatically on delivery: the Owner confirms it when the courier hands it over (existing
+  `cod/collect`). A returned prepaid order is not refunded automatically either: refunds are the Owner's decision.
+- Known limits: the carriers' request and answer shapes are checked only against fakes written from their documentation, so each
+  carrier needs a sandbox run with real credentials before real parcels (Blue Dart remains unverified); no carrier-side pickup
+  scheduling or NDR (failed-delivery) actions; no return/reverse shipments; stock is not put back automatically when a parcel is
+  returned.

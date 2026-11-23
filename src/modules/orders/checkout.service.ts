@@ -392,9 +392,9 @@ export class CheckoutService {
 
     for (const l of priced.lines)
       await tx.execute(sql`
-        insert into public.order_items (tenant_id, order_id, product_id, variant_id, name, sku, quantity, unit_price_minor, total_minor)
+        insert into public.order_items (tenant_id, order_id, product_id, variant_id, name, sku, quantity, unit_price_minor, total_minor, weight_grams)
         values (${tenantId}::uuid, ${orderId}::uuid, ${l.productId}::uuid, ${l.variantId}::uuid, ${l.name}, ${l.sku},
-          ${l.quantity}, ${l.unitPriceMinor}, ${l.totalMinor})`);
+          ${l.quantity}, ${l.unitPriceMinor}, ${l.totalMinor}, ${l.weightGrams})`);
     for (const [kind, a] of [
       ['shipping', shipping],
       ['billing', billing],
@@ -501,6 +501,55 @@ export class CheckoutService {
         select min(expires_at) as expires_at from public.inventory_reservations
         where tenant_id = ${tenantId}::uuid and order_id = ${o.id}::uuid and status = 'active'`),
     )[0];
+    const parcels = rowsOf<{
+      id: string;
+      status: string;
+      courier_name: string | null;
+      awb: string | null;
+      tracking_url: string | null;
+      estimated_delivery: string | Date | null;
+    }>(
+      await tx.execute(sql`
+        select id, status, courier_name, awb, tracking_url, estimated_delivery from public.shipments
+        where tenant_id = ${tenantId}::uuid and order_id = ${o.id}::uuid and status not in ('creating', 'failed', 'cancelled')
+        order by created_at, id`),
+    );
+    const shipments: PublicOrderDto['shipments'] = [];
+    for (const p of parcels) {
+      const parcelItems = rowsOf<{ name: string; quantity: number }>(
+        await tx.execute(sql`
+          select oi.name, si.quantity from public.shipment_items si
+          join public.order_items oi on oi.tenant_id = si.tenant_id and oi.id = si.order_item_id
+          where si.tenant_id = ${tenantId}::uuid and si.shipment_id = ${p.id}::uuid order by oi.name, oi.id`),
+      );
+      const events = rowsOf<{
+        status: string;
+        description: string;
+        location: string | null;
+        occurred_at: string | Date | null;
+      }>(
+        await tx.execute(sql`
+          select status, description, location, occurred_at from public.shipment_events
+          where tenant_id = ${tenantId}::uuid and shipment_id = ${p.id}::uuid and source <> 'owner'
+          order by coalesce(occurred_at, created_at) desc, created_at desc limit 50`),
+      );
+      shipments.push({
+        status: p.status,
+        courierName: p.courier_name,
+        awb: p.awb,
+        trackingUrl: p.tracking_url,
+        estimatedDelivery: p.estimated_delivery
+          ? new Date(p.estimated_delivery)
+          : null,
+        items: parcelItems,
+        events: events.map((e) => ({
+          status: e.status,
+          description: e.description,
+          location: e.location,
+          occurredAt: e.occurred_at ? new Date(e.occurred_at) : null,
+        })),
+      });
+    }
     return {
       orderNumber: o.order_number,
       status: o.status,
@@ -539,6 +588,7 @@ export class CheckoutService {
         postalCode: address?.postal_code ?? '',
         country: address?.country ?? 'IN',
       },
+      shipments,
       reservationExpiresAt: hold?.expires_at ? new Date(hold.expires_at) : null,
       accessToken,
       replayed,

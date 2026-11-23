@@ -94,3 +94,27 @@ export async function transitionOrder(
   await recordStatus(tx, tenantId, orderId, order.status, to, actor, note);
   return { order: { ...order, status: to }, from: order.status };
 }
+
+/**
+ * An order with a parcel still in the carrier's hands (or being booked) follows that parcel: its status is set by the shipment, and
+ * it cannot be cancelled or moved by hand underneath it. Cancel the shipment first (only possible before pickup).
+ */
+export async function assertNoOpenShipment(
+  tx: DbTx,
+  tenantId: string,
+  orderId: string,
+): Promise<void> {
+  const open = rowsOf<{ id: string }>(
+    await tx.execute(sql`
+      select id from public.shipments
+      where tenant_id = ${tenantId}::uuid and order_id = ${orderId}::uuid
+        and status in ('creating', 'created', 'picked_up', 'in_transit', 'out_for_delivery', 'undelivered', 'returning')
+      limit 1`),
+  )[0];
+  if (open)
+    throw conflict(
+      'This order has a shipment in progress, so its status follows the carrier. Cancel the shipment first if it has not been picked up.',
+      undefined,
+      'ORDER_HAS_SHIPMENT',
+    );
+}

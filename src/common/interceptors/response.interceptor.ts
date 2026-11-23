@@ -3,6 +3,7 @@ import {
   ExecutionContext,
   Injectable,
   NestInterceptor,
+  StreamableFile,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { map, Observable } from 'rxjs';
@@ -22,6 +23,8 @@ export class ResponseInterceptor implements NestInterceptor {
       ]) ?? 'Request completed successfully';
     return next.handle().pipe(
       map((result) => {
+        // A file download is sent as it is, not inside the JSON envelope.
+        if (result instanceof StreamableFile) return result;
         if (result instanceof Paginated)
           return {
             success: true,

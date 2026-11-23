@@ -318,6 +318,153 @@ export const tenantShippingOrigin = pgTable('tenant_shipping_origin', {
   }),
 }).enableRLS();
 
+export const SHIPMENT_STATUSES = [
+  'creating',
+  'created',
+  'picked_up',
+  'in_transit',
+  'out_for_delivery',
+  'undelivered',
+  'returning',
+  'delivered',
+  'returned',
+  'cancelled',
+  'failed',
+] as const;
+export type ShipmentStatus = (typeof SHIPMENT_STATUSES)[number];
+
+/** Statuses of a parcel that is still the carrier's business: tracked, and it keeps its carrier connection in use. */
+export const OPEN_SHIPMENT_STATUSES = [
+  'creating',
+  'created',
+  'picked_up',
+  'in_transit',
+  'out_for_delivery',
+  'undelivered',
+  'returning',
+] as const satisfies readonly ShipmentStatus[];
+
+/**
+ * A parcel booked with one of the tenant's carriers for some or all of an order's items (migration 0051). Written only by the
+ * API through the tenant-pinned checkout role; saved as `creating` before the carrier is called so a lost answer is recoverable.
+ * (The foreign key to `orders` lives in the migration.)
+ */
+export const shipments = pgTable(
+  'shipments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    orderId: uuid('order_id').notNull(),
+    providerCode: text('provider_code').notNull(),
+    status: text('status', { enum: SHIPMENT_STATUSES })
+      .notNull()
+      .default('creating'),
+    serviceCode: text('service_code'),
+    courierName: text('courier_name'),
+    awb: text('awb'),
+    providerOrderId: text('provider_order_id'),
+    providerShipmentId: text('provider_shipment_id'),
+    trackingUrl: text('tracking_url'),
+    estimatedDelivery: timestamp('estimated_delivery', { withTimezone: true }),
+    paymentMode: text('payment_mode', { enum: ['prepaid', 'cod'] }).notNull(),
+    codAmountMinor: bigint('cod_amount_minor', { mode: 'number' })
+      .notNull()
+      .default(0),
+    declaredValueMinor: bigint('declared_value_minor', { mode: 'number' })
+      .notNull()
+      .default(0),
+    weightGrams: integer('weight_grams').notNull(),
+    lengthCm: integer('length_cm'),
+    breadthCm: integer('breadth_cm'),
+    heightCm: integer('height_cm'),
+    labelUrl: text('label_url'),
+    hasLabel: boolean('has_label').notNull().default(false),
+    failureReason: text('failure_reason'),
+    attempts: integer('attempts').notNull().default(0),
+    lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }),
+    pickedUpAt: timestamp('picked_up_at', { withTimezone: true }),
+    deliveredAt: timestamp('delivered_at', { withTimezone: true }),
+    cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
+    createdBy: uuid('created_by'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    unique('shipments_tenant_id_id_key').on(t.tenantId, t.id),
+    uniqueIndex('shipments_tenant_awb_key')
+      .on(t.tenantId, t.providerCode, t.awb)
+      .where(sql`${t.awb} is not null`),
+    uniqueIndex('shipments_one_creating_per_order')
+      .on(t.tenantId, t.orderId)
+      .where(sql`${t.status} = 'creating'`),
+    index('shipments_order_idx').on(t.tenantId, t.orderId),
+    index('shipments_tenant_status_idx').on(
+      t.tenantId,
+      t.status,
+      t.createdAt.desc(),
+    ),
+    check(
+      'shipments_weight_check',
+      sql`${t.weightGrams} between 1 and 1000000`,
+    ),
+  ],
+).enableRLS();
+
+/** Which order items (and how many of each) a shipment carries. */
+export const shipmentItems = pgTable(
+  'shipment_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    shipmentId: uuid('shipment_id').notNull(),
+    orderItemId: uuid('order_item_id').notNull(),
+    quantity: integer('quantity').notNull(),
+  },
+  (t) => [
+    unique('shipment_items_shipment_item_key').on(t.shipmentId, t.orderItemId),
+    index('shipment_items_order_item_idx').on(t.orderItemId),
+    check('shipment_items_quantity_check', sql`${t.quantity} > 0`),
+  ],
+).enableRLS();
+
+/** The tracking history of a shipment. The same carrier update seen twice is recorded once (`eventKey`). */
+export const shipmentEvents = pgTable(
+  'shipment_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    shipmentId: uuid('shipment_id').notNull(),
+    eventKey: text('event_key').notNull(),
+    status: text('status').notNull(),
+    description: text('description').notNull(),
+    location: text('location'),
+    occurredAt: timestamp('occurred_at', { withTimezone: true }),
+    source: text('source', {
+      enum: ['system', 'carrier_api', 'carrier_webhook', 'owner'],
+    }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    unique('shipment_events_key_key').on(t.shipmentId, t.eventKey),
+    index('shipment_events_shipment_idx').on(t.shipmentId, t.createdAt.desc()),
+  ],
+).enableRLS();
+
+export type Shipment = typeof shipments.$inferSelect;
+export type ShipmentEvent = typeof shipmentEvents.$inferSelect;
+
 export type ShippingZone = typeof shippingZones.$inferSelect;
 export type ShippingMethod = typeof shippingMethods.$inferSelect;
 export type ShippingRateTier = typeof shippingRateTiers.$inferSelect;

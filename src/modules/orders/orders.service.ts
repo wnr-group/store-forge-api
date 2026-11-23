@@ -12,7 +12,11 @@ import {
 import type { OrderStatus } from '../../database/schema/enums.js';
 import { cancelOrder } from './order-cancellation.js';
 import { nextStatuses } from './order-state.js';
-import { transitionOrder, type OrderActor } from './order-transitions.js';
+import {
+  assertNoOpenShipment,
+  transitionOrder,
+  type OrderActor,
+} from './order-transitions.js';
 import type {
   CancelOrderDto,
   OrderDetailDto,
@@ -91,9 +95,10 @@ export class OrdersService {
         'USE_CANCEL',
       );
     const actor = this.actor(ctx);
-    await this.db.withCheckout(ctx.tenantId, (tx) =>
-      transitionOrder(tx, ctx.tenantId, id, dto.status, actor, dto.note),
-    );
+    await this.db.withCheckout(ctx.tenantId, async (tx) => {
+      await assertNoOpenShipment(tx, ctx.tenantId, id);
+      await transitionOrder(tx, ctx.tenantId, id, dto.status, actor, dto.note);
+    });
     return this.get(ctx, id);
   }
 

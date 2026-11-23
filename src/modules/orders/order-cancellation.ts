@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import { conflict } from '../../common/app.exception.js';
 import type { DbTx } from '../../database/database.service.js';
 import {
+  assertNoOpenShipment,
   lockOrder,
   transitionOrder,
   type OrderActor,
@@ -23,6 +24,7 @@ export async function cancelOrder(
   reason: string,
 ): Promise<void> {
   const order = await lockOrder(tx, tenantId, orderId);
+  await assertNoOpenShipment(tx, tenantId, orderId);
   if (['paid', 'collected', 'partially_refunded'].includes(order.paymentStatus))
     throw conflict(
       'This order has been paid. Refund the payment before cancelling it.',

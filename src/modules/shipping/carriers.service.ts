@@ -301,6 +301,19 @@ export class CarriersService {
   async disconnect(org: OrgContext, code: string): Promise<void> {
     this.provider(code);
     await this.db.withUser(org.userId, async (tx) => {
+      // Credentials are needed to track and cancel parcels the carrier already has, so they cannot be removed from under them.
+      const inFlight = rowsOf<{ n: number }>(
+        await tx.execute(sql`
+          select count(*)::int as n from public.shipments
+          where tenant_id = ${org.tenantId}::uuid and provider_code = ${code}
+            and status in ('creating', 'created', 'picked_up', 'in_transit', 'out_for_delivery', 'undelivered', 'returning')`),
+      )[0].n;
+      if (inFlight > 0)
+        throw conflict(
+          `${inFlight} ${inFlight === 1 ? 'parcel is' : 'parcels are'} still with this carrier. You can switch the carrier off to stop using it for new orders, and disconnect it once they are delivered or cancelled.`,
+          undefined,
+          'CARRIER_IN_USE',
+        );
       const removed = rowsOf<{ id: string }>(
         await tx.execute(
           sql`delete from public.tenant_carrier_connections where tenant_id = ${org.tenantId}::uuid and provider_code = ${code} returning id`,

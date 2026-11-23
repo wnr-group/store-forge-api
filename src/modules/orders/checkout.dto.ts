@@ -270,7 +270,30 @@ export class PlacedOrderDto {
   replayed!: boolean;
 }
 
+export class PublicTrackingEventDto {
+  @ApiProperty() status!: string;
+  @ApiProperty() description!: string;
+  @ApiPropertyOptional({ nullable: true }) location!: string | null;
+  @ApiPropertyOptional({ nullable: true }) occurredAt!: Date | null;
+}
+
+/** What a shopper may see of a parcel: where it is, never how it was booked. */
+export class PublicShipmentDto {
+  @ApiProperty() status!: string;
+  @ApiPropertyOptional({ nullable: true }) courierName!: string | null;
+  @ApiPropertyOptional({ nullable: true }) awb!: string | null;
+  @ApiPropertyOptional({ nullable: true }) trackingUrl!: string | null;
+  @ApiPropertyOptional({ nullable: true }) estimatedDelivery!: Date | null;
+  @ApiProperty({ description: 'The items in this parcel.' })
+  items!: { name: string; quantity: number }[];
+  @ApiProperty({ type: [PublicTrackingEventDto], description: 'Newest first.' })
+  events!: PublicTrackingEventDto[];
+}
+
 export class PublicOrderDto extends PlacedOrderDto {
+  @ApiProperty({ type: [PublicShipmentDto] })
+  shipments!: PublicShipmentDto[];
+
   @ApiProperty() placedAt!: Date;
   @ApiProperty({ enum: ORDER_FULFILLMENT_STATUSES }) fulfillmentStatus!: string;
   @ApiProperty({ type: OrderAddressViewDto })

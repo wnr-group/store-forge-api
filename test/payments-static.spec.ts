@@ -354,6 +354,8 @@ describe('payments static scans', () => {
           'src/modules/payments/cod.controller.ts',
           'src/modules/payments/payments-ledger.controller.ts',
           'src/modules/payments/payments.controller.ts',
+          // Carrier tracking pings: not a payment path (no money moves), matched only by the word "webhook".
+          'src/modules/shipments/carrier-webhook.controller.ts',
         ]);
       },
     );

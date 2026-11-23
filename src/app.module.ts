@@ -27,6 +27,7 @@ import { PublicModule } from './modules/public/public.module.js';
 import { TeamModule } from './modules/team/team.module.js';
 import { PaymentsModule } from './modules/payments/payments.module.js';
 import { OrdersModule } from './modules/orders/orders.module.js';
+import { ShipmentsModule } from './modules/shipments/shipments.module.js';
 import { ShippingModule } from './modules/shipping/shipping.module.js';
 import { CheckoutPaymentsModule } from './modules/checkout-payments/checkout-payments.module.js';
 import { PagesModule } from './modules/pages/pages.module.js';
@@ -74,6 +75,7 @@ import { UsersModule } from './modules/users/users.module.js';
     OrdersModule,
     CheckoutPaymentsModule,
     ShippingModule,
+    ShipmentsModule,
     ThemesModule,
     StudioModule,
     PagesModule,
