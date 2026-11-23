@@ -31,6 +31,10 @@ type StatusRow = {
   updated_at: string | Date;
   updated_by: string | null;
   webhook_secret_updated_at: string | Date | null;
+  enabled: boolean;
+  verification_status: 'unverified' | 'verified' | 'failed';
+  verified_at: string | Date | null;
+  verification_error: string | null;
 };
 
 /**
@@ -172,7 +176,7 @@ export class PaymentsService {
   ): Promise<RazorpayStatusDto> {
     const rows = rowsOf<StatusRow>(
       await tx.execute(
-        sql`select tenant_id, key_id, updated_at, updated_by, webhook_secret_updated_at from public.tenant_razorpay_config where tenant_id = ${org.tenantId}::uuid`,
+        sql`select tenant_id, key_id, updated_at, updated_by, webhook_secret_updated_at, enabled, verification_status, verified_at, verification_error from public.tenant_razorpay_config where tenant_id = ${org.tenantId}::uuid`,
       ),
     );
     const row = rows[0];
@@ -184,6 +188,10 @@ export class PaymentsService {
       configured: true,
       keyIdMasked: maskKeyId(row.key_id),
       mode: razorpayModeOf(row.key_id),
+      enabled: row.enabled,
+      verificationStatus: row.verification_status,
+      verifiedAt: row.verified_at ? new Date(row.verified_at) : null,
+      verificationError: row.verification_error,
       webhookSecretConfigured: row.webhook_secret_updated_at !== null,
       webhookSecretUpdatedAt: row.webhook_secret_updated_at
         ? new Date(row.webhook_secret_updated_at)

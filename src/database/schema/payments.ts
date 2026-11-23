@@ -1,12 +1,20 @@
 import { sql } from 'drizzle-orm';
 import {
+  bigint,
+  boolean,
   check,
+  foreignKey,
+  index,
+  integer,
   pgTable,
   smallint,
   text,
   timestamp,
+  unique,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
+import { orders } from './customers.js';
 import { authUsers } from './auth-users.js';
 import { tenants } from './tenants.js';
 
@@ -34,6 +42,15 @@ export const tenantRazorpayConfig = pgTable(
     webhookSecretUpdatedAt: timestamp('webhook_secret_updated_at', {
       withTimezone: true,
     }),
+    /** Migration 0047: whether the tenant takes Razorpay payments, and the outcome of the last credential check. */
+    enabled: boolean('enabled').notNull().default(false),
+    verificationStatus: text('verification_status', {
+      enum: ['unverified', 'verified', 'failed'],
+    })
+      .notNull()
+      .default('unverified'),
+    verifiedAt: timestamp('verified_at', { withTimezone: true }),
+    verificationError: text('verification_error'),
     updatedAt: timestamp('updated_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -75,3 +92,97 @@ export const tenantRazorpayConfig = pgTable(
     ),
   ],
 ).enableRLS();
+
+/** A tenant's Cash on Delivery settings (migration 0047). Owner only. */
+export const tenantCodConfig = pgTable(
+  'tenant_cod_config',
+  {
+    tenantId: uuid('tenant_id')
+      .primaryKey()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    enabled: boolean('enabled').notNull().default(false),
+    minOrderMinor: bigint('min_order_minor', { mode: 'number' })
+      .notNull()
+      .default(0),
+    maxOrderMinor: bigint('max_order_minor', { mode: 'number' }),
+    feeMinor: bigint('fee_minor', { mode: 'number' }).notNull().default(0),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedBy: uuid('updated_by').references(() => authUsers.id, {
+      onDelete: 'set null',
+    }),
+  },
+  (t) => [
+    check(
+      'tcc_amounts_check',
+      sql`${t.minOrderMinor} >= 0 and ${t.feeMinor} >= 0 and (${t.maxOrderMinor} is null or ${t.maxOrderMinor} >= ${t.minOrderMinor}) and ${t.minOrderMinor} <= 100000000000 and ${t.feeMinor} <= 100000000000`,
+    ),
+  ],
+).enableRLS();
+
+export const PAYMENT_TRANSACTION_STATUSES = [
+  'created',
+  'authorized',
+  'captured',
+  'failed',
+  'cancelled',
+  'pending_collection',
+  'collected',
+] as const;
+export type PaymentTransactionStatus =
+  (typeof PAYMENT_TRANSACTION_STATUSES)[number];
+
+/** One row per order and provider (migration 0047). Online rows carry the Razorpay ids; COD rows track collection. */
+export const paymentTransactions = pgTable(
+  'payment_transactions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    orderId: uuid('order_id').notNull(),
+    provider: text('provider', { enum: ['razorpay', 'cod'] }).notNull(),
+    status: text('status', { enum: PAYMENT_TRANSACTION_STATUSES }).notNull(),
+    amountMinor: bigint('amount_minor', { mode: 'number' }).notNull(),
+    currency: text('currency').notNull(),
+    razorpayOrderId: text('razorpay_order_id'),
+    razorpayPaymentId: text('razorpay_payment_id'),
+    method: text('method'),
+    failureCode: text('failure_code'),
+    failureDescription: text('failure_description'),
+    attempts: integer('attempts').notNull().default(0),
+    refundRequired: boolean('refund_required').notNull().default(false),
+    capturedAt: timestamp('captured_at', { withTimezone: true }),
+    collectedAt: timestamp('collected_at', { withTimezone: true }),
+    collectedBy: uuid('collected_by'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    foreignKey({
+      columns: [t.tenantId, t.orderId],
+      foreignColumns: [orders.tenantId, orders.id],
+      name: 'payment_transactions_order_fk',
+    }).onDelete('cascade'),
+    unique('payment_transactions_tenant_id_id_key').on(t.tenantId, t.id),
+    unique('payment_transactions_order_provider_key').on(t.orderId, t.provider),
+    uniqueIndex('payment_transactions_razorpay_order_key')
+      .on(t.tenantId, t.razorpayOrderId)
+      .where(sql`${t.razorpayOrderId} is not null`),
+    uniqueIndex('payment_transactions_razorpay_payment_key')
+      .on(t.tenantId, t.razorpayPaymentId)
+      .where(sql`${t.razorpayPaymentId} is not null`),
+    index('payment_transactions_tenant_created_idx').on(
+      t.tenantId,
+      t.createdAt.desc(),
+    ),
+  ],
+).enableRLS();
+
+export type TenantCodConfig = typeof tenantCodConfig.$inferSelect;
+export type PaymentTransaction = typeof paymentTransactions.$inferSelect;

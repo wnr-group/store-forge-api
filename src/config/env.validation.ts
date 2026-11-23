@@ -152,6 +152,14 @@ export class EnvironmentVariables {
   @MinLength(32)
   CRON_SECRET?: string;
 
+  /** Razorpay REST base URL. Leave unset in production (the client has the official URL). It exists only to point tests at a stub; it must be https. */
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @Matches(/^https:\/\/[A-Za-z0-9.-]+(:\d+)?$/, {
+    message: 'RAZORPAY_API_BASE_URL must be an https origin with no path',
+  })
+  RAZORPAY_API_BASE_URL?: string;
+
   // --- Rate limiting (global default; sensitive routes set their own) -------------------------
   @Transform(({ value }) => (value === '' ? undefined : Number(value)))
   @IsInt()

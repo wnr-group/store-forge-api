@@ -80,12 +80,12 @@ describe.skipIf(!migrationsAvailable)('checkout HTTP routes (e2e)', () => {
     expect(JSON.stringify(res.body)).not.toContain('not-an-email');
   });
 
-  it('refuses to take an order until the store has a payment method set up', async () => {
+  it('refuses to take an order until the store has set up the chosen payment method', async () => {
     const res = await post('/public/stores/alpha-shop/orders')
       .set('Idempotency-Key', 'http-key-000002')
       .send(validOrder)
       .expect(409);
-    expect(res.body.error.code).toBe('PAYMENT_METHOD_UNAVAILABLE');
+    expect(res.body.error.code).toBe('COD_NOT_AVAILABLE');
   });
 
   it('answers 404 for an unknown store and for an unknown order', async () => {

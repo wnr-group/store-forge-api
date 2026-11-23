@@ -1,13 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { AppException } from '../../common/app.exception.js';
 import type { DbTx } from '../../database/database.service.js';
 import type { OrderPaymentMethod } from '../../database/schema/enums.js';
 import type { PricedLine } from './checkout-pricing.js';
 
 /**
- * Seams the checkout asks about things other modules own. Each has a safe default that does NOT invent behaviour:
- * the payment policy refuses every method until the payments module registers the real rules (Razorpay and COD
- * configuration), and the adjuster adds nothing until shipping and tax are configured.
+ * Seams the checkout asks about things other modules own. The payment policy is implemented by the payments module (the
+ * tenant's own Razorpay and COD settings); the adjuster adds nothing until shipping and tax are configured.
  */
 
 export interface PaymentPolicyInput {
@@ -25,19 +23,6 @@ export interface PaymentMethodPolicy {
   ): Promise<{ codFeeMinor: number }>;
 }
 export const PAYMENT_METHOD_POLICY = Symbol('PAYMENT_METHOD_POLICY');
-
-@Injectable()
-export class UnconfiguredPaymentPolicy implements PaymentMethodPolicy {
-  resolve(): Promise<{ codFeeMinor: number }> {
-    return Promise.reject(
-      new AppException(
-        'CONFLICT',
-        'This store is not accepting orders yet. Please try again later.',
-        { code: 'PAYMENT_METHOD_UNAVAILABLE' },
-      ),
-    );
-  }
-}
 
 export interface CheckoutAdjustmentInput {
   tenantId: string;

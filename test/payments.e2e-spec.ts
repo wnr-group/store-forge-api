@@ -20,6 +20,10 @@ const STATUS_KEYS = [
   'updatedByName',
   'webhookSecretConfigured',
   'webhookSecretUpdatedAt',
+  'enabled',
+  'verificationStatus',
+  'verifiedAt',
+  'verificationError',
 ];
 
 describe.skipIf(!migrationsAvailable)(
@@ -79,7 +83,7 @@ describe.skipIf(!migrationsAvailable)(
         await h.evidence(
           'AC-API-02',
           'api-evidence',
-          'GET configured: exactly configured, keyIdMasked, mode, updatedAt, updatedByName, webhookSecretConfigured, webhookSecretUpdatedAt',
+          'GET configured: exactly configured, keyIdMasked, mode, updatedAt, updatedByName, webhookSecretConfigured, webhookSecretUpdatedAt, enabled, verificationStatus, verifiedAt, verificationError',
           {
             status: res.status,
             keys: Object.keys(res.body.data).sort(),

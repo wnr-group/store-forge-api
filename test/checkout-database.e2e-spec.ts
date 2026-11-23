@@ -5,9 +5,9 @@ import { rowsOf } from '../src/database/database.service.js';
 import type { PlaceOrderDto } from '../src/modules/orders/checkout.dto.js';
 import {
   NoAdjustments,
-  UnconfiguredPaymentPolicy,
   type PaymentMethodPolicy,
 } from '../src/modules/orders/checkout-hooks.js';
+import { PaymentMethodsPolicy } from '../src/modules/payments/payment-methods.policy.js';
 import { CheckoutService } from '../src/modules/orders/checkout.service.js';
 import { OrdersService } from '../src/modules/orders/orders.service.js';
 import { ReservationExpiryService } from '../src/modules/orders/reservation-expiry.service.js';
@@ -443,11 +443,11 @@ describe.skipIf(!migrationsAvailable)(
       );
     });
 
-    it('refuses every payment method until the payments module registers its rules', async () => {
+    it('refuses payment methods the store has not set up', async () => {
       const bare = new CheckoutService(
         t.service,
         config,
-        new UnconfiguredPaymentPolicy(),
+        new PaymentMethodsPolicy(),
         new NoAdjustments(),
       );
       await product(w.tenantA, 'no-payments', 3);

@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsBoolean,
   IsOptional,
   IsString,
   Validate,
@@ -90,12 +91,42 @@ export class SaveRazorpayConfigDto {
  * `{ configured: false }` carries no other field. The secret, its ciphertext, IV, tag and key version are never returned, and
  * "configured" means saved, NOT verified with Razorpay.
  */
+export class SetRazorpayEnabledDto {
+  @ApiProperty({
+    description:
+      'Turn Razorpay payments on or off at checkout. Turning them on needs a successful connection check first.',
+  })
+  @IsBoolean({ message: 'Choose on or off.' })
+  enabled!: boolean;
+}
+
 export class RazorpayStatusDto {
   @ApiProperty({
     description:
       'True when a Key ID and Key Secret are saved. It does not mean they were checked with Razorpay.',
   })
   configured!: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'True when shoppers can pay with Razorpay. It is off until the connection check succeeds and the Owner turns it on, and it switches off again whenever the keys are replaced.',
+  })
+  enabled?: boolean;
+
+  @ApiPropertyOptional({
+    enum: ['unverified', 'verified', 'failed'],
+    description: 'Result of the last connection check against Razorpay.',
+  })
+  verificationStatus?: 'unverified' | 'verified' | 'failed';
+
+  @ApiPropertyOptional({ nullable: true })
+  verifiedAt?: Date | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'A short, safe reason when the last connection check failed.',
+  })
+  verificationError?: string | null;
 
   @ApiPropertyOptional({
     description:

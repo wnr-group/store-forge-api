@@ -11,7 +11,16 @@ import type { CredentialsKeyFailure } from './credentials-key.js';
  * - `keyFailure` writes only the failure category when the encryption key is missing or unusable.
  */
 
-export const PAYMENTS_ACTIONS = ['save', 'replace', 'remove'] as const;
+export const PAYMENTS_ACTIONS = [
+  'save',
+  'replace',
+  'remove',
+  'verify',
+  'verify_failed',
+  'enable',
+  'disable',
+  'cod_save',
+] as const;
 export type PaymentsAction = (typeof PAYMENTS_ACTIONS)[number];
 
 export interface PaymentsEvent {

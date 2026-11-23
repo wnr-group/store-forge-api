@@ -603,7 +603,7 @@ describe.skipIf(!migrationsAvailable)(
         expect(JSON.stringify(res.body)).not.toMatch(/razorpay|rzp_/i);
       });
 
-      it('AC-REG-13: the baseline routes are unchanged; the payments operations are exactly the three, plus the order routes', async () => {
+      it('AC-REG-13: the baseline routes are unchanged; the payments settings operations are exactly the reviewed set', async () => {
         const { default: request } = await import('supertest');
         const doc = (
           await request(h.t.app.getHttpServer()).get('/api/docs-json')
@@ -612,8 +612,9 @@ describe.skipIf(!migrationsAvailable)(
         const ops = Object.entries(doc.paths).flatMap(([path, item]) =>
           methods.filter((m) => item[m]).map((m) => `${m} ${path}`),
         );
-        const payments = ops.filter((o) => o.includes('/payments/'));
-        // The order lifecycle (migration 0045+) added the checkout and order-management routes; they are not payments routes.
+        // The Owner's payment settings routes: exactly these.
+        const payments = ops.filter((o) => o.includes(' /api/v1/payments/'));
+        // The order lifecycle (migration 0045+) added the checkout, order-management and shopper payment routes.
         const orderRoutes = ops.filter(
           (o) =>
             /\/api\/v1\/orders(\/|$)/.test(o) || o.includes('/public/stores/'),
@@ -622,8 +623,12 @@ describe.skipIf(!migrationsAvailable)(
         expect(ops.length - payments.length - orderRoutes.length).toBe(148);
         expect(payments.sort()).toEqual([
           'delete /api/v1/payments/razorpay',
+          'get /api/v1/payments/cod',
           'get /api/v1/payments/razorpay',
+          'post /api/v1/payments/razorpay/verify',
+          'put /api/v1/payments/cod',
           'put /api/v1/payments/razorpay',
+          'put /api/v1/payments/razorpay/enabled',
         ]);
       });
 

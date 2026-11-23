@@ -59,7 +59,7 @@ interface Store {
   currency: string;
 }
 
-interface OrderRow {
+export interface OrderRow {
   id: string;
   order_number: number;
   status: string;
@@ -196,7 +196,7 @@ export class CheckoutService {
 
   // --- internals ---------------------------------------------------------------------------------------------
 
-  private async findByToken(
+  async findByToken(
     tx: DbTx,
     tenantId: string,
     orderNumber: number,
@@ -360,6 +360,14 @@ export class CheckoutService {
       adjustment.shippingMinor +
       codFeeMinor +
       (adjustment.taxInclusive ? 0 : adjustment.taxMinor);
+    // Razorpay cannot take less than one rupee, and a COD order must have something to collect.
+    const minimumMinor = dto.paymentMethod === 'cod' ? 1 : 100;
+    if (Number.isSafeInteger(totalMinor) && totalMinor < minimumMinor)
+      throw invalid(
+        'This order total is too low to pay for.',
+        undefined,
+        'ORDER_TOTAL_TOO_LOW',
+      );
     if (!Number.isSafeInteger(totalMinor) || totalMinor < 0)
       throw invalid(
         'This order total is not valid.',
@@ -414,6 +422,11 @@ export class CheckoutService {
       { type: 'customer', id: null },
       cod ? 'Cash on delivery order placed' : 'Order placed, awaiting payment',
     );
+
+    if (cod)
+      await tx.execute(sql`
+        insert into public.payment_transactions (tenant_id, order_id, provider, status, amount_minor, currency)
+        values (${tenantId}::uuid, ${orderId}::uuid, 'cod', 'pending_collection', ${totalMinor}, ${currency})`);
 
     // 6. Stock: online orders hold it until paid or expired; COD orders are final now, so the stock is taken at once.
     const expiresAt = new Date(
@@ -470,7 +483,7 @@ export class CheckoutService {
   }
 
   /** Builds the response from the stored order, so a replay and a first call show exactly the same figures. */
-  private async view(
+  async view(
     tx: DbTx,
     tenantId: string,
     o: OrderRow,

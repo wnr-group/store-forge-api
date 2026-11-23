@@ -34,6 +34,12 @@ export async function cancelOrder(
   await tx.execute(sql`
     update public.orders set payment_status = 'unpaid', updated_at = now()
     where id = ${orderId}::uuid and tenant_id = ${tenantId}::uuid and payment_status = 'pending_collection'`);
+  // Nothing was paid, so any open payment attempt ends with the order. (A payment the customer authorised but that was
+  // never captured is left alone: Razorpay releases uncaptured authorisations by itself.)
+  await tx.execute(sql`
+    update public.payment_transactions set status = 'cancelled', updated_at = now()
+    where order_id = ${orderId}::uuid and tenant_id = ${tenantId}::uuid
+      and status in ('created', 'failed', 'pending_collection')`);
   await releaseReservations(tx, tenantId, orderId, 'released');
   await restockCommitted(tx, tenantId, orderId, order.orderNumber);
 }
