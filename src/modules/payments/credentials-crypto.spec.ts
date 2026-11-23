@@ -227,8 +227,11 @@ describe('no decryption path in production code', () => {
       )
       .map((f) => relative(root, f).split(sep).join('/'));
     expect(users).toEqual([
+      'modules/checkout-payments/payment-reconciliation.service.ts',
       'modules/checkout-payments/razorpay-payments.service.ts',
+      'modules/checkout-payments/razorpay-webhook.service.ts',
       'modules/payments/razorpay-connection.service.ts',
+      'modules/payments/refunds.service.ts',
     ]);
   });
 

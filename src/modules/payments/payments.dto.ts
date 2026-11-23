@@ -114,6 +114,13 @@ export class RazorpayStatusDto {
   enabled?: boolean;
 
   @ApiPropertyOptional({
+    example: '/webhooks/razorpay/k3x9a2',
+    description:
+      'The path to give Razorpay under Settings > Webhooks (add your API address in front). Use the webhook secret you saved here, and tick payment.authorized, payment.captured, payment.failed, order.paid and the refund events.',
+  })
+  webhookPath?: string;
+
+  @ApiPropertyOptional({
     enum: ['unverified', 'verified', 'failed'],
     description: 'Result of the last connection check against Razorpay.',
   })

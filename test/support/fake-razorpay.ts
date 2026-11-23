@@ -17,6 +17,15 @@ export interface FakePayment {
   error_description?: string | null;
 }
 
+export interface FakeRefund {
+  id: string;
+  payment_id: string;
+  amount: number;
+  currency: string;
+  status: 'pending' | 'processed' | 'failed';
+  receipt: string | null;
+}
+
 export class FakeRazorpay {
   keyId: string;
   keySecret: string;
@@ -31,6 +40,13 @@ export class FakeRazorpay {
     }
   >();
   readonly payments = new Map<string, FakePayment>();
+  readonly refunds = new Map<string, FakeRefund>();
+  /** The state a newly created refund starts in. */
+  refundStartsAs: FakeRefund['status'] = 'processed';
+  /** Razorpay answers the next refund request with an error of this HTTP status (and creates nothing). */
+  rejectNextRefundWith: number | null = null;
+  /** Simulates a lost response: the next refund IS created at Razorpay, but the caller sees a network failure. */
+  loseNextRefundResponse = false;
   readonly calls: { method: string; path: string }[] = [];
   /** When set, every request answers with this status (for outage tests). */
   failWith: number | null = null;
@@ -82,6 +98,82 @@ export class FakeRazorpay {
       };
       this.orders.set(id, order);
       return json(200, order);
+    }
+    const orderPayments = /^\/v1\/orders\/([^/]+)\/payments$/.exec(
+      url.pathname,
+    );
+    if (orderPayments && method === 'GET')
+      return json(200, {
+        entity: 'collection',
+        items: [...this.payments.values()].filter(
+          (p) => p.order_id === orderPayments[1],
+        ),
+      });
+    const refundOne = /^\/v1\/refunds\/([^/]+)$/.exec(url.pathname);
+    if (refundOne && method === 'GET') {
+      const r = this.refunds.get(refundOne[1]);
+      return r
+        ? json(200, r)
+        : json(400, {
+            error: {
+              code: 'BAD_REQUEST_ERROR',
+              description: 'The id provided does not exist',
+            },
+          });
+    }
+    const refundsOf = /^\/v1\/payments\/([^/]+)\/refunds$/.exec(url.pathname);
+    if (refundsOf && method === 'GET')
+      return json(200, {
+        entity: 'collection',
+        items: [...this.refunds.values()].filter(
+          (r) => r.payment_id === refundsOf[1],
+        ),
+      });
+    const refundCreate = /^\/v1\/payments\/([^/]+)\/refund$/.exec(url.pathname);
+    if (refundCreate && method === 'POST') {
+      if (this.rejectNextRefundWith) {
+        const status = this.rejectNextRefundWith;
+        this.rejectNextRefundWith = null;
+        return json(status, {
+          error: {
+            code: 'BAD_REQUEST_ERROR',
+            description: 'The refund amount is not valid',
+          },
+        });
+      }
+      const payment = this.payments.get(refundCreate[1]);
+      if (!payment || payment.status !== 'captured')
+        return json(400, {
+          error: {
+            code: 'BAD_REQUEST_ERROR',
+            description: 'The payment has not been captured',
+          },
+        });
+      const already = [...this.refunds.values()]
+        .filter((r) => r.payment_id === payment.id && r.status !== 'failed')
+        .reduce((sum, r) => sum + r.amount, 0);
+      if (Number(body.amount) + already > payment.amount)
+        return json(400, {
+          error: {
+            code: 'BAD_REQUEST_ERROR',
+            description:
+              'The refund amount is greater than the amount available for refund',
+          },
+        });
+      const refund: FakeRefund = {
+        id: `rfnd_FAKE${String(++this.counter).padStart(8, '0')}`,
+        payment_id: payment.id,
+        amount: Number(body.amount),
+        currency: payment.currency,
+        status: this.refundStartsAs,
+        receipt: typeof body.receipt === 'string' ? body.receipt : null,
+      };
+      this.refunds.set(refund.id, refund);
+      if (this.loseNextRefundResponse) {
+        this.loseNextRefundResponse = false;
+        throw new TypeError('fetch failed');
+      }
+      return json(200, refund);
     }
     const pay = /^\/v1\/payments\/([^/]+)(\/capture)?$/.exec(url.pathname);
     if (pay) {
@@ -154,5 +246,28 @@ export class FakeRazorpay {
     return createHmac('sha256', secret)
       .update(`${razorpayOrderId}|${paymentId}`)
       .digest('hex');
+  }
+
+  /** A signed webhook exactly as Razorpay would send it: the raw bytes and the signature over them. */
+  webhook(
+    event: string,
+    payload: Record<string, unknown>,
+    secret: string,
+    eventId = `evt_${Math.random().toString(36).slice(2, 14)}`,
+  ) {
+    const raw = Buffer.from(
+      JSON.stringify({
+        entity: 'event',
+        event,
+        contains: Object.keys(payload),
+        payload,
+        created_at: 1,
+      }),
+    );
+    return {
+      raw,
+      signature: createHmac('sha256', secret).update(raw).digest('hex'),
+      eventId,
+    };
   }
 }

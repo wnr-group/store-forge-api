@@ -617,7 +617,9 @@ describe.skipIf(!migrationsAvailable)(
         // The order lifecycle (migration 0045+) added the checkout, order-management and shopper payment routes.
         const orderRoutes = ops.filter(
           (o) =>
-            /\/api\/v1\/orders(\/|$)/.test(o) || o.includes('/public/stores/'),
+            /\/api\/v1\/orders(\/|$)/.test(o) ||
+            o.includes('/public/stores/') ||
+            o.includes('/api/v1/webhooks/'),
         );
         // 148 is the operation count of the baseline (origin/main) application, Store Forge Studio included.
         expect(ops.length - payments.length - orderRoutes.length).toBe(148);
@@ -625,7 +627,12 @@ describe.skipIf(!migrationsAvailable)(
           'delete /api/v1/payments/razorpay',
           'get /api/v1/payments/cod',
           'get /api/v1/payments/razorpay',
+          'get /api/v1/payments/refunds',
+          'get /api/v1/payments/transactions',
+          'get /api/v1/payments/transactions/{id}',
           'post /api/v1/payments/razorpay/verify',
+          'post /api/v1/payments/refunds/{id}/sync',
+          'post /api/v1/payments/transactions/{id}/refunds',
           'put /api/v1/payments/cod',
           'put /api/v1/payments/razorpay',
           'put /api/v1/payments/razorpay/enabled',

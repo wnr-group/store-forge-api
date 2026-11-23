@@ -186,3 +186,101 @@ export const paymentTransactions = pgTable(
 
 export type TenantCodConfig = typeof tenantCodConfig.$inferSelect;
 export type PaymentTransaction = typeof paymentTransactions.$inferSelect;
+
+export const REFUND_STATUSES = [
+  'pending',
+  'processing',
+  'processed',
+  'failed',
+] as const;
+export type RefundStatus = (typeof REFUND_STATUSES)[number];
+
+/** A refund request (migration 0048). Inserted as 'pending' before Razorpay is called; its id is the Razorpay `receipt`. */
+export const refunds = pgTable(
+  'refunds',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    orderId: uuid('order_id').notNull(),
+    paymentTransactionId: uuid('payment_transaction_id').notNull(),
+    amountMinor: bigint('amount_minor', { mode: 'number' }).notNull(),
+    currency: text('currency').notNull(),
+    status: text('status', { enum: REFUND_STATUSES })
+      .notNull()
+      .default('pending'),
+    reason: text('reason'),
+    source: text('source', { enum: ['storeforge', 'razorpay_dashboard'] })
+      .notNull()
+      .default('storeforge'),
+    idempotencyKey: text('idempotency_key').notNull(),
+    razorpayRefundId: text('razorpay_refund_id'),
+    failureReason: text('failure_reason'),
+    requestedBy: uuid('requested_by'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    processedAt: timestamp('processed_at', { withTimezone: true }),
+  },
+  (t) => [
+    foreignKey({
+      columns: [t.tenantId, t.orderId],
+      foreignColumns: [orders.tenantId, orders.id],
+      name: 'refunds_order_fk',
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [t.tenantId, t.paymentTransactionId],
+      foreignColumns: [paymentTransactions.tenantId, paymentTransactions.id],
+      name: 'refunds_transaction_fk',
+    }).onDelete('cascade'),
+    unique('refunds_tenant_id_id_key').on(t.tenantId, t.id),
+    unique('refunds_tenant_idempotency_key').on(t.tenantId, t.idempotencyKey),
+    uniqueIndex('refunds_razorpay_refund_key')
+      .on(t.tenantId, t.razorpayRefundId)
+      .where(sql`${t.razorpayRefundId} is not null`),
+    index('refunds_transaction_idx').on(t.paymentTransactionId),
+    index('refunds_tenant_created_idx').on(t.tenantId, t.createdAt.desc()),
+  ],
+).enableRLS();
+
+/** Every authenticated Razorpay webhook, once per (tenant, event id) (migration 0048). */
+export const paymentWebhookEvents = pgTable(
+  'payment_webhook_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    eventId: text('event_id').notNull(),
+    eventType: text('event_type').notNull(),
+    razorpayOrderId: text('razorpay_order_id'),
+    razorpayPaymentId: text('razorpay_payment_id'),
+    razorpayRefundId: text('razorpay_refund_id'),
+    status: text('status', {
+      enum: ['received', 'processed', 'ignored', 'failed'],
+    })
+      .notNull()
+      .default('received'),
+    note: text('note'),
+    attempts: integer('attempts').notNull().default(1),
+    receivedAt: timestamp('received_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    processedAt: timestamp('processed_at', { withTimezone: true }),
+  },
+  (t) => [
+    unique('payment_webhook_events_tenant_event_key').on(t.tenantId, t.eventId),
+    index('payment_webhook_events_order_idx').on(t.tenantId, t.razorpayOrderId),
+    index('payment_webhook_events_received_idx').on(
+      t.tenantId,
+      t.receivedAt.desc(),
+    ),
+  ],
+).enableRLS();
+
+export type Refund = typeof refunds.$inferSelect;
+export type PaymentWebhookEvent = typeof paymentWebhookEvents.$inferSelect;

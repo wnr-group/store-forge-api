@@ -1,8 +1,7 @@
-import { timingSafeEqual } from 'node:crypto';
 import { Controller, Get, Headers } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ApiExcludeController } from '@nestjs/swagger';
-import { AppException } from '../../common/app.exception.js';
+import { authorizeJob } from '../../common/job-auth.js';
 import { Public } from '../../common/decorators/decorators.js';
 import type { AppConfig } from '../../config/configuration.js';
 import { ReservationExpiryService } from './reservation-expiry.service.js';
@@ -22,28 +21,10 @@ export class JobsController {
 
   @Get('expire-reservations')
   async expireReservations(@Headers('authorization') authorization?: string) {
-    this.authorize(authorization);
+    authorizeJob(
+      this.config.get('cron', { infer: true }).secret,
+      authorization,
+    );
     return this.expiry.expireDue();
-  }
-
-  private authorize(header: string | undefined) {
-    const secret = this.config.get('cron', { infer: true }).secret;
-    if (!secret)
-      throw new AppException(
-        'UNAVAILABLE',
-        'Scheduled jobs are not configured.',
-        {
-          code: 'JOBS_DISABLED',
-        },
-      );
-    const supplied = Buffer.from(header?.replace(/^Bearer\s+/i, '') ?? '');
-    const expected = Buffer.from(secret);
-    if (
-      supplied.length !== expected.length ||
-      !timingSafeEqual(supplied, expected)
-    )
-      throw new AppException('UNAUTHENTICATED', 'Not authorised.', {
-        code: 'UNAUTHORIZED',
-      });
   }
 }

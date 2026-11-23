@@ -8,11 +8,6 @@ import {
 } from '../../database/database.service.js';
 import type { PublicOrderDto } from '../orders/checkout.dto.js';
 import { CheckoutService, type OrderRow } from '../orders/checkout.service.js';
-import { lockOrder, transitionOrder } from '../orders/order-transitions.js';
-import {
-  commitReservations,
-  releaseReservations,
-} from '../orders/stock-reservations.js';
 import {
   RazorpayClient,
   RazorpayError,
@@ -24,6 +19,7 @@ import {
 } from '../payments/razorpay-credentials.js';
 import { verifyCheckoutSignature } from '../payments/razorpay-signature.js';
 import { PAYMENTS_UNAVAILABLE_MESSAGE } from '../payments/payments.service.js';
+import { settleCapturedPayment } from './payment-settlement.js';
 import type {
   RazorpaySessionDto,
   ReportRazorpayFailureDto,
@@ -36,8 +32,6 @@ interface TxRow {
   razorpay_order_id: string;
   razorpay_payment_id: string | null;
 }
-
-const PAY_ACTOR = { type: 'payment', id: null } as const;
 
 function sqlstate(error: unknown): string | undefined {
   let current = error as { code?: unknown; cause?: unknown } | undefined;
@@ -257,22 +251,17 @@ export class RazorpayPaymentsService {
 
     // 3. Money is confirmed: apply it in one transaction.
     await this.db.withCheckout(store.tenantId, (tx) =>
-      this.applyCaptured(
-        tx,
-        store.tenantId,
-        order.id,
-        orderNumber,
-        row.id,
-        payment,
-      ).catch((error) => {
-        if (sqlstate(error) === '23505')
-          throw conflict(
-            'This payment has already been used.',
-            undefined,
-            'DUPLICATE_PAYMENT',
-          );
-        throw error;
-      }),
+      settleCapturedPayment(tx, store.tenantId, row.id, payment).catch(
+        (error) => {
+          if (sqlstate(error) === '23505')
+            throw conflict(
+              'This payment has already been used.',
+              undefined,
+              'DUPLICATE_PAYMENT',
+            );
+          throw error;
+        },
+      ),
     );
     this.logger.log({
       event: 'payment.captured',
@@ -439,69 +428,6 @@ export class RazorpayPaymentsService {
           failure_code = ${payment.errorCode?.slice(0, 100) ?? null}, failure_description = ${payment.errorDescription?.slice(0, 500) ?? null},
           updated_at = now()
         where id = ${rowId}::uuid and tenant_id = ${tenantId}::uuid and status in ('created', 'failed')`),
-    );
-  }
-
-  /** Locks the order and its transaction, then makes the payment real: paid, confirmed, stock sold. */
-  private async applyCaptured(
-    tx: DbTx,
-    tenantId: string,
-    orderId: string,
-    orderNumber: number,
-    rowId: string,
-    payment: RazorpayPayment,
-  ) {
-    const order = await lockOrder(tx, tenantId, orderId);
-    const current = rowsOf<{ status: string }>(
-      await tx.execute(
-        sql`select status from public.payment_transactions where id = ${rowId}::uuid for update`,
-      ),
-    )[0];
-    if (current?.status === 'captured') return; // a concurrent verify already applied it
-    await tx.execute(sql`
-      update public.payment_transactions set status = 'captured', razorpay_payment_id = ${payment.id}, method = ${payment.method},
-        failure_code = null, failure_description = null, captured_at = now(), updated_at = now()
-      where id = ${rowId}::uuid`);
-    await tx.execute(sql`
-      update public.orders set payment_status = 'paid', updated_at = now() where id = ${orderId}::uuid and tenant_id = ${tenantId}::uuid`);
-
-    if (order.status !== 'pending_payment') {
-      // The order was already closed (for example the hold expired and the cleanup job cancelled it) but the money arrived.
-      await this.flagRefund(tx, rowId);
-      return;
-    }
-    try {
-      // A savepoint: if the stock is gone, the partial work of commitReservations is undone before we decide what to do.
-      await tx.transaction((inner) =>
-        commitReservations(inner, tenantId, orderId, orderNumber),
-      );
-      await transitionOrder(
-        tx,
-        tenantId,
-        orderId,
-        'confirmed',
-        PAY_ACTOR,
-        'Payment received',
-      );
-    } catch (error) {
-      if (!(error instanceof AppException && error.code === 'RESERVATION_LOST'))
-        throw error;
-      await transitionOrder(
-        tx,
-        tenantId,
-        orderId,
-        'cancelled',
-        PAY_ACTOR,
-        'Paid, but the items sold out first. A refund is due',
-      );
-      await releaseReservations(tx, tenantId, orderId, 'released');
-      await this.flagRefund(tx, rowId);
-    }
-  }
-
-  private flagRefund(tx: DbTx, rowId: string) {
-    return tx.execute(
-      sql`update public.payment_transactions set refund_required = true, updated_at = now() where id = ${rowId}::uuid`,
     );
   }
 

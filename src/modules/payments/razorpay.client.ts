@@ -65,6 +65,17 @@ export interface RazorpayPayment {
   errorDescription: string | null;
 }
 
+export interface RazorpayRefund {
+  id: string;
+  paymentId: string | null;
+  amountMinor: number;
+  currency: string;
+  /** pending | processed | failed */
+  status: string;
+  /** Our own refund id, sent when the refund was created. */
+  receipt: string | null;
+}
+
 type Json = Record<string, unknown>;
 const str = (v: unknown): string | null => (typeof v === 'string' ? v : null);
 
@@ -152,7 +163,102 @@ export class RazorpayClient {
     );
   }
 
-  private toPayment(body: Json): RazorpayPayment {
+  /** Every payment attempt made against a Razorpay order (used to find a payment the browser never confirmed). */
+  async fetchOrderPayments(
+    creds: RazorpayCredentials,
+    razorpayOrderId: string,
+  ): Promise<RazorpayPayment[]> {
+    const body = await this.request(
+      creds,
+      'GET',
+      `/v1/orders/${encodeURIComponent(razorpayOrderId)}/payments`,
+      undefined,
+      true,
+    );
+    return this.items(body).map((p) => this.toPayment(p));
+  }
+
+  /**
+   * Starts a refund. NEVER retried automatically: after an unclear failure the caller looks the refund up by its `receipt`
+   * (fetchRefunds) before deciding whether to send it again.
+   */
+  async createRefund(
+    creds: RazorpayCredentials,
+    paymentId: string,
+    input: { amountMinor: number; receipt: string; reason?: string },
+  ): Promise<RazorpayRefund> {
+    return this.toRefund(
+      await this.request(
+        creds,
+        'POST',
+        `/v1/payments/${encodeURIComponent(paymentId)}/refund`,
+        {
+          amount: input.amountMinor,
+          speed: 'normal',
+          receipt: input.receipt,
+          notes: input.reason ? { reason: input.reason.slice(0, 200) } : {},
+        },
+      ),
+    );
+  }
+
+  async fetchRefunds(
+    creds: RazorpayCredentials,
+    paymentId: string,
+  ): Promise<RazorpayRefund[]> {
+    const body = await this.request(
+      creds,
+      'GET',
+      `/v1/payments/${encodeURIComponent(paymentId)}/refunds?count=100`,
+      undefined,
+      true,
+    );
+    return this.items(body).map((r) => this.toRefund(r));
+  }
+
+  async fetchRefund(
+    creds: RazorpayCredentials,
+    refundId: string,
+  ): Promise<RazorpayRefund> {
+    return this.toRefund(
+      await this.request(
+        creds,
+        'GET',
+        `/v1/refunds/${encodeURIComponent(refundId)}`,
+        undefined,
+        true,
+      ),
+    );
+  }
+
+  private items(body: Json): Json[] {
+    if (!Array.isArray(body.items))
+      throw new RazorpayError(
+        'invalid_response',
+        'Unexpected Razorpay list response.',
+      );
+    return body.items as Json[];
+  }
+
+  toRefund(body: Json): RazorpayRefund {
+    const id = str(body.id);
+    const status = str(body.status);
+    if (!id || !status || typeof body.amount !== 'number')
+      throw new RazorpayError(
+        'invalid_response',
+        'Unexpected Razorpay refund response.',
+      );
+    return {
+      id,
+      paymentId: str(body.payment_id),
+      amountMinor: body.amount,
+      currency: str(body.currency) ?? 'INR',
+      status,
+      receipt: str(body.receipt),
+    };
+  }
+
+  toPayment(body: Json): RazorpayPayment {
     const id = str(body.id);
     const status = str(body.status);
     if (!id || !status || typeof body.amount !== 'number')

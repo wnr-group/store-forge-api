@@ -24,6 +24,7 @@ const STATUS_KEYS = [
   'verificationStatus',
   'verifiedAt',
   'verificationError',
+  'webhookPath',
 ];
 
 describe.skipIf(!migrationsAvailable)(
@@ -83,7 +84,7 @@ describe.skipIf(!migrationsAvailable)(
         await h.evidence(
           'AC-API-02',
           'api-evidence',
-          'GET configured: exactly configured, keyIdMasked, mode, updatedAt, updatedByName, webhookSecretConfigured, webhookSecretUpdatedAt, enabled, verificationStatus, verifiedAt, verificationError',
+          'GET configured: exactly configured, keyIdMasked, mode, updatedAt, updatedByName, webhookSecretConfigured, webhookSecretUpdatedAt, enabled, verificationStatus, verifiedAt, verificationError, webhookPath',
           {
             status: res.status,
             keys: Object.keys(res.body.data).sort(),

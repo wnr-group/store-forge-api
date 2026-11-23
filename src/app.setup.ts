@@ -85,6 +85,15 @@ export function configureApp(app: INestApplication): void {
       importJson(req, res, next),
   );
 
+  // Razorpay signs the EXACT bytes it sends, so webhook routes receive the raw body (a Buffer in `req.body`) instead of parsed
+  // JSON. Same wrapped-handler pattern as above; set here so production, Vercel and the tests all get it.
+  const webhookRaw = express.raw({ type: () => true, limit: '1mb' });
+  app.use(
+    `/${apiPrefix}/webhooks`,
+    (req: Request, res: Response, next: NextFunction) =>
+      webhookRaw(req, res, next),
+  );
+
   // Security headers. Swagger UI needs inline scripts/styles, so only its path gets a relaxed CSP.
   const strict = helmet();
   const docs = helmet({ contentSecurityPolicy: false });

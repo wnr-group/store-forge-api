@@ -189,6 +189,7 @@ export class PaymentsService {
       keyIdMasked: maskKeyId(row.key_id),
       mode: razorpayModeOf(row.key_id),
       enabled: row.enabled,
+      webhookPath: `/webhooks/razorpay/${org.tenantPublicId}`,
       verificationStatus: row.verification_status,
       verifiedAt: row.verified_at ? new Date(row.verified_at) : null,
       verificationError: row.verification_error,

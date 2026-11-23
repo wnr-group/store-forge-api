@@ -337,6 +337,13 @@
       "when": 1794300030000,
       "tag": "0047_payments_core",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1794300031000,
+      "tag": "0048_refunds_webhooks",
+      "breakpoints": true
     }
   ]
 }
