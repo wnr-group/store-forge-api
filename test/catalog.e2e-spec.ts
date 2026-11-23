@@ -803,9 +803,10 @@ describe.skipIf(!migrationsAvailable)(
         await alice.get(`/customers/${customer}`).expect(404);
       });
 
-      it('exposes no way to create, change or delete orders', async () => {
+      it('lets the dashboard read orders but never create or delete them', async () => {
         await alice.post('/orders', {}).expect(404);
-        await alice.get('/orders').expect(404);
+        await alice.delete('/orders').expect(404);
+        await alice.get('/orders').expect(200);
       });
     });
 

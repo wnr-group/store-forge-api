@@ -603,7 +603,7 @@ describe.skipIf(!migrationsAvailable)(
         expect(JSON.stringify(res.body)).not.toMatch(/razorpay|rzp_/i);
       });
 
-      it('AC-REG-13: the OpenAPI document gained exactly the three payments operations and no other route changed', async () => {
+      it('AC-REG-13: the baseline routes are unchanged; the payments operations are exactly the three, plus the order routes', async () => {
         const { default: request } = await import('supertest');
         const doc = (
           await request(h.t.app.getHttpServer()).get('/api/docs-json')
@@ -613,8 +613,13 @@ describe.skipIf(!migrationsAvailable)(
           methods.filter((m) => item[m]).map((m) => `${m} ${path}`),
         );
         const payments = ops.filter((o) => o.includes('/payments/'));
+        // The order lifecycle (migration 0045+) added the checkout and order-management routes; they are not payments routes.
+        const orderRoutes = ops.filter(
+          (o) =>
+            /\/api\/v1\/orders(\/|$)/.test(o) || o.includes('/public/stores/'),
+        );
         // 148 is the operation count of the baseline (origin/main) application, Store Forge Studio included.
-        expect(ops.length - payments.length).toBe(148);
+        expect(ops.length - payments.length - orderRoutes.length).toBe(148);
         expect(payments.sort()).toEqual([
           'delete /api/v1/payments/razorpay',
           'get /api/v1/payments/razorpay',

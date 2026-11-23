@@ -110,6 +110,8 @@ export const orders = pgTable(
     customerEmail: text('customer_email'),
     customerPhone: text('customer_phone'),
     idempotencyKey: text('idempotency_key'),
+    /** SHA-256 of the guest access token returned once at placement (migration 0046). Never returned by any DTO. */
+    accessTokenHash: text('access_token_hash'),
     cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
     cancelReason: text('cancel_reason'),
     updatedAt: timestamp('updated_at', { withTimezone: true })

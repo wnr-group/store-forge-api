@@ -134,6 +134,24 @@ export class EnvironmentVariables {
   @Min(1)
   DB_CONNECT_TIMEOUT_SECONDS: number = 10;
 
+  // --- Checkout ----------------------------------------------------------------------------------
+  /** How long stock stays reserved for an unpaid online order. */
+  @IsOptional()
+  @Transform(({ value }) =>
+    value === '' || value === undefined ? undefined : Number(value),
+  )
+  @IsInt()
+  @Min(5)
+  @Max(1440)
+  CHECKOUT_RESERVATION_MINUTES: number = 30;
+
+  /** Bearer secret the scheduler (Vercel Cron) sends to the internal job routes. Jobs are refused when it is unset. */
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @IsString()
+  @MinLength(32)
+  CRON_SECRET?: string;
+
   // --- Rate limiting (global default; sensitive routes set their own) -------------------------
   @Transform(({ value }) => (value === '' ? undefined : Number(value)))
   @IsInt()

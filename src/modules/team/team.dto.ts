@@ -25,8 +25,7 @@ const levelsOf = (m: keyof typeof MODULE_LABELS) => [
 ];
 
 /**
- * The Owner picks a level per module. Each module accepts only the levels the product offers (orders are
- * read-only for now, store settings are always at least readable); the database re-validates the stored object.
+ * The Owner picks a level per module. Each module accepts only the levels the product offers (store settings are always at least readable); the database re-validates the stored object.
  */
 export class PermissionsDto {
   @ApiProperty({ enum: levelsOf('products') })
@@ -35,10 +34,11 @@ export class PermissionsDto {
 
   @ApiProperty({
     enum: levelsOf('orders'),
-    description: 'Orders can only be viewed for now, not changed.',
+    description:
+      'none, read (view orders) or write (also move orders through their lifecycle and cancel them).',
   })
   @IsIn(levelsOf('orders'), { message: 'Choose an access level.' })
-  orders!: 'none' | 'read';
+  orders!: 'none' | 'read' | 'write';
 
   @ApiProperty({ enum: levelsOf('customers') })
   @IsIn(levelsOf('customers'), { message: 'Choose an access level.' })

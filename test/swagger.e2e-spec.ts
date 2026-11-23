@@ -25,6 +25,9 @@ const PUBLIC_ROUTES = new Set([
   'POST /api/v1/auth/logout',
   'POST /api/v1/auth/refresh',
   'GET /api/v1/public/branding',
+  'POST /api/v1/public/stores/{slug}/orders',
+  'GET /api/v1/public/stores/{slug}/orders/{orderNumber}',
+  'POST /api/v1/public/stores/{slug}/orders/{orderNumber}/cancel',
   'GET /api/v1/public/hosts/{subdomain}',
   'GET /api/v1/public/storefronts/{slug}',
   'GET /api/v1/public/storefronts/{slug}/layout',
@@ -147,6 +150,7 @@ describe('OpenAPI coverage (e2e)', () => {
       'POST /api/v1/reviews/{id}/publish', // state change on the id alone
       'POST /api/v1/reviews/{id}/unpublish',
       'POST /api/v1/store/studio/review-requests', // acts on the store's current drafts
+      'POST /api/v1/public/stores/{slug}/orders/{orderNumber}/cancel', // the order token header is the input
       'POST /api/v1/auth/logout', // the session is the cookie
       'POST /api/v1/auth/refresh',
     ]);
@@ -230,9 +234,9 @@ describe('OpenAPI coverage (e2e)', () => {
     ]);
   });
 
-  it('does not expose orders create / update / delete', () => {
-    expect(
-      Object.keys(doc.paths).filter((p) => /\/orders(\/|$)/.test(p)),
-    ).toEqual([]);
+  it('lets the dashboard read orders but never create or delete them', () => {
+    const methodsOf = (p: string) => Object.keys(doc.paths[p] ?? {}).sort();
+    expect(methodsOf('/api/v1/orders')).toEqual(['get']);
+    expect(methodsOf('/api/v1/orders/{id}')).toEqual(['get']);
   });
 });

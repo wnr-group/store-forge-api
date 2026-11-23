@@ -93,7 +93,7 @@ export const inventoryReservations = pgTable(
     variantId: uuid('variant_id'),
     quantity: integer('quantity').notNull(),
     status: text('status', {
-      enum: ['active', 'committed', 'released', 'expired'],
+      enum: ['active', 'committed', 'released', 'expired', 'restocked'],
     })
       .notNull()
       .default('active'),
