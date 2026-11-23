@@ -210,13 +210,14 @@ describe('no decryption path in production code', () => {
     expect(files.length).toBeGreaterThan(50);
   });
 
-  it('references decryptSecret and __testing only in the crypto module and the one reviewed reader (AC-ENC-09) [layer:STATIC]', () => {
+  it('references decryptSecret and __testing only in the crypto module and the two reviewed readers (AC-ENC-09) [layer:STATIC]', () => {
     const offenders = files
       .filter((f) => /decryptSecret|__testing/.test(readFileSync(f, 'utf8')))
       .map((f) => relative(root, f).split(sep).join('/'));
     expect(offenders).toEqual([
       'modules/payments/credentials-crypto.ts',
       'modules/payments/razorpay-credentials.ts',
+      'modules/shipping/carrier-credentials.ts',
     ]);
   });
 
@@ -233,6 +234,15 @@ describe('no decryption path in production code', () => {
       'modules/payments/razorpay-connection.service.ts',
       'modules/payments/refunds.service.ts',
     ]);
+  });
+
+  it('lets only the carrier connection service use the carrier credentials reader (AC-ENC-09) [layer:STATIC]', () => {
+    const users = files
+      .filter((f) =>
+        /from '[^']*carrier-credentials\.js'/.test(readFileSync(f, 'utf8')),
+      )
+      .map((f) => relative(root, f).split(sep).join('/'));
+    expect(users).toEqual(['modules/shipping/carriers.service.ts']);
   });
 
   it('never re-exports the crypto module from a barrel or wires it as a provider (AC-ENC-09) [layer:STATIC]', () => {

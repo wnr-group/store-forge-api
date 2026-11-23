@@ -344,6 +344,13 @@
       "when": 1794300031000,
       "tag": "0048_refunds_webhooks",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1794300032000,
+      "tag": "0049_carrier_connections",
+      "breakpoints": true
     }
   ]
 }

@@ -102,6 +102,7 @@ describe('payments static scans', () => {
         expect(hits).toEqual([
           'src/modules/payments/credentials-crypto.ts',
           'src/modules/payments/razorpay-credentials.ts',
+          'src/modules/shipping/carrier-credentials.ts',
         ]);
         expect(barrels).toEqual([]);
       },

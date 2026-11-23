@@ -59,3 +59,21 @@ sandbox correction is a small, local change.
 5. Fetch the label; open the PDF.
 6. Track the AWB; cancel one shipment before pickup.
 7. Compare each real answer with the fake answers in `test/shipping-*.spec.ts` and fix any field that differs.
+
+## How a tenant's carrier accounts are stored (Phase 7)
+
+- One connection per tenant and carrier (`tenant_carrier_connections`). Each tenant uses **its own** carrier account; there is no
+  platform-wide carrier login.
+- **Secret** fields (as declared by each adapter's `credentialFields`) are encrypted into one AES-256-GCM blob bound to the tenant
+  id, so a row copied to another tenant cannot be opened. They are never returned by any route; the dashboard only learns *which*
+  secrets are saved. Non-secret settings (pickup location name, environment...) are stored readable so they can be shown.
+- Only the tenant-pinned checkout role can read the ciphertext, through `get_carrier_credentials()`; signed-in users, including
+  the Owner, cannot. `carrier-credentials.ts` is the second reviewed place that decrypts (the first is the Razorpay reader); a
+  static test pins both, and pins which service may use this one.
+- **Lifecycle:** connect -> check (`verify`) -> turn on -> (optionally) make default. Changing any setting turns the carrier off
+  and asks for a new check (a database trigger, so no code path can skip it). A failed check turns it off. A carrier whose
+  integration is `unverified` also needs an explicit acknowledgement to be turned on.
+- **History:** every change is recorded (who, what, when) with the *names* of the settings changed, never their values.
+- **Preferences:** manual or automatic selection, and the strategy (lowest cost, fastest, or the default carrier first). Phase 8
+  applies them.
+- Owner only (`carriers:manage`).

@@ -15,3 +15,4 @@ export * from './templates.js';
 export * from './product-presentations.js';
 export * from './studio.js';
 export * from './payments.js';
+export * from './shipping.js';
