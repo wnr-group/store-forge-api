@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsOptional,
   IsString,
   Validate,
   ValidatorConstraint,
@@ -7,6 +8,10 @@ import {
 } from 'class-validator';
 import { KEY_ID_PATTERN } from './key-id.js';
 import { isValidKeySecret } from './key-secret.js';
+import {
+  isValidWebhookSecret,
+  WEBHOOK_SECRET_PATTERN,
+} from './webhook-secret.js';
 
 /** Custom constraints, so the messages are fixed text and can never interpolate the submitted value. */
 @ValidatorConstraint({ name: 'razorpayKeyId' })
@@ -29,8 +34,18 @@ class KeySecretConstraint implements ValidatorConstraintInterface {
   }
 }
 
+@ValidatorConstraint({ name: 'razorpayWebhookSecret' })
+class WebhookSecretConstraint implements ValidatorConstraintInterface {
+  validate(value: unknown) {
+    return isValidWebhookSecret(value);
+  }
+  defaultMessage() {
+    return 'Enter a valid webhook secret: 8 to 128 letters, numbers or symbols, with no spaces.';
+  }
+}
+
 /**
- * Body of `PUT /payments/razorpay`: exactly these two fields, both required. Unknown fields (including a tenant ID)
+ * Body of `PUT /payments/razorpay`: the Key ID and Key Secret (both required) and an optional webhook secret. Unknown fields (including a tenant ID)
  * are rejected by the global ValidationPipe. Neither value is ever echoed back in an error.
  */
 export class SaveRazorpayConfigDto {
@@ -55,6 +70,19 @@ export class SaveRazorpayConfigDto {
   @IsString({ message: 'Enter your Razorpay Key Secret.' })
   @Validate(KeySecretConstraint)
   keySecret!: string;
+
+  @ApiPropertyOptional({
+    description:
+      'The webhook secret you set in Razorpay (Settings > Webhooks). 8 to 128 visible characters, no spaces. Optional: when left out, a webhook secret that is already saved is kept. It is stored encrypted and is never shown again or written to logs.',
+    pattern: WEBHOOK_SECRET_PATTERN.source,
+    minLength: 8,
+    maxLength: 128,
+    writeOnly: true,
+  })
+  @IsOptional()
+  @IsString({ message: 'Enter your Razorpay webhook secret.' })
+  @Validate(WebhookSecretConstraint)
+  webhookSecret?: string;
 }
 
 /**
@@ -68,6 +96,19 @@ export class RazorpayStatusDto {
       'True when a Key ID and Key Secret are saved. It does not mean they were checked with Razorpay.',
   })
   configured!: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'True when a webhook secret is saved. The secret itself is never returned.',
+  })
+  webhookSecretConfigured?: boolean;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'When the webhook secret was last saved, or null when none is saved.',
+  })
+  webhookSecretUpdatedAt?: Date | null;
 
   @ApiPropertyOptional({
     example: 'rzp_test_••••5678',

@@ -29,7 +29,7 @@ export class PaymentsController {
   @Get()
   @ApiEndpoint({
     summary: 'See the Razorpay settings',
-    description: `Shows whether your Razorpay Key ID and Key Secret are saved, with the Key ID partly hidden, whether it is Test or Live, and who saved it and when. The Key Secret is never shown. "Saved" does not mean the keys were checked with Razorpay. ${ORG_HEADER_NOTE}`,
+    description: `Shows whether your Razorpay Key ID and Key Secret are saved, with the Key ID partly hidden, whether it is Test or Live, whether a webhook secret is saved, and who saved it and when. The Key Secret and webhook secret are never shown. "Saved" does not mean the keys were checked with Razorpay. ${ORG_HEADER_NOTE}`,
     auth: 'org',
     permission: 'payments:manage (Owner only)',
     response: RazorpayStatusDto,
@@ -43,7 +43,7 @@ export class PaymentsController {
   @Throttle(SENSITIVE)
   @ApiEndpoint({
     summary: 'Save the Razorpay settings',
-    description: `Saves or replaces your Razorpay Key ID and Key Secret together. The Key Secret is encrypted before it is stored and cannot be viewed again; to change it, send a new pair. Nothing is sent to Razorpay. If payment settings are temporarily unavailable (503 PAYMENTS_UNAVAILABLE) nothing is saved and any existing settings stay as they were. ${ORG_HEADER_NOTE}`,
+    description: `Saves or replaces your Razorpay Key ID and Key Secret together, and optionally your webhook secret (the one you set in Razorpay under Settings > Webhooks). Secrets are encrypted before they are stored and cannot be viewed again; to change the Key Secret, send a new pair. Leave webhookSecret out to keep a saved webhook secret. Nothing is sent to Razorpay. If payment settings are temporarily unavailable (503 PAYMENTS_UNAVAILABLE) nothing is saved and any existing settings stay as they were. ${ORG_HEADER_NOTE}`,
     auth: 'org',
     permission: 'payments:manage (Owner only)',
     body: SaveRazorpayConfigDto,

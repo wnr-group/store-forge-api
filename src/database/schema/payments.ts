@@ -26,6 +26,14 @@ export const tenantRazorpayConfig = pgTable(
     iv: text('iv').notNull(),
     authTag: text('auth_tag').notNull(),
     keyVersion: smallint('key_version').notNull(),
+    // Webhook secret (migration 0044): all five NULL, or all set. Ciphertext only; the request role reads just the timestamp.
+    webhookSecretCiphertext: text('webhook_secret_ciphertext'),
+    webhookSecretIv: text('webhook_secret_iv'),
+    webhookSecretAuthTag: text('webhook_secret_auth_tag'),
+    webhookSecretKeyVersion: smallint('webhook_secret_key_version'),
+    webhookSecretUpdatedAt: timestamp('webhook_secret_updated_at', {
+      withTimezone: true,
+    }),
     updatedAt: timestamp('updated_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -44,6 +52,26 @@ export const tenantRazorpayConfig = pgTable(
     check(
       'trc_ciphertext_check',
       sql`${t.secretCiphertext} ~ '^[A-Za-z0-9+/]+={0,2}$' and char_length(${t.secretCiphertext}) <= 2048`,
+    ),
+    check(
+      'trc_webhook_all_or_none_check',
+      sql`(${t.webhookSecretCiphertext} is null and ${t.webhookSecretIv} is null and ${t.webhookSecretAuthTag} is null and ${t.webhookSecretKeyVersion} is null and ${t.webhookSecretUpdatedAt} is null) or (${t.webhookSecretCiphertext} is not null and ${t.webhookSecretIv} is not null and ${t.webhookSecretAuthTag} is not null and ${t.webhookSecretKeyVersion} is not null and ${t.webhookSecretUpdatedAt} is not null)`,
+    ),
+    check(
+      'trc_webhook_key_version_check',
+      sql`${t.webhookSecretKeyVersion} is null or ${t.webhookSecretKeyVersion} >= 1`,
+    ),
+    check(
+      'trc_webhook_iv_check',
+      sql`${t.webhookSecretIv} is null or ${t.webhookSecretIv} ~ '^[A-Za-z0-9+/]{16}$'`,
+    ),
+    check(
+      'trc_webhook_auth_tag_check',
+      sql`${t.webhookSecretAuthTag} is null or ${t.webhookSecretAuthTag} ~ '^[A-Za-z0-9+/]{22}==$'`,
+    ),
+    check(
+      'trc_webhook_ciphertext_check',
+      sql`${t.webhookSecretCiphertext} is null or (${t.webhookSecretCiphertext} ~ '^[A-Za-z0-9+/]+={0,2}$' and char_length(${t.webhookSecretCiphertext}) <= 2048)`,
     ),
   ],
 ).enableRLS();

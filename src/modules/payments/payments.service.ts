@@ -30,6 +30,7 @@ type StatusRow = {
   key_id: string;
   updated_at: string | Date;
   updated_by: string | null;
+  webhook_secret_updated_at: string | Date | null;
 };
 
 /**
@@ -55,8 +56,11 @@ export class PaymentsService {
     // Encrypt first: a missing or unusable key fails here, before the database is touched, so nothing is written and an
     // existing configuration stays exactly as it was. The key is read lazily from the environment on every save.
     let encrypted: ReturnType<typeof encryptSecret>;
+    let webhook: ReturnType<typeof encryptSecret> | undefined;
     try {
       encrypted = encryptSecret(dto.keySecret, org.tenantId);
+      if (dto.webhookSecret !== undefined)
+        webhook = encryptSecret(dto.webhookSecret, org.tenantId);
     } catch (error) {
       if (error instanceof CredentialsKeyError) {
         this.events.keyFailure(error.category);
@@ -66,6 +70,21 @@ export class PaymentsService {
       }
       throw error;
     }
+
+    // The webhook secret is optional. On insert an absent one is stored as NULL; on update an absent one leaves the saved one
+    // untouched (the SET fragment is simply left out, because reading the column back is not allowed for the request role).
+    const webhookInsert = {
+      ciphertext: webhook?.ciphertext ?? null,
+      iv: webhook?.iv ?? null,
+      authTag: webhook?.authTag ?? null,
+      keyVersion: webhook?.keyVersion ?? null,
+      updatedAt: webhook ? new Date().toISOString() : null,
+    };
+    const webhookUpdate = webhook
+      ? sql`, webhook_secret_ciphertext = ${webhook.ciphertext}, webhook_secret_iv = ${webhook.iv},
+                webhook_secret_auth_tag = ${webhook.authTag}, webhook_secret_key_version = ${webhook.keyVersion},
+                webhook_secret_updated_at = now()`
+      : sql``;
 
     const { status, replaced } = await this.db.withUser(
       org.userId,
@@ -83,9 +102,13 @@ export class PaymentsService {
           const inserted = rowsOf(
             await tx.execute(sql`
               insert into public.tenant_razorpay_config
-                (tenant_id, key_id, secret_ciphertext, iv, auth_tag, key_version, updated_at, updated_by)
+                (tenant_id, key_id, secret_ciphertext, iv, auth_tag, key_version, updated_at, updated_by,
+                  webhook_secret_ciphertext, webhook_secret_iv, webhook_secret_auth_tag, webhook_secret_key_version,
+                  webhook_secret_updated_at)
               values (${org.tenantId}::uuid, ${dto.keyId}, ${encrypted.ciphertext}, ${encrypted.iv}, ${encrypted.authTag},
-                ${encrypted.keyVersion}, now(), ${org.userId}::uuid)
+                ${encrypted.keyVersion}, now(), ${org.userId}::uuid,
+                ${webhookInsert.ciphertext}::text, ${webhookInsert.iv}::text, ${webhookInsert.authTag}::text,
+                ${webhookInsert.keyVersion}::smallint, ${webhookInsert.updatedAt}::timestamptz)
               on conflict (tenant_id) do nothing
               returning tenant_id`),
           );
@@ -98,7 +121,7 @@ export class PaymentsService {
               update public.tenant_razorpay_config set
                 key_id = ${dto.keyId}, secret_ciphertext = ${encrypted.ciphertext}, iv = ${encrypted.iv},
                 auth_tag = ${encrypted.authTag}, key_version = ${encrypted.keyVersion}, updated_at = now(),
-                updated_by = ${org.userId}::uuid
+                updated_by = ${org.userId}::uuid${webhookUpdate}
               where tenant_id = ${org.tenantId}::uuid
               returning tenant_id`),
           );
@@ -149,7 +172,7 @@ export class PaymentsService {
   ): Promise<RazorpayStatusDto> {
     const rows = rowsOf<StatusRow>(
       await tx.execute(
-        sql`select tenant_id, key_id, updated_at, updated_by from public.tenant_razorpay_config where tenant_id = ${org.tenantId}::uuid`,
+        sql`select tenant_id, key_id, updated_at, updated_by, webhook_secret_updated_at from public.tenant_razorpay_config where tenant_id = ${org.tenantId}::uuid`,
       ),
     );
     const row = rows[0];
@@ -161,6 +184,10 @@ export class PaymentsService {
       configured: true,
       keyIdMasked: maskKeyId(row.key_id),
       mode: razorpayModeOf(row.key_id),
+      webhookSecretConfigured: row.webhook_secret_updated_at !== null,
+      webhookSecretUpdatedAt: row.webhook_secret_updated_at
+        ? new Date(row.webhook_secret_updated_at)
+        : null,
       updatedAt: new Date(row.updated_at),
       updatedByName: updatedBy?.fullName ?? updatedBy?.email ?? null,
     };
