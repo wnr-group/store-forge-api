@@ -65,9 +65,6 @@ const toDto = (
   updatedByYou: !!r && r.updated_by === userId,
 });
 
-const TEST_NOTE =
-  'This confirms the ID is well formed and that Google serves its tag for it. Google offers no public way to confirm an ID belongs to your property: open Realtime in Google Analytics, then visit your store and agree to analytics to see yourself appear.';
-
 @Injectable()
 export class IntegrationsService {
   constructor(private readonly db: DatabaseService) {}
@@ -285,7 +282,7 @@ export class IntegrationsService {
               .join(', ')}`.slice(0, 300),
       );
     });
-    return { ok, checks, note: TEST_NOTE };
+    return { ok, checks, note: p.testNote };
   }
 
   /** Removes the configuration. The audit trail of what happened to it stays. */

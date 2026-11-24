@@ -31,6 +31,8 @@ export class Ga4Provider implements IntegrationProvider {
   readonly description =
     'Measure visits, product views, bags, checkouts and purchases in your own Google Analytics property.';
   readonly fields = FIELDS;
+  readonly testNote =
+    'This confirms the ID is well formed and that Google serves its tag for it. Google offers no public way to confirm an ID belongs to your property: open Realtime in Google Analytics, then visit your store and agree to analytics to see yourself appear.';
 
   parse(input: Record<string, unknown>): ParseResult {
     const { values, errors } = pickFields(FIELDS, input);

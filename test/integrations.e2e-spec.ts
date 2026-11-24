@@ -84,7 +84,16 @@ describe.skipIf(!migrationsAvailable)(
     describe('the list', () => {
       it('shows every supported integration, configured or not', async () => {
         const list = (await alice.get('/integrations').expect(200)).body.data;
-        expect(list).toHaveLength(1);
+        expect(list.map((i: { provider: string }) => i.provider)).toEqual([
+          'ga4',
+          'meta_pixel',
+        ]);
+        expect(list[1]).toMatchObject({
+          provider: 'meta_pixel',
+          name: 'Meta Pixel',
+          configured: false,
+          status: 'not_configured',
+        });
         expect(list[0]).toMatchObject({
           provider: 'ga4',
           name: 'Google Analytics 4',
@@ -345,6 +354,139 @@ describe.skipIf(!migrationsAvailable)(
         });
         expect((await ga4().test().expect(200)).body.data.ok).toBe(false);
         await ga4().disable().expect(200);
+      });
+    });
+
+    describe('Meta Pixel, next to Google Analytics', () => {
+      const PIXEL = '123456789012345';
+      const PIXEL2 = '999888777666555';
+      const meta = (c: Awaited<ReturnType<typeof as>> = alice) => ({
+        save: (pixelId: unknown = PIXEL) =>
+          c.put('/integrations/meta_pixel', { config: { pixelId } }),
+        enable: () => c.post('/integrations/meta_pixel/enable'),
+        disable: () => c.post('/integrations/meta_pixel/disable'),
+        test: () => c.post('/integrations/meta_pixel/test'),
+        remove: () => c.delete('/integrations/meta_pixel'),
+        get: () => c.get('/integrations/meta_pixel'),
+      });
+
+      it('refuses what is not a Pixel ID, including a Google ID, and names the field', async () => {
+        for (const bad of [
+          '',
+          'G-ABCDE12345',
+          '12345',
+          'act_123456789012345',
+          '1234567890123456789',
+        ]) {
+          const res = await meta().save(bad).expect(400);
+          expect(res.body.error.code).toBe('INTEGRATION_CONFIG_INVALID');
+          expect(res.body.error.details).toHaveProperty('pixelId');
+        }
+        await alice
+          .put('/integrations/meta_pixel', { config: { measurementId: ID } })
+          .expect(400);
+        // And the other way round: a Pixel ID is not a Measurement ID.
+        await ga4().save(PIXEL).expect(400);
+      });
+
+      it('saves validated but off, then serves its ID next to the Google one once switched on', async () => {
+        await ga4().save().expect(200);
+        await ga4().enable().expect(200);
+        const saved = (await meta().save(' 1234 5678 9012 345 ').expect(200))
+          .body.data;
+        expect(saved).toMatchObject({
+          provider: 'meta_pixel',
+          enabled: false,
+          validationStatus: 'valid',
+          config: { pixelId: PIXEL },
+        });
+        expect(
+          (await tracking('alpha-shop').expect(200)).body.data.providers.map(
+            (p: { provider: string }) => p.provider,
+          ),
+        ).toEqual(['ga4']);
+        await meta().enable().expect(200);
+        expect((await tracking('alpha-shop').expect(200)).body.data).toEqual({
+          providers: [
+            { provider: 'ga4', config: { measurementId: ID } },
+            { provider: 'meta_pixel', config: { pixelId: PIXEL } },
+          ],
+          consentRequired: true,
+        });
+      });
+
+      it('is independent of Google Analytics: each switches, changes and goes on its own', async () => {
+        await meta().disable().expect(200);
+        expect((await ga4().get().expect(200)).body.data.enabled).toBe(true);
+        await meta().enable().expect(200);
+        await ga4().disable().expect(200);
+        const providers = (await tracking('alpha-shop').expect(200)).body.data
+          .providers;
+        expect(providers).toEqual([
+          { provider: 'meta_pixel', config: { pixelId: PIXEL } },
+        ]);
+        // Changing the Pixel switches the Pixel off, not Google.
+        await ga4().enable().expect(200);
+        await meta().save(PIXEL2).expect(200);
+        expect((await meta().get().expect(200)).body.data.enabled).toBe(false);
+        expect((await ga4().get().expect(200)).body.data.enabled).toBe(true);
+        await meta().enable().expect(200);
+      });
+
+      it('keeps its own audit history and says what its test proves, without sending anything to the Pixel', async () => {
+        const seen: string[] = [];
+        vi.stubGlobal('fetch', async (url: unknown) => {
+          seen.push(String(url));
+          return new Response('window.fbq', { status: 200 });
+        });
+        const r = (await meta().test().expect(200)).body.data;
+        expect(r.ok).toBe(true);
+        expect(r.checks.map((c: { name: string }) => c.name)).toEqual([
+          'Pixel ID format',
+          'Meta script',
+        ]);
+        expect(r.note).toMatch(/Test events/);
+        expect(seen).toEqual([
+          'https://connect.facebook.net/en_US/fbevents.js',
+        ]);
+        const h = (await meta().get().expect(200)).body.data.history;
+        const text = JSON.stringify(h);
+        expect(text).not.toContain(PIXEL);
+        expect(text).not.toContain(PIXEL2);
+        expect(h.map((e: { action: string }) => e.action)).toContain(
+          'validate',
+        );
+        // The Google history holds none of the Pixel's entries.
+        const g = (await ga4().get().expect(200)).body.data.history;
+        expect(JSON.stringify(g)).not.toContain('Pixel');
+      });
+
+      it('is private to each store and removable on its own', async () => {
+        await meta(bob).save(PIXEL).expect(200);
+        await meta(bob).enable().expect(200);
+        const mine = (
+          await tracking('alpha-shop').expect(200)
+        ).body.data.providers.find(
+          (p: { provider: string }) => p.provider === 'meta_pixel',
+        );
+        const theirs = (await tracking('beta-shop').expect(200)).body.data
+          .providers;
+        expect(mine.config.pixelId).toBe(PIXEL2);
+        expect(theirs).toEqual([
+          { provider: 'meta_pixel', config: { pixelId: PIXEL } },
+        ]);
+        await meta(bob).remove().expect(200);
+        await meta().remove().expect(200);
+        expect(
+          (await tracking('alpha-shop').expect(200)).body.data.providers.map(
+            (p: { provider: string }) => p.provider,
+          ),
+        ).toEqual(['ga4']);
+        expect(
+          (await tracking('beta-shop').expect(200)).body.data.providers,
+        ).toEqual([]);
+        await ga4().remove().expect(200);
+        await meta(reader).save().expect(403);
       });
     });
 

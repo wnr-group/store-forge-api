@@ -30,6 +30,8 @@ export interface IntegrationProvider {
   readonly name: string;
   readonly description: string;
   readonly fields: readonly ProviderField[];
+  /** What a passing test does and does not prove, shown with its result. */
+  readonly testNote: string;
   /** Checks and normalizes what the owner typed. Unknown keys are an error: nothing is stored that was not asked for. */
   parse(input: Record<string, unknown>): ParseResult;
   /** Checks done with the outside world; never throws, never receives or returns a secret. */
