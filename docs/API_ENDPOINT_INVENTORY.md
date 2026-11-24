@@ -146,6 +146,9 @@ All: Auth `JWT+Org`, permission `members:manage`. DB `memberships`, `profiles`, 
 | 54j | Confirm a payment | POST `/billing/payments/verify` | Owner (`billing:manage`) | throttled | checkout signature, then a lookup at Razorpay; idempotent |
 | 54k | Razorpay webhooks for StoreForge billing | POST `/webhooks/billing/razorpay` | public, signed | throttled | signature over the raw body; one row per event id; `internal/jobs/billing` (cron) is hidden from the docs |
 | 54l | Activity log filter options | GET `/platform/audit-logs/filters` | `audit:read` | - | every action and entity type, for filter lists |
+| 54m | Platform health, services, errors, jobs and alerts | GET `/platform/monitoring/overview` | `monitoring:read` | - | built to be polled; measured vs configured vs not measured; no secrets |
+| 54n | Recent server errors `?search&page&limit` | GET `/platform/monitoring/errors` | `monitoring:read` | - | route template, class, sanitised message, request id |
+| 54o | Scheduled job runs `?job&status&page&limit` | GET `/platform/monitoring/jobs` | `monitoring:read` | - | recorded by the `/internal/jobs/*` routes |
 | 54 | Suspend / reactivate | PATCH `/platform/organizations/:id/status` | admin | org.edit | audit suspended/reactivated only on change |
 | 55 | Edit store | PATCH `/platform/organizations/:id/store` | admin | org.edit | name, description, contacts, currency, timezone (not slug/logo); currency lock |
 | 56 | Add member | POST `/platform/organizations/:id/members` | admin | team.manage | Auth user -> `platform_add_member` + audit in one tx; compensate |

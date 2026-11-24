@@ -1,4 +1,5 @@
 import { Controller, Get, Headers } from '@nestjs/common';
+import { MonitoringRecorder } from '../monitoring/monitoring.recorder.js';
 import { ConfigService } from '@nestjs/config';
 import { ApiExcludeController } from '@nestjs/swagger';
 import { authorizeJob } from '../../common/job-auth.js';
@@ -18,6 +19,7 @@ export class JobsController {
   constructor(
     private readonly expiry: ReservationExpiryService,
     private readonly carts: CartRecoveryService,
+    private readonly monitoring: MonitoringRecorder,
     private readonly config: ConfigService<AppConfig, true>,
   ) {}
 
@@ -27,7 +29,9 @@ export class JobsController {
       this.config.get('cron', { infer: true }).secret,
       authorization,
     );
-    return this.expiry.expireDue();
+    return this.monitoring.runJob('expire-reservations', () =>
+      this.expiry.expireDue(),
+    );
   }
 
   /** Deletes saved carts (and the shopper details in them) that are past their retention. See migration 0058. */
@@ -37,6 +41,8 @@ export class JobsController {
       this.config.get('cron', { infer: true }).secret,
       authorization,
     );
-    return this.carts.purgeStale();
+    return this.monitoring.runJob('purge-abandoned-carts', () =>
+      this.carts.purgeStale(),
+    );
   }
 }

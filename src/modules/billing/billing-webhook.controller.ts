@@ -1,4 +1,5 @@
 import { Controller, Get, Headers, HttpCode, Post, Req } from '@nestjs/common';
+import { MonitoringRecorder } from '../monitoring/monitoring.recorder.js';
 import { ConfigService } from '@nestjs/config';
 import { ApiExcludeController, ApiHeader, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
@@ -46,6 +47,7 @@ export class BillingWebhookController {
 export class BillingJobsController {
   constructor(
     private readonly billing: BillingService,
+    private readonly monitoring: MonitoringRecorder,
     private readonly config: ConfigService<AppConfig, true>,
   ) {}
 
@@ -55,6 +57,6 @@ export class BillingJobsController {
       this.config.get('cron', { infer: true }).secret,
       authorization,
     );
-    return this.billing.scheduledRun();
+    return this.monitoring.runJob('billing', () => this.billing.scheduledRun());
   }
 }

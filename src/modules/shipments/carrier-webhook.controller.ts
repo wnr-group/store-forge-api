@@ -7,6 +7,7 @@ import {
   Post,
   Req,
 } from '@nestjs/common';
+import { MonitoringRecorder } from '../monitoring/monitoring.recorder.js';
 import { ConfigService } from '@nestjs/config';
 import { ApiExcludeController, ApiParam, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
@@ -74,6 +75,7 @@ export class CarrierWebhookController {
 export class ShipmentJobsController {
   constructor(
     private readonly tracking: ShipmentTrackingService,
+    private readonly monitoring: MonitoringRecorder,
     private readonly config: ConfigService<AppConfig, true>,
   ) {}
 
@@ -83,6 +85,8 @@ export class ShipmentJobsController {
       this.config.get('cron', { infer: true }).secret,
       authorization,
     );
-    return this.tracking.syncDue();
+    return this.monitoring.runJob('sync-shipments', () =>
+      this.tracking.syncDue(),
+    );
   }
 }

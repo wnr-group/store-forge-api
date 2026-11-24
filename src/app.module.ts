@@ -4,6 +4,7 @@ import {
   NestModule,
   RequestMethod,
 } from '@nestjs/common';
+import { MonitoringModule } from './modules/monitoring/monitoring.module.js';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -100,6 +101,7 @@ import { UsersModule } from './modules/users/users.module.js';
     PublicModule,
     PlatformAdminModule,
     BillingModule,
+    MonitoringModule,
   ],
   providers: [
     // Order matters: throttle -> CSRF -> authenticate -> resolve organization -> permission -> plan feature -> platform admin.

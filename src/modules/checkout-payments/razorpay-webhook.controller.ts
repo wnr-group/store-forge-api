@@ -7,6 +7,7 @@ import {
   Post,
   Req,
 } from '@nestjs/common';
+import { MonitoringRecorder } from '../monitoring/monitoring.recorder.js';
 import { ConfigService } from '@nestjs/config';
 import {
   ApiExcludeController,
@@ -66,6 +67,7 @@ export class RazorpayWebhookController {
 export class PaymentJobsController {
   constructor(
     private readonly reconciliation: PaymentReconciliationService,
+    private readonly monitoring: MonitoringRecorder,
     private readonly config: ConfigService<AppConfig, true>,
   ) {}
 
@@ -75,6 +77,8 @@ export class PaymentJobsController {
       this.config.get('cron', { infer: true }).secret,
       authorization,
     );
-    return this.reconciliation.reconcile();
+    return this.monitoring.runJob('reconcile-payments', () =>
+      this.reconciliation.reconcile(),
+    );
   }
 }

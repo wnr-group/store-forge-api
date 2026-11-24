@@ -633,7 +633,8 @@ describe.skipIf(!migrationsAvailable)(
         // 162 adds the five entitlement routes of phase 4;
         // 184 adds the dashboard, billing and tenant billing routes of phase 5;
         // 185 adds the audit log filter options of phase 6.
-        expect(ops.length - payments.length - orderRoutes.length).toBe(185);
+        // 188 adds the three monitoring routes of phase 7.
+        expect(ops.length - payments.length - orderRoutes.length).toBe(188);
         expect(payments.sort()).toEqual([
           'delete /api/v1/payments/razorpay',
           'get /api/v1/payments/cod',
