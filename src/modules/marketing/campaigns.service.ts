@@ -3,6 +3,7 @@ import { sql, type SQL } from 'drizzle-orm';
 import { conflict, invalid, notFound } from '../../common/app.exception.js';
 import { mapErrors } from '../../common/db-errors.js';
 import { Paginated } from '../../common/dto/api-response.dto.js';
+import { pageWithTotal, WINDOW_TOTAL } from '../../common/db-paging.js';
 import { likeTerm, offsetOf } from '../../common/dto/pagination-query.dto.js';
 import type { OrgContext } from '../../common/interfaces/request-context.js';
 import {
@@ -122,20 +123,16 @@ export class CampaignsService {
             ? sql`s.starts_at ${dir} nulls last`
             : sql`s.created_at ${dir}`;
       const base = this.baseQuery(ctx.tenantId, where);
-      const [rows, total] = await Promise.all([
-        tx.execute(sql`
-          select s.* from (${base}) s order by ${order} limit ${q.limit} offset ${offsetOf(q)}`),
-        tx.execute(sql`
-          select count(*)::int as n from public.promotional_campaigns c where c.tenant_id = ${ctx.tenantId}::uuid and ${where}`),
-      ]);
+      const { rows, total } = await pageWithTotal<Row & { total_rows: number }>(
+        tx,
+        sql`select s.*, ${WINDOW_TOTAL} from (${base}) s order by ${order} limit ${q.limit} offset ${offsetOf(q)}`,
+        q.page,
+        sql`select count(*)::int as n from public.promotional_campaigns c where c.tenant_id = ${ctx.tenantId}::uuid and ${where}`,
+      );
       const now = new Date();
       return new Paginated(
-        rowsOf<Row>(rows).map((r) => toDto(r, now)),
-        {
-          page: q.page,
-          limit: q.limit,
-          total: rowsOf<{ n: number }>(total)[0].n,
-        },
+        rows.map((r) => toDto(r, now)),
+        { page: q.page, limit: q.limit, total },
       );
     });
   }

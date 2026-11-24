@@ -3,6 +3,7 @@ import { sql, type SQL } from 'drizzle-orm';
 import { conflict, invalid, notFound } from '../../common/app.exception.js';
 import { mapErrors } from '../../common/db-errors.js';
 import { Paginated } from '../../common/dto/api-response.dto.js';
+import { pageWithTotal, WINDOW_TOTAL } from '../../common/db-paging.js';
 import { likeTerm, offsetOf } from '../../common/dto/pagination-query.dto.js';
 import type { OrgContext } from '../../common/interfaces/request-context.js';
 import {
@@ -198,13 +199,30 @@ export class DiscountsService {
           : q.sortBy === 'redemptions'
             ? sql`s.in_use ${dir}, s.created_at desc`
             : sql`s.created_at ${dir}`;
+      // A status filter needs every code's use worked out before the page can be cut, so there one evaluation (with the total riding
+      // along) is cheapest. Without it only the page's own codes need their figures, and a separate count skips them entirely.
+      if (q.status) {
+        const { rows, total } = await pageWithTotal<
+          Row & { total_rows: number }
+        >(
+          tx,
+          sql`
+            select s.*, ${WINDOW_TOTAL} from (${base}) s ${statusFilter}
+            order by ${order} limit ${q.limit} offset ${offsetOf(q)}`,
+          q.page,
+          sql`select count(*)::int as n from (${base}) s ${statusFilter}`,
+        );
+        return new Paginated(rows.map(toDto), {
+          page: q.page,
+          limit: q.limit,
+          total,
+        });
+      }
       const [rows, total] = await Promise.all([
         tx.execute(sql`
-          select s.* from (${base}) s ${statusFilter}
+          select s.* from (${base}) s
           order by ${order} limit ${q.limit} offset ${offsetOf(q)}`),
-        tx.execute(
-          sql`select count(*)::int as n from (${base}) s ${statusFilter}`,
-        ),
+        tx.execute(sql`select count(*)::int as n from (${base}) s`),
       ]);
       return new Paginated(rowsOf<Row>(rows).map(toDto), {
         page: q.page,

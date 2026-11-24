@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { sql, type SQL } from 'drizzle-orm';
 import { forbidden, notFound } from '../../common/app.exception.js';
 import { Paginated } from '../../common/dto/api-response.dto.js';
+import { pageWithTotal, WINDOW_TOTAL } from '../../common/db-paging.js';
 import {
   resolveDayRange,
   withinRange,
@@ -164,17 +165,16 @@ export class AbandonedCartsService {
           ? sql`x.cart_value_minor ${dir}, x.last_activity_at desc`
           : sql`x.last_activity_at ${dir}`;
       const base = cartsSql(ctx.tenantId);
-      const [rows, total] = await Promise.all([
-        tx.execute(sql`
-          select x.* from (${base}) x where ${where} order by ${order} limit ${q.limit} offset ${offsetOf(q)}`),
-        tx.execute(
-          sql`select count(*)::int as n from (${base}) x where ${where}`,
-        ),
-      ]);
-      return new Paginated(rowsOf<Row>(rows).map(toDto), {
+      const { rows, total } = await pageWithTotal<Row & { total_rows: number }>(
+        tx,
+        sql`select x.*, ${WINDOW_TOTAL} from (${base}) x where ${where} order by ${order} limit ${q.limit} offset ${offsetOf(q)}`,
+        q.page,
+        sql`select count(*)::int as n from (${base}) x where ${where}`,
+      );
+      return new Paginated(rows.map(toDto), {
         page: q.page,
         limit: q.limit,
-        total: rowsOf<{ n: number }>(total)[0].n,
+        total,
       });
     });
   }

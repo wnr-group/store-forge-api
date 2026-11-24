@@ -1,6 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { as, createTestApp, type TestApp } from './support/app.js';
-import { createTestDb, migrationsAvailable } from './support/pglite.js';
+import { sql } from 'drizzle-orm';
+import {
+  asUser,
+  createTestDb,
+  createUser,
+  migrationsAvailable,
+} from './support/pglite.js';
 import { seedWorld, type World } from './support/world.js';
 
 const RANGE = 'from=2026-03-01&to=2026-03-31';
@@ -628,6 +634,116 @@ describe.skipIf(!migrationsAvailable)(
           )
           .expect(404);
         await alice.get('/analytics/customers/not-a-uuid/history').expect(400);
+      });
+    });
+
+    describe('members whose access is not the whole picture (migration 0059)', () => {
+      let customersOnly: Awaited<ReturnType<typeof as>>;
+      let ordersOnly: Awaited<ReturnType<typeof as>>;
+
+      beforeAll(async () => {
+        const member = async (email: string, permissions: object) => {
+          const id = await createUser(t.db, email, email);
+          await t.db.asOwner((pg) =>
+            pg.query(
+              "insert into memberships (tenant_id, user_id, role, permissions, status) values ($1,$2,'admin',$3::jsonb,'active')",
+              [w.tenantA, id, JSON.stringify(permissions)],
+            ),
+          );
+          return as(t, id, w.tenantA);
+        };
+        customersOnly = await member('customers-only@example.test', {
+          products: 'none',
+          orders: 'none',
+          customers: 'read',
+          settings: 'read',
+          design: 'none',
+        });
+        ordersOnly = await member('orders-only@example.test', {
+          products: 'none',
+          orders: 'read',
+          customers: 'none',
+          settings: 'read',
+          design: 'none',
+        });
+      });
+
+      it('answer a member who may see customers but not orders with a refusal, never with a report of zeros', async () => {
+        for (const path of [
+          '/analytics/customers',
+          '/analytics/customers/top',
+          `/analytics/customers/${cx}/history`,
+        ]) {
+          const res = await customersOnly.get(path).expect(403);
+          expect(res.body.error.code).toBe('FORBIDDEN');
+        }
+        await customersOnly.get('/analytics/sales').expect(403);
+        await customersOnly.get('/analytics/products').expect(403);
+      });
+
+      it('show a member who may see orders but not the catalogue the real product report, not an empty one', async () => {
+        const r = (
+          await ordersOnly.get(`/analytics/products?${RANGE}`).expect(200)
+        ).body;
+        expect(r.data.map((p: { slug: string }) => p.slug)).toEqual([
+          'rp-pen',
+          'rp-mug',
+          'rp-old',
+          'rp-lamp',
+        ]);
+        expect(
+          (await ordersOnly.get(`/analytics/sales?${RANGE}`).expect(200)).body
+            .data.totals.netSalesMinor,
+        ).toBe(375000);
+        await ordersOnly.get('/analytics/customers').expect(403);
+        await ordersOnly.get('/products').expect(403);
+      });
+
+      it('refuse the report functions to anyone who is not a member of the store, even when called directly', async () => {
+        const call = (user: string, fn: string) =>
+          asUser(t.db, user, (tx) =>
+            tx.execute(
+              sql.raw(
+                `select count(*) from public.${fn}('${w.tenantA}'::uuid)`,
+              ),
+            ),
+          );
+        for (const fn of ['report_products', 'report_customers'])
+          await expect(call(w.bob, fn)).rejects.toThrow();
+        await expect(
+          asUser(t.db, w.bob, (tx) =>
+            tx.execute(
+              sql.raw(
+                `select count(*) from public.report_counted_orders('${w.tenantA}'::uuid, null, null, array['delivered'])`,
+              ),
+            ),
+          ),
+        ).rejects.toThrow();
+        await expect(
+          asUser(t.db, w.bob, (tx) =>
+            tx.execute(
+              sql.raw(
+                `select count(*) from public.report_counted_items('${w.tenantA}'::uuid, null, null, array['delivered'])`,
+              ),
+            ),
+          ),
+        ).rejects.toThrow();
+      });
+
+      it('give nothing to the anonymous role', async () => {
+        const rows = await t.db.asOwner((pg) =>
+          pg.query<{ fn: string; anon: boolean; authed: boolean }>(
+            `select p.proname as fn, has_function_privilege('anon', p.oid, 'execute') as anon, has_function_privilege('authenticated', p.oid, 'execute') as authed
+             from pg_proc p where p.proname in ('report_counted_orders','report_counted_items','report_products','report_customers')`,
+          ),
+        );
+        expect(rows.rows).toHaveLength(4);
+        for (const r of rows.rows)
+          expect(r).toMatchObject({ anon: false, authed: true });
+      });
+
+      it("count one customer's history only from that store", async () => {
+        await bob.get(`/analytics/customers/${cx}/history`).expect(404);
       });
     });
 

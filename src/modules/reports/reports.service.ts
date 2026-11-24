@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { sql, type SQL } from 'drizzle-orm';
 import { notFound } from '../../common/app.exception.js';
+import { mapErrors } from '../../common/db-errors.js';
+import { pageWithTotal, WINDOW_TOTAL } from '../../common/db-paging.js';
 import { Paginated } from '../../common/dto/api-response.dto.js';
 import {
   resolveDayRange,
@@ -39,6 +41,23 @@ const revenue = sql.join(
   REVENUE_ORDER_STATUSES.map((s) => sql`${s}`),
   sql`, `,
 );
+
+/** The statuses that count as sales, handed to the report functions so the list lives in one place. */
+const STATUS_ARRAY = sql`array[${revenue}]::text[]`;
+const fromTs = (r: DayRange, tz: string) =>
+  sql`(${r.from}::date)::timestamp at time zone ${tz}`;
+const toTs = (r: DayRange, tz: string) =>
+  sql`((${r.to}::date + 1))::timestamp at time zone ${tz}`;
+const none = sql`null::timestamptz`;
+
+/**
+ * The orders that count as sales, from the report function of migration 0059: access is checked once for the whole call (not once per
+ * row), a missing access is a 403 (not a report full of zeros), and a null range means every order.
+ */
+const countedOrders = (tenantId: string, range: DayRange | null, tz: string) =>
+  sql`public.report_counted_orders(${tenantId}::uuid, ${range ? fromTs(range, tz) : none}, ${range ? toTs(range, tz) : none}, ${STATUS_ARRAY})`;
+const countedItems = (tenantId: string, range: DayRange, tz: string) =>
+  sql`public.report_counted_items(${tenantId}::uuid, ${fromTs(range, tz)}, ${toTs(range, tz)}, ${STATUS_ARRAY})`;
 
 const MAX_DAYS: Record<ReportInterval, number> = {
   day: 366,
@@ -143,6 +162,11 @@ export function previousRange(range: DayRange): DayRange {
 export class ReportsService {
   constructor(private readonly db: DatabaseService) {}
 
+  /** Runs a report as the signed-in member. A database refusal ("permission denied") becomes a 403, never an empty report. */
+  private run<T>(ctx: OrgContext, fn: (tx: DbTx) => Promise<T>): Promise<T> {
+    return mapErrors(() => this.db.withUser(ctx.userId, fn));
+  }
+
   private async store(tx: DbTx, tenantId: string) {
     const store = await getPrimaryStoreInTx(tx, tenantId);
     if (!store)
@@ -172,11 +196,8 @@ export class ReportsService {
           from generate_series(date_trunc(${interval}, ${range.from}::date)::date, ${range.to}::date, ${STEP[interval]}::interval) g
         ),
         counted as (
-          select o.id, o.placed_at, o.subtotal_minor, o.discount_minor, o.shipping_minor + o.cod_fee_minor as fees,
-                 o.tax_minor, o.total_minor
-          from public.orders o
-          where o.tenant_id = ${tenantId}::uuid and o.status in (${revenue})
-            and ${withinRange(sql`o.placed_at`, range, tz)}
+          select o.id, o.placed_at, o.subtotal_minor, o.discount_minor, o.fees_minor as fees, o.tax_minor, o.total_minor
+          from ${countedOrders(tenantId, range, tz)} o
         ),
         sales as (
           select ${bucket(sql`c.placed_at`)} as bucket, count(*)::int as orders, sum(c.subtotal_minor)::float8 as gross,
@@ -206,21 +227,18 @@ export class ReportsService {
   ): Promise<SalesFiguresDto> {
     const r = rowsOf<FigureRow>(
       await tx.execute(sql`
-        select count(*)::int as orders, coalesce(sum(o.subtotal_minor), 0)::float8 as gross,
-               coalesce(sum(o.discount_minor), 0)::float8 as discounts,
-               coalesce(sum(o.shipping_minor + o.cod_fee_minor), 0)::float8 as fees,
-               coalesce(sum(o.tax_minor), 0)::float8 as tax, coalesce(sum(o.total_minor), 0)::float8 as total,
-               coalesce((select sum(r.refunded_minor) from public.order_refund_totals(${tenantId}::uuid) r
-                         join public.orders ro on ro.id = r.order_id and ro.tenant_id = ${tenantId}::uuid
-                         where ro.status in (${revenue}) and ${withinRange(sql`ro.placed_at`, range, tz)}), 0)::float8 as refunds
-        from public.orders o
-        where o.tenant_id = ${tenantId}::uuid and o.status in (${revenue}) and ${withinRange(sql`o.placed_at`, range, tz)}`),
+        with c as (select * from ${countedOrders(tenantId, range, tz)} o)
+        select count(*)::int as orders, coalesce(sum(c.subtotal_minor), 0)::float8 as gross,
+               coalesce(sum(c.discount_minor), 0)::float8 as discounts, coalesce(sum(c.fees_minor), 0)::float8 as fees,
+               coalesce(sum(c.tax_minor), 0)::float8 as tax, coalesce(sum(c.total_minor), 0)::float8 as total,
+               coalesce((select sum(r.refunded_minor) from public.order_refund_totals(${tenantId}::uuid) r join c c2 on c2.id = r.order_id), 0)::float8 as refunds
+        from c`),
     )[0];
     return figuresOf(r);
   }
 
   async sales(ctx: OrgContext, q: SalesQueryDto): Promise<SalesReportDto> {
-    return this.db.withUser(ctx.userId, async (tx) => {
+    return this.run(ctx, async (tx) => {
       const { tz, currency } = await this.store(tx, ctx.tenantId);
       const range = resolveDayRange(q, tz, {
         defaultDays: 30,
@@ -260,7 +278,7 @@ export class ReportsService {
     ctx: OrgContext,
     q: ProductReportQueryDto,
   ): Promise<Paginated<ProductPerformanceDto>> {
-    return this.db.withUser(ctx.userId, async (tx) => {
+    return this.run(ctx, async (tx) => {
       const { tz } = await this.store(tx, ctx.tenantId);
       const range = resolveDayRange(q, tz);
       const dir = q.sortOrder === 'asc' ? sql`asc` : sql`desc`;
@@ -278,21 +296,19 @@ export class ReportsService {
         with sold as (
           select i.product_id, sum(i.quantity)::int as units, sum(i.total_minor)::float8 as revenue,
                  count(distinct i.order_id)::int as orders
-          from public.order_items i join public.orders o on o.tenant_id = i.tenant_id and o.id = i.order_id
-          where i.tenant_id = ${ctx.tenantId}::uuid and i.product_id is not null and o.status in (${revenue})
-            and ${withinRange(sql`o.placed_at`, range, tz)}
+          from ${countedItems(ctx.tenantId, range, tz)} i
           group by i.product_id
         )
         select p.id, p.name, p.slug, p.status, coalesce(s.units, 0)::int as units, coalesce(s.revenue, 0)::float8 as revenue,
                coalesce(s.orders, 0)::int as orders
-        from public.products p left join sold s on s.product_id = p.id
-        where p.tenant_id = ${ctx.tenantId}::uuid and (p.status = 'active' or s.product_id is not null) ${search}`;
-      const [rows, total] = await Promise.all([
-        tx.execute(sql`
-          select * from (${base}) x order by ${key} ${dir}, revenue ${dir}, name asc, id asc
-          limit ${q.limit} offset ${offsetOf(q)}`),
-        tx.execute(sql`select count(*)::int as n from (${base}) x`),
-      ]);
+        from public.report_products(${ctx.tenantId}::uuid) p left join sold s on s.product_id = p.id
+        where (p.status = 'active' or s.product_id is not null) ${search}`;
+      const { rows, total } = await pageWithTotal(
+        tx,
+        sql`select x.*, ${WINDOW_TOTAL} from (${base}) x order by ${key} ${dir}, revenue ${dir}, name asc, id asc limit ${q.limit} offset ${offsetOf(q)}`,
+        q.page,
+        sql`select count(*)::int as n from (${base}) x`,
+      );
       return new Paginated(
         rowsOf<{
           id: string;
@@ -312,11 +328,7 @@ export class ReportsService {
           orders: r.orders,
           conversionRatePercent: null,
         })),
-        {
-          page: q.page,
-          limit: q.limit,
-          total: rowsOf<{ n: number }>(total)[0].n,
-        },
+        { page: q.page, limit: q.limit, total },
       );
     });
   }
@@ -327,7 +339,7 @@ export class ReportsService {
     ctx: OrgContext,
     q: CustomerReportQueryDto,
   ): Promise<CustomerSummaryDto> {
-    return this.db.withUser(ctx.userId, async (tx) => {
+    return this.run(ctx, async (tx) => {
       const { tz } = await this.store(tx, ctx.tenantId);
       const range = resolveDayRange(q, tz);
       const inRange = withinRange(sql`o.placed_at`, range, tz);
@@ -349,14 +361,14 @@ export class ReportsService {
                    coalesce(sum(o.total_minor) filter (where ${inRange}), 0)::float8 as spend,
                    count(*) filter (where ${before})::int as prior,
                    count(*)::int as everything
-            from public.orders o
-            where o.tenant_id = ${ctx.tenantId}::uuid and o.customer_id is not null and o.status in (${revenue})
+            from ${countedOrders(ctx.tenantId, null, tz)} o
+            where o.customer_id is not null
             group by o.customer_id
           )
           select
-            (select count(*)::int from public.customers where tenant_id = ${ctx.tenantId}::uuid) as total_customers,
-            (select count(*)::int from public.customers c where c.tenant_id = ${ctx.tenantId}::uuid
-               and ${withinRange(sql`c.created_at`, range, tz)}) as new_customers,
+            (select count(*)::int from public.report_customers(${ctx.tenantId}::uuid)) as total_customers,
+            (select count(*)::int from public.report_customers(${ctx.tenantId}::uuid) c
+               where ${withinRange(sql`c.created_at`, range, tz)}) as new_customers,
             count(*) filter (where in_range > 0)::int as buyers,
             count(*) filter (where in_range > 0 and prior > 0)::int as returning,
             coalesce(sum(in_range), 0)::int as orders_in_range,
@@ -391,7 +403,7 @@ export class ReportsService {
     ctx: OrgContext,
     q: TopCustomerQueryDto,
   ): Promise<Paginated<TopCustomerDto>> {
-    return this.db.withUser(ctx.userId, async (tx) => {
+    return this.run(ctx, async (tx) => {
       const { tz } = await this.store(tx, ctx.tenantId);
       const range = resolveDayRange(q, tz);
       const dir = q.sortOrder === 'asc' ? sql`asc` : sql`desc`;
@@ -401,14 +413,16 @@ export class ReportsService {
         : sql``;
       const base = sql`
         select c.id, c.full_name, c.email, count(*)::int as orders, sum(o.total_minor)::float8 as revenue, max(o.placed_at) as last_order_at
-        from public.customers c join public.orders o on o.tenant_id = c.tenant_id and o.customer_id = c.id
-        where c.tenant_id = ${ctx.tenantId}::uuid and o.status in (${revenue}) and ${withinRange(sql`o.placed_at`, range, tz)} ${search}
+        from public.report_customers(${ctx.tenantId}::uuid) c
+        join ${countedOrders(ctx.tenantId, range, tz)} o on o.customer_id = c.id
+        where true ${search}
         group by c.id, c.full_name, c.email`;
-      const [rows, total] = await Promise.all([
-        tx.execute(sql`
-          select * from (${base}) x order by ${key} ${dir}, revenue ${dir}, id asc limit ${q.limit} offset ${offsetOf(q)}`),
-        tx.execute(sql`select count(*)::int as n from (${base}) x`),
-      ]);
+      const { rows, total } = await pageWithTotal(
+        tx,
+        sql`select x.*, ${WINDOW_TOTAL} from (${base}) x order by ${key} ${dir}, revenue ${dir}, id asc limit ${q.limit} offset ${offsetOf(q)}`,
+        q.page,
+        sql`select count(*)::int as n from (${base}) x`,
+      );
       return new Paginated(
         rowsOf<{
           id: string;
@@ -425,11 +439,7 @@ export class ReportsService {
           revenueMinor: Number(r.revenue),
           lastOrderAt: new Date(r.last_order_at),
         })),
-        {
-          page: q.page,
-          limit: q.limit,
-          total: rowsOf<{ n: number }>(total)[0].n,
-        },
+        { page: q.page, limit: q.limit, total },
       );
     });
   }
@@ -439,7 +449,7 @@ export class ReportsService {
     id: string,
     q: CustomerHistoryQueryDto,
   ): Promise<CustomerHistoryDto> {
-    return this.db.withUser(ctx.userId, async (tx) => {
+    return this.run(ctx, async (tx) => {
       const c = rowsOf<{
         id: string;
         full_name: string;
@@ -451,13 +461,14 @@ export class ReportsService {
         total_orders: number;
       }>(
         await tx.execute(sql`
+          with lifetime as (select o.placed_at, o.total_minor from ${countedOrders(ctx.tenantId, null, 'UTC')} o where o.customer_id = ${id}::uuid)
           select c.id, c.full_name, c.email,
-            (select count(*)::int from public.orders o where o.tenant_id = c.tenant_id and o.customer_id = c.id and o.status in (${revenue})) as lifetime_orders,
-            (select coalesce(sum(o.total_minor), 0)::float8 from public.orders o where o.tenant_id = c.tenant_id and o.customer_id = c.id and o.status in (${revenue})) as lifetime_revenue,
-            (select min(o.placed_at) from public.orders o where o.tenant_id = c.tenant_id and o.customer_id = c.id and o.status in (${revenue})) as first_order_at,
-            (select max(o.placed_at) from public.orders o where o.tenant_id = c.tenant_id and o.customer_id = c.id and o.status in (${revenue})) as last_order_at,
-            (select count(*)::int from public.orders o where o.tenant_id = c.tenant_id and o.customer_id = c.id) as total_orders
-          from public.customers c where c.tenant_id = ${ctx.tenantId}::uuid and c.id = ${id}::uuid`),
+            (select count(*)::int from lifetime l) as lifetime_orders,
+            (select coalesce(sum(l.total_minor), 0)::float8 from lifetime l) as lifetime_revenue,
+            (select min(l.placed_at) from lifetime l) as first_order_at,
+            (select max(l.placed_at) from lifetime l) as last_order_at,
+            (select count(*)::int from public.orders o where o.tenant_id = ${ctx.tenantId}::uuid and o.customer_id = c.id) as total_orders
+          from public.report_customers(${ctx.tenantId}::uuid) c where c.id = ${id}::uuid`),
       )[0];
       if (!c)
         throw notFound('That customer no longer exists.', 'CUSTOMER_NOT_FOUND');

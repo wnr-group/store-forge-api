@@ -407,6 +407,20 @@
       "when": 1794300040000,
       "tag": "0057_public_tracking_config",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1794300041000,
+      "tag": "0058_abandoned_cart_retention",
+      "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1794300042000,
+      "tag": "0059_report_read_functions",
+      "breakpoints": true
     }
   ]
 }

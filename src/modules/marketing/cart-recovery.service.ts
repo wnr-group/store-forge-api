@@ -13,6 +13,7 @@ import type {
   CartConversion,
   CheckoutCartTracker,
 } from '../orders/checkout-hooks.js';
+import { NO_TENANT } from '../orders/checkout.service.js';
 import { priceLines, type RequestedLine } from '../orders/checkout-pricing.js';
 import { heldQuantities } from '../orders/stock-reservations.js';
 import { CredentialsKeyError } from '../payments/credentials-key.js';
@@ -157,6 +158,31 @@ export class CartRecoveryService implements CheckoutCartTracker {
         issues: priced.issues,
       };
     });
+  }
+
+  /**
+   * Deletes saved carts that have outlived their purpose (see migration 0058), a batch at a time, until none are left or `maxBatches`
+   * is reached. Run by the scheduler; a failed batch stops the run and is reported, never thrown at the scheduler.
+   */
+  async purgeStale(
+    batch = 2000,
+    maxBatches = 20,
+  ): Promise<{ deleted: number; complete: boolean }> {
+    let deleted = 0;
+    for (let i = 0; i < maxBatches; i += 1) {
+      const n = await this.db.withCheckout(
+        NO_TENANT,
+        async (tx) =>
+          rowsOf<{ n: number }>(
+            await tx.execute(
+              sql`select public.purge_stale_abandoned_carts(${batch}) as n`,
+            ),
+          )[0].n,
+      );
+      deleted += n;
+      if (n < batch) return { deleted, complete: true };
+    }
+    return { deleted, complete: false };
   }
 
   /**

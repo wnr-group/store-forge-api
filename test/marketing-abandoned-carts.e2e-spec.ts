@@ -2,9 +2,12 @@ import { randomBytes } from 'node:crypto';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { as, createTestApp, type TestApp } from './support/app.js';
+import { sql } from 'drizzle-orm';
+import { CartRecoveryService } from '../src/modules/marketing/cart-recovery.service.js';
 import { createTestDb, migrationsAvailable } from './support/pglite.js';
 import { seedWorld, type World } from './support/world.js';
 
+const CRON_SECRET = 'cron-secret-for-tests-0123456789abcdef-xyz';
 const KEY_ENV = [
   'CREDENTIALS_ENCRYPTION_KEY_V1',
   'CREDENTIALS_ENCRYPTION_KEY_CURRENT',
@@ -99,6 +102,7 @@ describe.skipIf(!migrationsAvailable)(
       process.env.CREDENTIALS_ENCRYPTION_KEY_V1 =
         randomBytes(32).toString('base64');
       process.env.CREDENTIALS_ENCRYPTION_KEY_CURRENT = '1';
+      process.env.CRON_SECRET = CRON_SECRET;
       const db = await createTestDb();
       w = await seedWorld(db);
       await db.asOwner(async (pg) => {
@@ -128,6 +132,7 @@ describe.skipIf(!migrationsAvailable)(
         .expect(200);
     });
     afterAll(async () => {
+      delete process.env.CRON_SECRET;
       await t?.close();
       await t?.db.close();
     });
@@ -497,6 +502,136 @@ describe.skipIf(!migrationsAvailable)(
         } finally {
           for (const k of KEY_ENV) process.env[k] = saved[k];
         }
+      });
+    });
+
+    describe('how long saved carts are kept', () => {
+      const insert = (
+        tenant: string,
+        email: string,
+        daysIdle: number,
+        status = 'active',
+        recoveredDaysAgo?: number,
+      ) =>
+        t.db.asOwner((pg) =>
+          pg.query(
+            `insert into abandoned_carts (tenant_id, cart_key_hash, recovery_token_hash, email, items, item_count, cart_value_minor, currency,
+               status, last_activity_at, recovered_at)
+             values ($1, $2, $3, $4, '[{"productId":"x"}]'::jsonb, 1, 100, 'INR', $5, now() - ($6 || ' days')::interval,
+               case when $5 = 'recovered' then now() - ($7 || ' days')::interval end)`,
+            [
+              tenant,
+              `k-${email}`,
+              `r-${email}`,
+              email,
+              status,
+              String(daysIdle),
+              String(recoveredDaysAgo ?? 0),
+            ],
+          ),
+        );
+      const left = async () =>
+        (
+          await t.db.asOwner((pg) =>
+            pg.query<{ email: string }>(
+              `select email from abandoned_carts order by email`,
+            ),
+          )
+        ).rows.map((r) => r.email);
+      const job = () => anon().get(api('/internal/jobs/purge-abandoned-carts'));
+
+      it('refuses the scheduler call without the right secret', async () => {
+        await job().expect(401);
+        await job()
+          .set('Authorization', 'Bearer wrong-secret-wrong-secret-wrong-secret')
+          .expect(401);
+      });
+
+      it('deletes carts past their retention, in every store, and keeps the rest', async () => {
+        await t.db.asOwner((pg) => pg.query(`delete from abandoned_carts`));
+        await insert(w.tenantA, 'fresh@x.test', 1);
+        await insert(w.tenantA, 'abandoned-recently@x.test', 40); // link lifetime 14 + 30 = 44 days: kept
+        await insert(w.tenantA, 'stale@x.test', 60); // gone
+        await insert(w.tenantB, 'stale-in-b@x.test', 90); // gone, whichever store it is in
+        await insert(
+          w.tenantA,
+          'recovered-recently@x.test',
+          100,
+          'recovered',
+          100,
+        ); // kept (under 180 days)
+        await insert(
+          w.tenantA,
+          'recovered-long-ago@x.test',
+          300,
+          'recovered',
+          200,
+        ); // gone
+        const res = await job()
+          .set('Authorization', `Bearer ${CRON_SECRET}`)
+          .expect(200);
+        expect(res.body.data).toEqual({ deleted: 3, complete: true });
+        expect(await left()).toEqual([
+          'abandoned-recently@x.test',
+          'fresh@x.test',
+          'recovered-recently@x.test',
+        ]);
+        // Nothing left to do the second time.
+        expect(
+          (
+            await job()
+              .set('Authorization', `Bearer ${CRON_SECRET}`)
+              .expect(200)
+          ).body.data,
+        ).toEqual({ deleted: 0, complete: true });
+      });
+
+      it('follows the link lifetime each store chose', async () => {
+        await t.db.asOwner((pg) => pg.query(`delete from abandoned_carts`));
+        await alice
+          .put('/marketing/abandoned-carts/settings', {
+            abandonmentThresholdMinutes: 60,
+            recoveryLinkDays: 90,
+          })
+          .expect(200);
+        await insert(w.tenantA, 'long-link@x.test', 100); // 90 + 30 = 120 days: kept
+        await insert(w.tenantA, 'longer@x.test', 130); // gone
+        await job().set('Authorization', `Bearer ${CRON_SECRET}`).expect(200);
+        expect(await left()).toEqual(['long-link@x.test']);
+        await alice
+          .put('/marketing/abandoned-carts/settings', {
+            abandonmentThresholdMinutes: 60,
+            recoveryLinkDays: 14,
+          })
+          .expect(200);
+      });
+
+      it('works through a large backlog in batches and says when it stopped early', async () => {
+        await t.db.asOwner((pg) => pg.query(`delete from abandoned_carts`));
+        for (let i = 0; i < 5; i += 1)
+          await insert(w.tenantA, `old${i}@x.test`, 200);
+        const service = t.app.get(CartRecoveryService);
+        expect(await service.purgeStale(2, 2)).toEqual({
+          deleted: 4,
+          complete: false,
+        });
+        expect(await service.purgeStale(2, 2)).toEqual({
+          deleted: 1,
+          complete: true,
+        });
+        expect(await left()).toEqual([]);
+      });
+
+      it('is not reachable by a signed-in user or a shopper', async () => {
+        await t.db.asOwner((pg) => pg.query(`delete from abandoned_carts`));
+        await insert(w.tenantA, 'safe@x.test', 200);
+        await expect(
+          t.db.service.withUser(w.alice, (tx) =>
+            tx.execute(sql`select public.purge_stale_abandoned_carts(10)`),
+          ),
+        ).rejects.toThrow();
+        expect(await left()).toEqual(['safe@x.test']);
+        await t.db.asOwner((pg) => pg.query(`delete from abandoned_carts`));
       });
     });
 

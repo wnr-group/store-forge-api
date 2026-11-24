@@ -65,7 +65,15 @@ Every row has `tenant_id`, RLS enabled, no default grants, `session_user <> 'aut
 
 Dashboard `marketing/{discounts,campaigns,abandoned-carts}`, `analytics/{sales,revenue,products,customers}` (extends the existing analytics page), `settings/integrations` with separate GA4 and Meta Pixel forms. Storefront gets a small `TrackingProvider` loaded in the `s/[slug]` layout: loads a provider script only when it is enabled **and** the shopper has consented, and exposes `track(event, payload)` used by product, cart, checkout and order pages. Tracking errors are caught and never reach checkout.
 
-## 7. Phases
+## 7. Status
+
+All seven phases are done in both repositories (`store-forge-api` and `store-forge`). What differs from the plan above:
+
+- Migrations `0053` to `0059` (tables, discount redemption functions, abandoned-cart functions, refund totals, public tracking config, cart retention, report functions). `analytics_events` was not needed, as planned.
+- Reports use read-only database functions that check access once per call (migration `0059`) instead of row level security per row: measured about 10 to 40 times faster, and a member without the right access now gets a 403 instead of a report of zeros.
+- Public order items carry `productSlug`, so purchase events name a product the same way as view and add-to-bag events.
+
+## 8. Phases (as planned)
 
 1. **Schema and foundations** (this change): migration 0053, Drizzle models, permissions, shared date-range and pagination helpers.
 2. Discounts, campaigns, checkout integration.
