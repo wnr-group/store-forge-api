@@ -103,11 +103,20 @@ All: Auth `JWT+Org`, permission `members:manage`. DB `memberships`, `profiles`, 
 |---|---|---|---|---|---|
 | 47 | My admin level | GET `/platform/me` | admin | - | `platform_admin_role()` |
 | 48 | Overview | GET `/platform/overview` | admin | - | stats + 5 newest orgs |
-| 49 | List orgs `?q&status&sortBy&sortOrder&page&limit` | GET `/platform/organizations` | admin | - | SQL paging; page past end clamps to last page |
+| 49 | List orgs `?q&status&sortBy&sortOrder&page&limit` | GET `/platform/organizations` | admin | - | SQL paging; page past end clamps to last page; search matches name, slug, tenant id, public id, owner e-mail, store domain |
 | 50 | Create org + owner | POST `/platform/organizations` | admin | org.create | slug pre-check; Auth user -> `platform_provision_tenant` (idempotent, one retry on ambiguous failure) -> delete Auth user on failure; audit `organization.created` |
 | 51 | Org detail | GET `/platform/organizations/:id` | admin | - | company + store + team |
 | 52 | Update org | PATCH `/platform/organizations/:id` | admin | org.edit | no write/audit when unchanged; audit `organization.updated` |
-| 53 | Delete org | DELETE `/platform/organizations/:id` | admin | org.delete | `platform_delete_tenant`; then delete orphaned Auth users and storage objects (best effort) |
+| 53 | Delete org | DELETE `/platform/organizations/:id` | admin | org.delete | `platform_delete_tenant`; then delete orphaned Auth users and storage objects (best effort); audit `organization.deleted` is written first, in the same transaction |
+| 53a | Org activity history `?page&limit` | GET `/platform/organizations/:id/activity` | `tenants:read` | - | the audit log narrowed to one organization; survives deletion |
+| 53b | Plan catalog (features and limits a plan can use) | GET `/platform/plan-catalog` | `plans:read` | - | capabilities defined in code (`plan-catalog.ts`); which plan has what is data |
+| 53c | List plans `?status&search&page&limit` | GET `/platform/plans` | `plans:read` | - | with features, limits and subscriber counts |
+| 53d | Plan detail | GET `/platform/plans/:id` | `plans:read` | - | - |
+| 53e | Create plan | POST `/platform/plans` | `plans:manage` | plan.manage | prices as decimal text; one transaction with its audit entry; `PLAN_CODE_TAKEN` on a duplicate code |
+| 53f | Edit plan | PATCH `/platform/plans/:id` | `plans:manage` | plan.manage | partial; only differences written and audited; default plan always exists |
+| 53g | Activate / deactivate plan | PATCH `/platform/plans/:id/status` | `plans:manage` | plan.manage | default plan cannot be deactivated; existing subscribers keep it |
+| 53h | Organization subscription | GET `/platform/organizations/:id/subscription` | `subscriptions:read` | - | every tenant has exactly one (trigger on tenant insert) |
+| 53i | Put organization on a plan | PUT `/platform/organizations/:id/subscription` | `subscriptions:manage` | subscription.manage | `platform_assign_plan`; active plans only; audit `subscription.created` / `subscription.changed` |
 | 54 | Suspend / reactivate | PATCH `/platform/organizations/:id/status` | admin | org.edit | audit suspended/reactivated only on change |
 | 55 | Edit store | PATCH `/platform/organizations/:id/store` | admin | org.edit | name, description, contacts, currency, timezone (not slug/logo); currency lock |
 | 56 | Add member | POST `/platform/organizations/:id/members` | admin | team.manage | Auth user -> `platform_add_member` + audit in one tx; compensate |

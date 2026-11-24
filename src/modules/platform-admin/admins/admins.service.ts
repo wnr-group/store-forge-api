@@ -6,6 +6,7 @@ import {
   rowsOf,
   type DbTx,
 } from '../../../database/database.service.js';
+import type { PlatformAdminRole } from '../../../database/schema/enums.js';
 import { SupabaseAdminService } from '../../auth/supabase-admin.service.js';
 import { recordAudit } from '../audit/audit.service.js';
 import { mapProvisioningError } from '../platform-errors.js';
@@ -15,10 +16,12 @@ import type {
   PlatformAdminDto,
 } from './admins.dto.js';
 
-type Level = 'super_admin' | 'admin';
+type Level = PlatformAdminRole;
 const LEVEL_LABEL: Record<Level, string> = {
   super_admin: 'super admin',
-  admin: 'admin',
+  admin: 'platform admin',
+  billing_admin: 'billing admin',
+  support_admin: 'support admin',
 };
 
 type AdminRaw = {

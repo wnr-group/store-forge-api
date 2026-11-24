@@ -22,6 +22,7 @@ import {
   toTeamMemberDto,
   type TeamMemberRow,
 } from '../../team/team.service.js';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service.js';
 import { recordAudit } from '../audit/audit.service.js';
 import { mapProvisioningError } from '../platform-errors.js';
 import type {
@@ -158,6 +159,7 @@ export class PlatformOrganizationsService {
     private readonly db: DatabaseService,
     private readonly authAdmin: SupabaseAdminService,
     private readonly storage: StorageService,
+    private readonly subscriptions: SubscriptionsService,
   ) {}
 
   // --- reads -------------------------------------------------------------------------------------------------------
@@ -346,6 +348,15 @@ export class PlatformOrganizationsService {
             ownerEmail,
           },
         });
+        // Every tenant already has the default plan (database trigger); an admin's choice replaces it, in this transaction.
+        if (v.planId)
+          await this.subscriptions.assignInTx(
+            tx,
+            result.tenant_id,
+            { planId: v.planId, billingInterval: v.billingInterval },
+            { created: true },
+          );
+        else await this.subscriptions.auditInitial(tx, result.tenant_id);
       }
       return result;
     });
@@ -507,7 +518,7 @@ export class PlatformOrganizationsService {
   }
 
   /**
-   * Deletes an organization for good: the tenant and everything under it in ONE database transaction, then - after
+   * Deletes an organization for good (the action is audited first, in the same transaction): the tenant and everything under it in ONE database transaction, then - after
    * that has committed - the Auth accounts of people who belonged to no other organization, then its stored files.
    * Auth and file cleanup are best effort and logged: the database is authoritative, so a failure there leaves an
    * unused sign-in or file, never a half-deleted organization.
@@ -520,6 +531,24 @@ export class PlatformOrganizationsService {
     let orphaned: string[];
     try {
       orphaned = await this.db.withUser(adminId, async (tx) => {
+        const company = await this.fetchCompanyRow(tx, tenantId);
+        if (!company) throw orgNotFound();
+        // Recorded first, in the same transaction: the log copies the organization's name now, and if the deletion is
+        // refused the entry rolls back with it. Only plain facts are kept (never member credentials).
+        await recordAudit(tx, {
+          action: 'organization.deleted',
+          entityType: 'organization',
+          entityId: tenantId,
+          organizationId: tenantId,
+          description: `Deleted organization ${company.name}`,
+          previous: {
+            name: company.name,
+            slug: company.slug,
+            status: company.status,
+            ownerEmail: company.owner_email,
+            memberCount: Number(company.member_count),
+          },
+        });
         const rows = rowsOf<{ orphans: unknown }>(
           await tx.execute(
             sql`select public.platform_delete_tenant(${tenantId}::uuid) as orphans`,

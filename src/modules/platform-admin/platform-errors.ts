@@ -72,6 +72,15 @@ export function mapProvisioningError(
       { storeSlug: 'Choose a different address' },
       'STORE_SLUG_INVALID',
     );
+  // 'plan_not_found' contains 'not_found', so the plan codes are checked before the generic one below.
+  if (msg.includes('plan_not_found'))
+    throw notFound('That plan was not found.', 'PLAN_NOT_FOUND');
+  if (msg.includes('plan_inactive'))
+    throw invalid(
+      'That plan is not active, so it cannot be assigned.',
+      { planId: 'Choose an active plan' },
+      'PLAN_INACTIVE',
+    );
   if (msg.includes('invalid_input'))
     throw invalid('Please check the details you entered.');
   if (msg.includes('not_found')) throw notFound(notFoundMessage, 'NOT_FOUND');

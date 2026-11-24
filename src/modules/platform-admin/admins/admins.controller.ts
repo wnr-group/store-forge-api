@@ -30,6 +30,7 @@ export class PlatformAdminsController {
   constructor(private readonly admins: PlatformAdminsService) {}
 
   @Get()
+  @PlatformAccess({ permission: 'admins:read' })
   @ApiEndpoint({
     summary: 'List Platform Admins',
     description:

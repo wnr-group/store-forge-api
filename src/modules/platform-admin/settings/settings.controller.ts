@@ -19,6 +19,7 @@ export class PlatformSettingsController {
   constructor(private readonly settings: PlatformSettingsService) {}
 
   @Get()
+  @PlatformAccess({ permission: 'settings:read' })
   @ApiEndpoint({
     summary: 'View platform settings',
     description:

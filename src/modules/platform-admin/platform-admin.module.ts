@@ -5,6 +5,10 @@ import { PlatformAdminsController } from './admins/admins.controller.js';
 import { PlatformAdminsService } from './admins/admins.service.js';
 import { AuditController } from './audit/audit.controller.js';
 import { AuditService } from './audit/audit.service.js';
+import { PlansController } from './plans/plans.controller.js';
+import { PlansService } from './plans/plans.service.js';
+import { SubscriptionsController } from './subscriptions/subscriptions.controller.js';
+import { SubscriptionsService } from './subscriptions/subscriptions.service.js';
 import { PlatformOrganizationsController } from './organizations/organizations.controller.js';
 import { PlatformOrganizationsService } from './organizations/organizations.service.js';
 import { PlatformSettingsController } from './settings/settings.controller.js';
@@ -20,6 +24,8 @@ import { PlatformUsageService } from './usage/usage.service.js';
     PlatformSettingsController,
     AuditController,
     PlatformUsageController,
+    PlansController,
+    SubscriptionsController,
   ],
   providers: [
     PlatformOrganizationsService,
@@ -27,6 +33,8 @@ import { PlatformUsageService } from './usage/usage.service.js';
     PlatformSettingsService,
     AuditService,
     PlatformUsageService,
+    PlansService,
+    SubscriptionsService,
   ],
 })
 export class PlatformAdminModule {}

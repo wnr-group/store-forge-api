@@ -11,7 +11,7 @@ import { AuditService } from './audit.service.js';
 
 @ApiTags('platform-admin')
 @Controller('platform/audit-logs')
-@PlatformAccess()
+@PlatformAccess({ permission: 'audit:read' })
 export class AuditController {
   constructor(private readonly audit: AuditService) {}
 

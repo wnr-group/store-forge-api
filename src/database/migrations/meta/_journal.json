@@ -421,6 +421,27 @@
       "when": 1794300042000,
       "tag": "0059_report_read_functions",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1794300043000,
+      "tag": "0060_platform_roles",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1794300044000,
+      "tag": "0061_tenant_search",
+      "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1794300045000,
+      "tag": "0062_subscription_plans",
+      "breakpoints": true
     }
   ]
 }

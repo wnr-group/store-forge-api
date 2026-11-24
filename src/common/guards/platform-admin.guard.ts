@@ -8,6 +8,11 @@ import { Reflector } from '@nestjs/core';
 import { sql } from 'drizzle-orm';
 import { AppException, forbidden } from '../app.exception.js';
 import {
+  FULL_ACCESS_PLATFORM_ROLES,
+  isPlatformRole,
+  platformCan,
+} from '../constants/platform-permissions.js';
+import {
   PLATFORM_ACCESS,
   type PlatformAccessOptions,
 } from '../decorators/decorators.js';
@@ -26,6 +31,8 @@ export const ADMIN_RATE_LIMITS = {
   'ownership.change': { limit: 5, windowSeconds: 600 },
   'admin.manage': { limit: 10, windowSeconds: 600 },
   'settings.update': { limit: 20, windowSeconds: 600 },
+  'plan.manage': { limit: 60, windowSeconds: 600 },
+  'subscription.manage': { limit: 60, windowSeconds: 600 },
 } as const;
 
 type Hit = { allowed: boolean; remaining: number; retry_after_seconds: number };
@@ -64,21 +71,38 @@ export class PlatformAdminGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const userId = request.user.id;
 
-    const level = await this.db.withUser(userId, async (tx) => {
-      const rows = rowsOf<{ r: string | null }>(
-        await tx.execute(sql`select public.platform_admin_role() as r`),
-      );
-      const role = rows[0]?.r;
-      return role === 'super_admin' || role === 'admin'
-        ? (role as PlatformLevel)
-        : null;
-    });
+    const level: PlatformLevel | null = await this.db.withUser(
+      userId,
+      async (tx) => {
+        const rows = rowsOf<{ r: string | null }>(
+          await tx.execute(sql`select public.platform_admin_role() as r`),
+        );
+        const role = rows[0]?.r;
+        return isPlatformRole(role) ? role : null;
+      },
+    );
     if (!level) throw forbidden();
     if (options.level === 'super_admin' && level !== 'super_admin')
       throw forbidden(
         'Only a super admin can do that.',
         'SUPER_ADMIN_REQUIRED',
       );
+    if (options.permission) {
+      if (!platformCan(level, options.permission))
+        throw forbidden(
+          'Your platform role does not allow that.',
+          'PLATFORM_PERMISSION_REQUIRED',
+        );
+    } else if (
+      !options.anyStaff &&
+      !FULL_ACCESS_PLATFORM_ROLES.includes(level)
+    ) {
+      // A route that never declared a permission predates the narrower roles: keep it closed to them.
+      throw forbidden(
+        'Your platform role does not allow that.',
+        'PLATFORM_PERMISSION_REQUIRED',
+      );
+    }
     request.platformLevel = level;
 
     if (options.bucket) await this.enforceRateLimit(userId, options.bucket);
