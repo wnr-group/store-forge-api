@@ -1,7 +1,7 @@
 {
   "framework": null,
   "regions": ["bom1"],
-  "buildCommand": "npm run build && node scripts/bundle-vercel.mjs",
+  "buildCommand": "npm run build:vercel",
   "functions": {
     "api/index.js": {
       "includeFiles": "node_modules/swagger-ui-dist/**"
