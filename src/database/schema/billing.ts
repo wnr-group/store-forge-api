@@ -28,7 +28,11 @@ export const BILLING_PAYMENT_STATUSES = [
   'partially_refunded',
 ] as const;
 export type BillingPaymentStatus = (typeof BILLING_PAYMENT_STATUSES)[number];
-export const BILLING_REFUND_STATUSES = ['pending', 'processed', 'failed'] as const;
+export const BILLING_REFUND_STATUSES = [
+  'pending',
+  'processed',
+  'failed',
+] as const;
 
 export const billingSettings = pgTable(
   'billing_settings',
@@ -43,7 +47,9 @@ export const billingSettings = pgTable(
     dueDays: integer('due_days').notNull().default(7),
     graceDays: integer('grace_days').notNull().default(7),
     renewalNoticeDays: integer('renewal_notice_days').notNull().default(7),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     updatedBy: uuid('updated_by'),
   },
   (t) => [check('billing_settings_singleton_check', sql`${t.id}`)],
@@ -76,8 +82,12 @@ export const billingInvoices = pgTable(
         taxLabel: string;
       }>()
       .notNull(),
-    status: text('status', { enum: INVOICE_STATUSES }).notNull().default('open'),
-    issuedAt: timestamp('issued_at', { withTimezone: true }).notNull().defaultNow(),
+    status: text('status', { enum: INVOICE_STATUSES })
+      .notNull()
+      .default('open'),
+    issuedAt: timestamp('issued_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     dueAt: timestamp('due_at', { withTimezone: true }).notNull(),
     paidAt: timestamp('paid_at', { withTimezone: true }),
     voidedAt: timestamp('voided_at', { withTimezone: true }),
@@ -103,7 +113,9 @@ export const billingPayments = pgTable(
       .references(() => billingInvoices.id, { onDelete: 'restrict' }),
     tenantId: uuid('tenant_id').notNull(),
     provider: text('provider', { enum: ['razorpay', 'manual'] }).notNull(),
-    status: text('status', { enum: BILLING_PAYMENT_STATUSES }).notNull().default('pending'),
+    status: text('status', { enum: BILLING_PAYMENT_STATUSES })
+      .notNull()
+      .default('pending'),
     amountMinor: bigint('amount_minor', { mode: 'number' }).notNull(),
     currency: text('currency').notNull(),
     razorpayOrderId: text('razorpay_order_id'),
@@ -115,11 +127,17 @@ export const billingPayments = pgTable(
     failureDescription: text('failure_description'),
     /** Money arrived for an invoice that was already paid or void: it has to be refunded. */
     refundRequired: boolean('refund_required').notNull().default(false),
-    refundedMinor: bigint('refunded_minor', { mode: 'number' }).notNull().default(0),
+    refundedMinor: bigint('refunded_minor', { mode: 'number' })
+      .notNull()
+      .default(0),
     capturedAt: timestamp('captured_at', { withTimezone: true }),
     recordedBy: uuid('recorded_by'),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (t) => [
     uniqueIndex('billing_payments_order_key')
@@ -144,14 +162,20 @@ export const billingRefunds = pgTable(
     tenantId: uuid('tenant_id').notNull(),
     amountMinor: bigint('amount_minor', { mode: 'number' }).notNull(),
     currency: text('currency').notNull(),
-    status: text('status', { enum: BILLING_REFUND_STATUSES }).notNull().default('pending'),
+    status: text('status', { enum: BILLING_REFUND_STATUSES })
+      .notNull()
+      .default('pending'),
     reason: text('reason'),
     idempotencyKey: text('idempotency_key').notNull(),
     razorpayRefundId: text('razorpay_refund_id'),
     failureReason: text('failure_reason'),
     requestedBy: uuid('requested_by'),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     processedAt: timestamp('processed_at', { withTimezone: true }),
   },
   (t) => [
@@ -172,12 +196,16 @@ export const billingWebhookEvents = pgTable(
     razorpayOrderId: text('razorpay_order_id'),
     razorpayPaymentId: text('razorpay_payment_id'),
     razorpayRefundId: text('razorpay_refund_id'),
-    status: text('status', { enum: ['received', 'processed', 'ignored', 'failed'] })
+    status: text('status', {
+      enum: ['received', 'processed', 'ignored', 'failed'],
+    })
       .notNull()
       .default('received'),
     note: text('note'),
     attempts: integer('attempts').notNull().default(1),
-    receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
+    receivedAt: timestamp('received_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     processedAt: timestamp('processed_at', { withTimezone: true }),
   },
   (t) => [

@@ -1,8 +1,14 @@
-import { Module } from '@nestjs/common';
+import {
+  MiddlewareConsumer,
+  Module,
+  NestModule,
+  RequestMethod,
+} from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AppThrottlerGuard } from './common/guards/app-throttler.guard.js';
+import { requestMetaMiddleware } from './common/request-meta.js';
 import { CsrfGuard } from './common/guards/csrf.guard.js';
 import { FeatureGuard } from './common/guards/feature.guard.js';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard.js';
@@ -107,4 +113,11 @@ import { UsersModule } from './modules/users/users.module.js';
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  /** Client address, user agent and a request id for the audit log and support (common/request-meta.ts). Runs before every guard. */
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(requestMetaMiddleware)
+      .forRoutes({ path: '*path', method: RequestMethod.ALL });
+  }
+}

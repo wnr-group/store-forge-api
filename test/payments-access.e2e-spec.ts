@@ -631,8 +631,9 @@ describe.skipIf(!migrationsAvailable)(
         // platform organization activity route (GET /platform/organizations/{id}/activity, Platform Administration phase 2);
         // 157 adds the eight plan and subscription routes of phase 3;
         // 162 adds the five entitlement routes of phase 4;
-        // 184 adds the dashboard, billing and tenant billing routes of phase 5.
-        expect(ops.length - payments.length - orderRoutes.length).toBe(184);
+        // 184 adds the dashboard, billing and tenant billing routes of phase 5;
+        // 185 adds the audit log filter options of phase 6.
+        expect(ops.length - payments.length - orderRoutes.length).toBe(185);
         expect(payments.sort()).toEqual([
           'delete /api/v1/payments/razorpay',
           'get /api/v1/payments/cod',

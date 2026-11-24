@@ -145,6 +145,7 @@ All: Auth `JWT+Org`, permission `members:manage`. DB `memberships`, `profiles`, 
 | 54i | Start paying an invoice | POST `/billing/invoices/:id/pay` | Owner (`billing:manage`) | throttled | creates or reuses one Razorpay order; returns order id and PUBLIC key id; 503 `BILLING_PAYMENTS_UNAVAILABLE` without keys |
 | 54j | Confirm a payment | POST `/billing/payments/verify` | Owner (`billing:manage`) | throttled | checkout signature, then a lookup at Razorpay; idempotent |
 | 54k | Razorpay webhooks for StoreForge billing | POST `/webhooks/billing/razorpay` | public, signed | throttled | signature over the raw body; one row per event id; `internal/jobs/billing` (cron) is hidden from the docs |
+| 54l | Activity log filter options | GET `/platform/audit-logs/filters` | `audit:read` | - | every action and entity type, for filter lists |
 | 54 | Suspend / reactivate | PATCH `/platform/organizations/:id/status` | admin | org.edit | audit suspended/reactivated only on change |
 | 55 | Edit store | PATCH `/platform/organizations/:id/store` | admin | org.edit | name, description, contacts, currency, timezone (not slug/logo); currency lock |
 | 56 | Add member | POST `/platform/organizations/:id/members` | admin | team.manage | Auth user -> `platform_add_member` + audit in one tx; compensate |

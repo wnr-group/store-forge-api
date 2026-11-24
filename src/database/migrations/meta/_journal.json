@@ -456,6 +456,13 @@
       "when": 1794300047000,
       "tag": "0064_billing",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1794300048000,
+      "tag": "0065_audit_request_metadata",
+      "breakpoints": true
     }
   ]
 }

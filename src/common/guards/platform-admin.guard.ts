@@ -7,6 +7,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { sql } from 'drizzle-orm';
 import { AppException, forbidden } from '../app.exception.js';
+import { currentRequestMeta } from '../request-meta.js';
 import {
   FULL_ACCESS_PLATFORM_ROLES,
   isPlatformRole,
@@ -82,32 +83,60 @@ export class PlatformAdminGuard implements CanActivate {
         return isPlatformRole(role) ? role : null;
       },
     );
-    if (!level) throw forbidden();
+    if (!level) this.deny(request, userId, 'not a platform admin');
     if (options.level === 'super_admin' && level !== 'super_admin')
-      throw forbidden(
-        'Only a super admin can do that.',
-        'SUPER_ADMIN_REQUIRED',
-      );
+      this.deny(request, userId, 'super admin required', {
+        message: 'Only a super admin can do that.',
+        code: 'SUPER_ADMIN_REQUIRED',
+      });
     if (options.permission) {
       if (!platformCan(level, options.permission))
-        throw forbidden(
-          'Your platform role does not allow that.',
-          'PLATFORM_PERMISSION_REQUIRED',
+        this.deny(
+          request,
+          userId,
+          `role ${level} lacks ${options.permission}`,
+          {
+            message: 'Your platform role does not allow that.',
+            code: 'PLATFORM_PERMISSION_REQUIRED',
+          },
         );
     } else if (
       !options.anyStaff &&
       !FULL_ACCESS_PLATFORM_ROLES.includes(level)
     ) {
       // A route that never declared a permission predates the narrower roles: keep it closed to them.
-      throw forbidden(
-        'Your platform role does not allow that.',
-        'PLATFORM_PERMISSION_REQUIRED',
+      this.deny(
+        request,
+        userId,
+        `role ${level} used a route with no permission`,
+        {
+          message: 'Your platform role does not allow that.',
+          code: 'PLATFORM_PERMISSION_REQUIRED',
+        },
       );
     }
     request.platformLevel = level;
 
     if (options.bucket) await this.enforceRateLimit(userId, options.bucket);
     return true;
+  }
+
+  /**
+   * Refuses the request and leaves a line in the server log: who (the user id, never an e-mail or token), what route and why. Probing
+   * the platform API therefore shows up in the logs. It cannot go in the audit log: that is written only by platform admins.
+   */
+  private deny(
+    request: AuthenticatedRequest,
+    userId: string,
+    reason: string,
+    error?: { message: string; code: string },
+  ): never {
+    const route =
+      (request as { route?: { path?: string } }).route?.path ?? request.path;
+    this.logger.warn(
+      `platform access denied: ${request.method} ${route} by ${userId} (${reason}) request ${currentRequestMeta()?.requestId ?? '-'}`,
+    );
+    throw error ? forbidden(error.message, error.code) : forbidden();
   }
 
   private async enforceRateLimit(

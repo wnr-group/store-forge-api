@@ -46,6 +46,10 @@ export const adminAuditLogs = pgTable(
     organizationId: uuid('organization_id'),
     organizationName: text('organization_name'),
     description: text('description').notNull(),
+    /** Where the action came from (migration 0065). Descriptive only. */
+    ip: text('ip'),
+    userAgent: text('user_agent'),
+    requestId: text('request_id'),
     previousData: jsonb('previous_data'),
     newData: jsonb('new_data'),
     createdAt: timestamp('created_at', { withTimezone: true })
