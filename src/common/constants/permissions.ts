@@ -92,6 +92,12 @@ const PERMISSIONS = {
   'tax:view': { module: 'settings', need: 'read' },
   'tax:manage': { module: 'settings', need: 'write' },
   'tax:report': { module: 'orders', need: 'read' },
+  // Discounts, campaigns, abandoned carts and every sales report are order data: they follow the orders module.
+  'marketing:view': { module: 'orders', need: 'read' },
+  'marketing:manage': { module: 'orders', need: 'write' },
+  // Google Analytics / Meta Pixel connections are store settings (their identifiers are public, there is no secret to guard).
+  'integrations:view': { module: 'settings', need: 'read' },
+  'integrations:manage': { module: 'settings', need: 'write' },
   // Products, categories, collections, inventory.
   'catalog:view': { module: 'products', need: 'read' },
   'catalog:manage': { module: 'products', need: 'write' },
@@ -152,6 +158,11 @@ export const canManageShipping = (a: Actor) => can(a, 'shipping:manage');
 export const canViewTax = (a: Actor) => can(a, 'tax:view');
 export const canManageTax = (a: Actor) => can(a, 'tax:manage');
 export const canViewTaxReport = (a: Actor) => can(a, 'tax:report');
+export const canViewMarketing = (a: Actor) => can(a, 'marketing:view');
+export const canManageMarketing = (a: Actor) => can(a, 'marketing:manage');
+export const canViewIntegrations = (a: Actor) => can(a, 'integrations:view');
+export const canManageIntegrations = (a: Actor) =>
+  can(a, 'integrations:manage');
 
 /** Members are stored with the broadest non-owner role; what they can actually do is decided by their permissions. */
 export const MEMBER_ROLE = 'admin' as const satisfies Role;

@@ -372,6 +372,13 @@
       "when": 1794300035000,
       "tag": "0052_gst_tax",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1794300036000,
+      "tag": "0053_marketing_analytics",
+      "breakpoints": true
     }
   ]
 }
