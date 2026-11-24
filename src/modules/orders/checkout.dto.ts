@@ -233,6 +233,12 @@ export class PlaceOrderDto {
 export class OrderItemViewDto {
   @ApiProperty() name!: string;
   @ApiPropertyOptional({ nullable: true }) sku!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'The product URL handle, so analytics can name a purchased product exactly as it was named when viewed. Null if the product was deleted.',
+  })
+  productSlug?: string | null;
   @ApiProperty() quantity!: number;
   @ApiProperty() unitPriceMinor!: number;
   @ApiProperty() totalMinor!: number;

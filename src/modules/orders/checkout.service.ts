@@ -620,13 +620,15 @@ export class CheckoutService {
     const items = rowsOf<{
       name: string;
       sku: string | null;
+      product_slug: string | null;
       quantity: number;
       unit_price_minor: number;
       total_minor: number;
     }>(
       await tx.execute(sql`
-        select name, sku, quantity, unit_price_minor::float8 as unit_price_minor, total_minor::float8 as total_minor
-        from public.order_items where tenant_id = ${tenantId}::uuid and order_id = ${o.id}::uuid order by name`),
+        select oi.name, oi.sku, oi.quantity, oi.unit_price_minor::float8 as unit_price_minor, oi.total_minor::float8 as total_minor,
+          (select p.slug from public.products p where p.tenant_id = oi.tenant_id and p.id = oi.product_id) as product_slug
+        from public.order_items oi where oi.tenant_id = ${tenantId}::uuid and oi.order_id = ${o.id}::uuid order by oi.name`),
     );
     const address = rowsOf<Record<string, string | null>>(
       await tx.execute(sql`
@@ -711,6 +713,7 @@ export class CheckoutService {
       items: items.map((i) => ({
         name: i.name,
         sku: i.sku,
+        productSlug: i.product_slug,
         quantity: i.quantity,
         unitPriceMinor: Number(i.unit_price_minor),
         totalMinor: Number(i.total_minor),

@@ -131,6 +131,7 @@ describe.skipIf(!migrationsAvailable)(
         {
           name: 'mug-a',
           sku: null,
+          productSlug: 'mug-a',
           quantity: 3,
           unitPriceMinor: 25000,
           totalMinor: 75000,
