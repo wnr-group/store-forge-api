@@ -512,10 +512,10 @@ export class BillingService {
           where s.status in ('active', 'past_due') group by p.currency having sum(case when s.billing_interval = 'yearly' then p.yearly_price_minor else p.monthly_price_minor end) > 0`),
           tx.execute(sql`
           select status, currency, count(*)::int as n, coalesce(sum(amount_minor), 0) as amount
-          from public.billing_payments where created_at >= ${fromD} and created_at < ${toD} group by status, currency`),
+          from public.billing_payments where created_at >= ${fromD.toISOString()}::timestamptz and created_at < ${toD.toISOString()}::timestamptz group by status, currency`),
           tx.execute(sql`
           select currency, coalesce(sum(amount_minor), 0) as amount from public.billing_refunds
-          where status = 'processed' and processed_at >= ${fromD} and processed_at < ${toD} group by currency`),
+          where status = 'processed' and processed_at >= ${fromD.toISOString()}::timestamptz and processed_at < ${toD.toISOString()}::timestamptz group by currency`),
           tx.execute(
             sql`select count(*)::int as n from public.billing_payments where refund_required and refunded_minor < amount_minor`,
           ),
