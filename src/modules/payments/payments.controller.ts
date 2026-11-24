@@ -15,6 +15,7 @@ import {
   OrgScoped,
   RequireExplicitOrganization,
   RequirePermission,
+  RequireFeature,
 } from '../../common/decorators/decorators.js';
 import type { OrgContext } from '../../common/interfaces/request-context.js';
 import {
@@ -56,6 +57,7 @@ export class PaymentsController {
   }
 
   @Put()
+  @RequireFeature('online_payments')
   @Throttle(SENSITIVE)
   @ApiEndpoint({
     summary: 'Save the Razorpay settings',
@@ -72,6 +74,7 @@ export class PaymentsController {
   }
 
   @Post('verify')
+  @RequireFeature('online_payments')
   @HttpCode(200)
   @Throttle(SENSITIVE)
   @ApiEndpoint({

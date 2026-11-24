@@ -33,6 +33,7 @@ const PUBLIC_ROUTES = new Set([
   'GET /api/v1/public/stores/{slug}/cart/recovery/{token}',
   'GET /api/v1/public/stores/{slug}/tracking',
   'POST /api/v1/webhooks/razorpay/{tenantPublicId}',
+  'POST /api/v1/webhooks/billing/razorpay', // StoreForge own billing account; signed, read raw
   'POST /api/v1/webhooks/carriers/{providerCode}',
   'GET /api/v1/public/stores/{slug}/payment-methods',
   'POST /api/v1/public/stores/{slug}/orders/{orderNumber}/payments/razorpay',
@@ -167,6 +168,9 @@ describe('OpenAPI coverage (e2e)', () => {
       'POST /api/v1/payments/razorpay/verify', // acts on the saved keys
       'POST /api/v1/shipping/carriers/{code}/verify', // acts on the saved connection
       'POST /api/v1/webhooks/razorpay/{tenantPublicId}', // Razorpay's own body, signed; read raw
+      'POST /api/v1/webhooks/billing/razorpay', // ditto, for StoreForge own billing account
+      'POST /api/v1/billing/invoices/{id}/pay', // acts on the invoice alone
+      'POST /api/v1/platform/billing/run', // takes no input
       'POST /api/v1/webhooks/carriers/{providerCode}', // the carrier's own body; only the waybill numbers in it are read
       'POST /api/v1/shipments/{id}/retry', // acts on the id alone
       'POST /api/v1/shipments/{id}/cancel', // acts on the id alone

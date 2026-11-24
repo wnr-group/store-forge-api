@@ -17,6 +17,7 @@ import {
   CurrentOrg,
   OrgScoped,
   RequirePermission,
+  RequireFeature,
 } from '../../common/decorators/decorators.js';
 import type { OrgContext } from '../../common/interfaces/request-context.js';
 import {
@@ -33,6 +34,7 @@ const WRITE_LIMIT = { default: { limit: 60, ttl: 60_000 } };
 @ApiTags('marketing')
 @Controller('marketing/discounts')
 @OrgScoped()
+@RequireFeature('discount_codes')
 export class DiscountsController {
   constructor(private readonly discounts: DiscountsService) {}
 

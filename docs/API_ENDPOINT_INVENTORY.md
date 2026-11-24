@@ -117,6 +117,34 @@ All: Auth `JWT+Org`, permission `members:manage`. DB `memberships`, `profiles`, 
 | 53g | Activate / deactivate plan | PATCH `/platform/plans/:id/status` | `plans:manage` | plan.manage | default plan cannot be deactivated; existing subscribers keep it |
 | 53h | Organization subscription | GET `/platform/organizations/:id/subscription` | `subscriptions:read` | - | every tenant has exactly one (trigger on tenant insert) |
 | 53i | Put organization on a plan | PUT `/platform/organizations/:id/subscription` | `subscriptions:manage` | subscription.manage | `platform_assign_plan`; active plans only; audit `subscription.created` / `subscription.changed` |
+| 53j | What my plan includes and my usage `?storage` | GET `/entitlements` | any member (`dashboard:view`) | - | features, limits, used/percent/level, `attention`; for display only, the server enforces |
+| 53k | What an organization may use | GET `/platform/organizations/:id/entitlements` | `subscriptions:read` | - | effective features and limits with usage (storage included) and the exceptions set for it |
+| 53l | Feature exception for one organization | PUT `/platform/organizations/:id/entitlements/features/:key` | `entitlements:manage` | subscription.manage | `enabled` true / false / null (remove); wins over the plan; no-op not logged |
+| 53m | Limit exception for one organization | PUT `/platform/organizations/:id/entitlements/limits/:key` | `entitlements:manage` | subscription.manage | soft/hard, both empty = unlimited, `clear` removes it |
+| 53n | Organizations close to their limits `?filter&search&page&limit` | GET `/platform/limit-usage` | `usage:read` | - | products, staff, orders this month; filter all / attention / warning / reached |
+| 53o | Platform overview `?from&to` | GET `/platform/dashboard` | `tenants:read` | - | tenants, users, subscriptions by state, growth, billing (if `billing:read`), recent activity (if `audit:read`), health |
+| 53p | Billing summary `?from&to` | GET `/platform/billing/summary` | `billing:read` | - | MRR, collected, failed, pending, refunded, overdue |
+| 53q | Billing settings | GET `/platform/billing/settings` | `billing:read` | - | seller, tax, due/grace days; never the Razorpay keys |
+| 53r | Update billing settings | PUT `/platform/billing/settings` | `billing:manage` | billing.manage | only differences written and audited |
+| 53s | List invoices `?status&org&from&to&search&page&limit` | GET `/platform/billing/invoices` | `billing:read` | - | status `overdue` = open and past due |
+| 53t | Invoice detail | GET `/platform/billing/invoices/:id` | `billing:read` | - | with payments and refunds |
+| 53u | Download invoice (PDF) | GET `/platform/billing/invoices/:id/download` | `billing:read` | - | built from stored records only |
+| 53v | Void an open invoice | POST `/platform/billing/invoices/:id/void` | `billing:manage` | billing.manage | audit `invoice.voided` |
+| 53w | Record an offline payment | POST `/platform/billing/invoices/:id/payments` | `billing:manage` | billing.manage | settles the invoice, extends the subscription; audit `payment.manual_recorded` |
+| 53x | Issue an invoice for an organization | POST `/platform/organizations/:id/billing/invoices` | `billing:manage` | billing.manage | `current` or `next` period; one invoice per period; audit `invoice.issued` |
+| 53y | An organization billing position | GET `/platform/organizations/:id/billing` | `billing:read` | - | plan, renewal date, overdue, latest invoices and payments |
+| 53z | List payments `?status&org&from&to&search&refundRequired` | GET `/platform/billing/payments` | `billing:read` | - | successful, failed, pending, refunded |
+| 54a | Payment detail | GET `/platform/billing/payments/:id` | `billing:read` | - | with refunds |
+| 54b | Refund a payment | POST `/platform/billing/payments/:id/refund` | `billing:manage` | billing.manage | idempotent by `requestId`; Razorpay or bookkeeping for offline; audit `payment.refunded` |
+| 54c | Run billing now | POST `/platform/billing/run` | `billing:manage` | billing.manage | renewals, past due, expiry; same as the scheduler |
+| 54d | My plan and what I owe | GET `/billing/overview` | Owner (`billing:manage`) | - | plan read through the member-safe entitlement function |
+| 54e | My invoices | GET `/billing/invoices` | Owner (`billing:manage`) | - | own organization only |
+| 54f | One of my invoices | GET `/billing/invoices/:id` | Owner (`billing:manage`) | - | - |
+| 54g | Download one of my invoices | GET `/billing/invoices/:id/download` | Owner (`billing:manage`) | - | PDF |
+| 54h | My payments | GET `/billing/payments` | Owner (`billing:manage`) | - | - |
+| 54i | Start paying an invoice | POST `/billing/invoices/:id/pay` | Owner (`billing:manage`) | throttled | creates or reuses one Razorpay order; returns order id and PUBLIC key id; 503 `BILLING_PAYMENTS_UNAVAILABLE` without keys |
+| 54j | Confirm a payment | POST `/billing/payments/verify` | Owner (`billing:manage`) | throttled | checkout signature, then a lookup at Razorpay; idempotent |
+| 54k | Razorpay webhooks for StoreForge billing | POST `/webhooks/billing/razorpay` | public, signed | throttled | signature over the raw body; one row per event id; `internal/jobs/billing` (cron) is hidden from the docs |
 | 54 | Suspend / reactivate | PATCH `/platform/organizations/:id/status` | admin | org.edit | audit suspended/reactivated only on change |
 | 55 | Edit store | PATCH `/platform/organizations/:id/store` | admin | org.edit | name, description, contacts, currency, timezone (not slug/logo); currency lock |
 | 56 | Add member | POST `/platform/organizations/:id/members` | admin | team.manage | Auth user -> `platform_add_member` + audit in one tx; compensate |

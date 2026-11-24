@@ -4,6 +4,7 @@ import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AppThrottlerGuard } from './common/guards/app-throttler.guard.js';
 import { CsrfGuard } from './common/guards/csrf.guard.js';
+import { FeatureGuard } from './common/guards/feature.guard.js';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard.js';
 import { OrganizationContextGuard } from './common/guards/organization-context.guard.js';
 import { PermissionsGuard } from './common/guards/permissions.guard.js';
@@ -36,6 +37,8 @@ import { ReportsModule } from './modules/reports/reports.module.js';
 import { MarketingModule } from './modules/marketing/marketing.module.js';
 import { PagesModule } from './modules/pages/pages.module.js';
 import { ThemesModule } from './modules/themes/themes.module.js';
+import { BillingModule } from './modules/billing/billing.module.js';
+import { EntitlementsModule } from './modules/entitlements/entitlements.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { OrganizationsModule } from './modules/organizations/organizations.module.js';
 import { StorageModule } from './modules/storage/storage.module.js';
@@ -60,6 +63,7 @@ import { UsersModule } from './modules/users/users.module.js';
       },
     }),
     DatabaseModule,
+    EntitlementsModule,
     AuthModule,
     HealthModule,
     UsersModule,
@@ -89,14 +93,16 @@ import { UsersModule } from './modules/users/users.module.js';
     PagesModule,
     PublicModule,
     PlatformAdminModule,
+    BillingModule,
   ],
   providers: [
-    // Order matters: throttle -> CSRF -> authenticate -> resolve organization -> permission -> platform admin.
+    // Order matters: throttle -> CSRF -> authenticate -> resolve organization -> permission -> plan feature -> platform admin.
     { provide: APP_GUARD, useClass: AppThrottlerGuard },
     { provide: APP_GUARD, useClass: CsrfGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: OrganizationContextGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
+    { provide: APP_GUARD, useClass: FeatureGuard },
     { provide: APP_GUARD, useClass: PlatformAdminGuard },
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
   ],

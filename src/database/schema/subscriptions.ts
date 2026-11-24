@@ -186,3 +186,71 @@ export type Plan = typeof plans.$inferSelect;
 export type PlanFeature = typeof planFeatures.$inferSelect;
 export type PlanLimit = typeof planLimits.$inferSelect;
 export type TenantSubscription = typeof tenantSubscriptions.$inferSelect;
+
+/** One tenant's exception to its plan for a single feature (migration 0063). An override always wins over the plan. */
+export const tenantFeatureOverrides = pgTable(
+  'tenant_feature_overrides',
+  {
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    featureKey: text('feature_key').notNull(),
+    enabled: boolean('enabled').notNull(),
+    note: text('note'),
+    updatedBy: uuid('updated_by').references(() => authUsers.id, {
+      onDelete: 'set null',
+    }),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.tenantId, t.featureKey] }),
+    check(
+      'tenant_feature_overrides_key_check',
+      sql`${t.featureKey} ~ '^[a-z][a-z0-9_]{1,48}$'`,
+    ),
+    check(
+      'tenant_feature_overrides_note_check',
+      sql`${t.note} is null or char_length(${t.note}) <= 200`,
+    ),
+  ],
+).enableRLS();
+
+/** One tenant's own limit for a single resource. Both numbers NULL means unlimited for this tenant. */
+export const tenantLimitOverrides = pgTable(
+  'tenant_limit_overrides',
+  {
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenants.id, { onDelete: 'cascade' }),
+    limitKey: text('limit_key').notNull(),
+    softLimit: bigint('soft_limit', { mode: 'number' }),
+    hardLimit: bigint('hard_limit', { mode: 'number' }),
+    note: text('note'),
+    updatedBy: uuid('updated_by').references(() => authUsers.id, {
+      onDelete: 'set null',
+    }),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.tenantId, t.limitKey] }),
+    check(
+      'tenant_limit_overrides_key_check',
+      sql`${t.limitKey} ~ '^[a-z][a-z0-9_]{1,48}$'`,
+    ),
+    check(
+      'tenant_limit_overrides_values_check',
+      sql`(${t.softLimit} is null or ${t.softLimit} >= 0) and (${t.hardLimit} is null or ${t.hardLimit} >= 0) and (${t.softLimit} is null or ${t.hardLimit} is null or ${t.softLimit} <= ${t.hardLimit})`,
+    ),
+    check(
+      'tenant_limit_overrides_note_check',
+      sql`${t.note} is null or char_length(${t.note}) <= 200`,
+    ),
+  ],
+).enableRLS();
+
+export type TenantFeatureOverride = typeof tenantFeatureOverrides.$inferSelect;
+export type TenantLimitOverride = typeof tenantLimitOverrides.$inferSelect;

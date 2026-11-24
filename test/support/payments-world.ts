@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { EntitlementsService } from '../../src/modules/entitlements/entitlements.service.js';
 import { CodCollectionService } from '../../src/modules/checkout-payments/cod-collection.service.js';
 import { PaymentReconciliationService } from '../../src/modules/checkout-payments/payment-reconciliation.service.js';
 import { RazorpayPaymentsService } from '../../src/modules/checkout-payments/razorpay-payments.service.js';
@@ -65,6 +66,7 @@ export async function createPaymentsWorld() {
     payments,
     client,
     events,
+    new EntitlementsService(t.service),
   );
   const checkout = new CheckoutService(
     t.service,

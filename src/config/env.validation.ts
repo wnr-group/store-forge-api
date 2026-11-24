@@ -160,6 +160,31 @@ export class EnvironmentVariables {
   })
   RAZORPAY_API_BASE_URL?: string;
 
+  /**
+   * StoreForge's OWN Razorpay account for collecting subscription payments from tenants (not the tenants' keys, which they enter in
+   * the dashboard). All three are optional and deliberately NOT checked at startup: without them the app runs and billing payments
+   * answer 503 BILLING_PAYMENTS_UNAVAILABLE. The secret is read only on the server and never returned by any route.
+   */
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @Matches(/^rzp_(test|live)_[A-Za-z0-9]{8,}$/, {
+    message:
+      'RAZORPAY_PLATFORM_KEY_ID must look like rzp_test_xxxxxxxx or rzp_live_xxxxxxxx',
+  })
+  RAZORPAY_PLATFORM_KEY_ID?: string;
+
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @IsString()
+  @MinLength(16)
+  RAZORPAY_PLATFORM_KEY_SECRET?: string;
+
+  @IsOptional()
+  @Transform(emptyToUndefined)
+  @IsString()
+  @MinLength(16)
+  RAZORPAY_PLATFORM_WEBHOOK_SECRET?: string;
+
   // --- Rate limiting (global default; sensitive routes set their own) -------------------------
   @Transform(({ value }) => (value === '' ? undefined : Number(value)))
   @IsInt()

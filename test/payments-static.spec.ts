@@ -234,7 +234,7 @@ describe('payments static scans', () => {
       ],
       () => expect(added).toEqual([]),
     );
-  });
+  }, 30_000); // it diffs the whole branch against main, which takes several seconds on a long-lived branch
 
   it('AC-FE-14 [layer:STATIC]: no frontend REST route handler and no Settings change appears in this repository (API half)', async () => {
     // The registry attributes this row to the API repository's static scan; the frontend repository runs its own (and passes).
@@ -350,6 +350,9 @@ describe('payments static scans', () => {
         ]);
         expect(outbound).toEqual(['src/modules/payments/razorpay.client.ts']);
         expect(controllers).toEqual([
+          // StoreForge's own subscription billing (Platform Administration phase 5): signed webhooks for the platform Razorpay
+          // account. It reaches Razorpay only through the same reviewed client (payments/razorpay.client.ts).
+          'src/modules/billing/billing-webhook.controller.ts',
           'src/modules/checkout-payments/razorpay-webhook.controller.ts',
           'src/modules/orders/public-quote.controller.ts',
           'src/modules/payments/cod.controller.ts',

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { EntitlementsService } from '../entitlements/entitlements.service.js';
 import { sql } from 'drizzle-orm';
 import {
   AppException,
@@ -31,6 +32,7 @@ export class RazorpayConnectionService {
     private readonly payments: PaymentsService,
     private readonly client: RazorpayClient,
     private readonly events: PaymentsEventLogger,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   /** Calls Razorpay with the saved keys and records the outcome. Nothing is created at Razorpay. */
@@ -73,6 +75,13 @@ export class RazorpayConnectionService {
     org: OrgContext,
     enabled: boolean,
   ): Promise<RazorpayStatusDto> {
+    // Switching OFF is always allowed, so a plan change can never trap a store with payments it cannot turn off.
+    if (enabled)
+      await this.entitlements.assertFeatureAs(
+        org.userId,
+        org.tenantId,
+        'online_payments',
+      );
     const outcome = await this.db.withUser(
       org.userId,
       async (tx) =>

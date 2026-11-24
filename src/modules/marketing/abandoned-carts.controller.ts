@@ -16,6 +16,7 @@ import {
   CurrentOrg,
   OrgScoped,
   RequirePermission,
+  RequireFeature,
 } from '../../common/decorators/decorators.js';
 import type { OrgContext } from '../../common/interfaces/request-context.js';
 import {
@@ -34,6 +35,7 @@ const WRITE_LIMIT = { default: { limit: 30, ttl: 60_000 } };
 @ApiTags('marketing')
 @Controller('marketing/abandoned-carts')
 @OrgScoped()
+@RequireFeature('abandoned_cart_recovery')
 export class AbandonedCartsController {
   constructor(private readonly carts: AbandonedCartsService) {}
 

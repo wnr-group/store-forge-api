@@ -52,6 +52,11 @@ export class LimitCatalogItemDto {
   @ApiProperty() label!: string;
   @ApiProperty() description!: string;
   @ApiProperty({ enum: ['count', 'bytes'] }) unit!: string;
+  @ApiProperty({
+    description:
+      'Whether going past the hard limit is refused. Orders are only reported.',
+  })
+  enforced!: boolean;
 }
 export class PlanCatalogDto {
   @ApiProperty({ type: [FeatureCatalogItemDto] })

@@ -5,6 +5,7 @@ import {
   CurrentOrg,
   OrgScoped,
   RequirePermission,
+  RequireFeature,
 } from '../../common/decorators/decorators.js';
 import type { OrgContext } from '../../common/interfaces/request-context.js';
 import {
@@ -27,6 +28,7 @@ const DEFINITIONS =
 @ApiTags('analytics')
 @Controller('analytics')
 @OrgScoped()
+@RequireFeature('advanced_reports')
 export class ReportsController {
   constructor(private readonly reports: ReportsService) {}
 

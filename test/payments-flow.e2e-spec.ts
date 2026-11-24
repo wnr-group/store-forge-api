@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { EntitlementsService } from '../src/modules/entitlements/entitlements.service.js';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppException } from '../src/common/app.exception.js';
@@ -172,6 +173,7 @@ describe.skipIf(!migrationsAvailable)(
         paymentsSvc,
         client,
         events,
+        new EntitlementsService(t.service),
       );
       checkout = new CheckoutService(
         t.service,

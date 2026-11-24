@@ -17,6 +17,7 @@ import {
   OrgScoped,
   RequireExplicitOrganization,
   RequirePermission,
+  RequireFeature,
 } from '../../common/decorators/decorators.js';
 import type { OrgContext } from '../../common/interfaces/request-context.js';
 import {
@@ -63,6 +64,7 @@ export class CarriersController {
   }
 
   @Put('carriers/:code')
+  @RequireFeature('shipping_integrations')
   @Throttle(SENSITIVE)
   @ApiParam(CODE)
   @ApiEndpoint({
@@ -84,6 +86,7 @@ export class CarriersController {
   }
 
   @Post('carriers/:code/test')
+  @RequireFeature('shipping_integrations')
   @HttpCode(200)
   @Throttle(SENSITIVE)
   @ApiParam(CODE)
@@ -106,6 +109,7 @@ export class CarriersController {
   }
 
   @Post('carriers/:code/verify')
+  @RequireFeature('shipping_integrations')
   @HttpCode(200)
   @Throttle(SENSITIVE)
   @ApiParam(CODE)
@@ -123,6 +127,7 @@ export class CarriersController {
   }
 
   @Put('carriers/:code/enabled')
+  @RequireFeature('shipping_integrations')
   @Throttle(SENSITIVE)
   @ApiParam(CODE)
   @ApiEndpoint({
@@ -144,6 +149,7 @@ export class CarriersController {
   }
 
   @Put('carriers/:code/default')
+  @RequireFeature('shipping_integrations')
   @Throttle(SENSITIVE)
   @ApiParam(CODE)
   @ApiEndpoint({

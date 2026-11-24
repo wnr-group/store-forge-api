@@ -27,6 +27,10 @@ export const ADMIN_AUDIT_ENTITY_TYPES = [
   'platform_settings',
   'plan',
   'subscription',
+  'entitlement',
+  'invoice',
+  'payment',
+  'billing_settings',
 ] as const;
 export type AdminAuditEntityType = (typeof ADMIN_AUDIT_ENTITY_TYPES)[number];
 
@@ -55,7 +59,7 @@ export const adminAuditLogs = pgTable(
     ),
     check(
       'admin_audit_logs_entity_type_check',
-      sql`${t.entityType} in ('organization', 'store', 'team_member', 'platform_admin', 'support_note', 'platform_settings', 'plan', 'subscription')`,
+      sql`${t.entityType} in ('organization', 'store', 'team_member', 'platform_admin', 'support_note', 'platform_settings', 'plan', 'subscription', 'entitlement', 'invoice', 'payment', 'billing_settings')`,
     ),
     check(
       'admin_audit_logs_description_check',

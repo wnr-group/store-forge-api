@@ -17,6 +17,7 @@ import {
   CurrentOrg,
   OrgScoped,
   RequirePermission,
+  RequireFeature,
 } from '../../common/decorators/decorators.js';
 import type { OrgContext } from '../../common/interfaces/request-context.js';
 import {
@@ -34,6 +35,7 @@ const WRITE_LIMIT = { default: { limit: 60, ttl: 60_000 } };
 @ApiTags('marketing')
 @Controller('marketing/campaigns')
 @OrgScoped()
+@RequireFeature('marketing_campaigns')
 export class CampaignsController {
   constructor(private readonly campaigns: CampaignsService) {}
 

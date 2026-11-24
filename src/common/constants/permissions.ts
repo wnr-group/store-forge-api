@@ -83,6 +83,8 @@ const PERMISSIONS = {
   'members:manage': { ownerOnly: true },
   // A tenant's own payment credentials: Owner-only, and no module grant (not even settings write) can reach it.
   'payments:manage': { ownerOnly: true },
+  // The organization's own StoreForge subscription invoices and payments: Owner-only, like its payment credentials.
+  'billing:manage': { ownerOnly: true },
   // A tenant's own shipping carrier accounts and how carriers are chosen: Owner-only, like the payment credentials.
   'carriers:manage': { ownerOnly: true },
   // Zones, methods, rates and the shipping origin follow the store settings: read to look, write to change.

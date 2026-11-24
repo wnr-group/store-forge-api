@@ -80,27 +80,39 @@ export type LimitKey = (typeof LIMIT_KEYS)[number];
 
 export const LIMIT_CATALOG: Record<
   LimitKey,
-  { label: string; description: string; unit: 'count' | 'bytes' }
+  {
+    label: string;
+    description: string;
+    unit: 'count' | 'bytes';
+    /** Whether going past the hard limit is refused. Orders are only reported: a shopper is never turned away at checkout. */
+    enforced: boolean;
+  }
 > = {
   products: {
     label: 'Products',
     description: 'Products in the catalog.',
     unit: 'count',
+    enforced: true,
   },
   staff_accounts: {
     label: 'Staff accounts',
     description: 'Team members besides the Owner.',
     unit: 'count',
+    enforced: true,
   },
   orders_per_month: {
     label: 'Orders per month',
-    description: 'Orders placed in a calendar month.',
+    description:
+      'Orders placed in a calendar month (UTC). Reported and warned about, never used to refuse an order.',
     unit: 'count',
+    enforced: false,
   },
   storage_bytes: {
     label: 'Storage',
-    description: 'Uploaded files such as product images.',
+    description:
+      'Uploaded files such as product images. New uploads are refused once the hard limit is reached.',
     unit: 'bytes',
+    enforced: true,
   },
 };
 
@@ -126,3 +138,29 @@ export type SubscriptionStatus = (typeof SUBSCRIPTION_STATUSES)[number];
 
 export const BILLING_INTERVALS = ['monthly', 'yearly'] as const;
 export type BillingInterval = (typeof BILLING_INTERVALS)[number];
+
+/** Which feature an integration provider needs (the provider codes of modules/integrations). */
+export const PROVIDER_FEATURE: Record<string, FeatureKey> = {
+  ga4: 'google_analytics',
+  meta_pixel: 'meta_pixel',
+};
+
+/** How close a number is to its limits. "reached" = at or past the hard limit; "warning" = at or past the soft limit or 80% of the hard one. */
+export type LimitLevel = 'ok' | 'warning' | 'reached';
+export const WARNING_RATIO_NUM = 4;
+export const WARNING_RATIO_DEN = 5;
+
+export function limitLevel(used: number, limit: LimitValue): LimitLevel {
+  if (limit.hard !== null && used >= limit.hard) return 'reached';
+  if (limit.soft !== null && used >= limit.soft) return 'warning';
+  if (
+    limit.hard !== null &&
+    used * WARNING_RATIO_DEN >= limit.hard * WARNING_RATIO_NUM
+  )
+    return 'warning';
+  return 'ok';
+}
+
+/** Share of the hard limit used, as a whole percent; null when there is no hard limit. */
+export const limitPercent = (used: number, hard: number | null) =>
+  hard === null ? null : hard === 0 ? 100 : Math.round((used * 100) / hard);

@@ -29,6 +29,17 @@ export const AUDIT_ACTIONS = [
   'plan.default_changed',
   'subscription.created',
   'subscription.changed',
+  'entitlement.feature_overridden',
+  'entitlement.feature_override_removed',
+  'entitlement.limit_overridden',
+  'entitlement.limit_override_removed',
+  'invoice.issued',
+  'invoice.voided',
+  'payment.manual_recorded',
+  'payment.refunded',
+  'payment.refund_failed',
+  'billing.settings_updated',
+  'billing.run_completed',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 

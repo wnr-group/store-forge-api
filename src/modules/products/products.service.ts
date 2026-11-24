@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { EntitlementsService } from '../entitlements/entitlements.service.js';
 import {
   and,
   asc,
@@ -108,6 +109,7 @@ export class ProductsService {
   constructor(
     private readonly db: DatabaseService,
     private readonly references: StorageReferencesService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -496,6 +498,8 @@ export class ProductsService {
       skipCategoryCheck?: boolean;
     } = {},
   ): Promise<void> {
+    // Every way of adding a product (form, import) ends here, so the plan limit cannot be bypassed by choosing another route.
+    await this.entitlements.assertWithinLimit(tx, tenantId, 'products');
     if (!opts.skipCategoryCheck)
       await this.assertCategory(tx, tenantId, values.categoryId);
     const slug =
@@ -895,6 +899,7 @@ export class ProductsService {
           .from(products)
           .where(and(eq(products.id, id), eq(products.tenantId, ctx.tenantId)));
         if (!src) throw productNotFound();
+        await this.entitlements.assertWithinLimit(tx, ctx.tenantId, 'products');
         const [options, variants] = await Promise.all([
           tx
             .select()

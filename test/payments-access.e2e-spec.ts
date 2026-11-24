@@ -629,8 +629,10 @@ describe.skipIf(!migrationsAvailable)(
         );
         // 148 is the operation count of the baseline (origin/main) application, Store Forge Studio included; 149 adds the
         // platform organization activity route (GET /platform/organizations/{id}/activity, Platform Administration phase 2);
-        // 157 adds the eight plan and subscription routes of phase 3.
-        expect(ops.length - payments.length - orderRoutes.length).toBe(157);
+        // 157 adds the eight plan and subscription routes of phase 3;
+        // 162 adds the five entitlement routes of phase 4;
+        // 184 adds the dashboard, billing and tenant billing routes of phase 5.
+        expect(ops.length - payments.length - orderRoutes.length).toBe(184);
         expect(payments.sort()).toEqual([
           'delete /api/v1/payments/razorpay',
           'get /api/v1/payments/cod',

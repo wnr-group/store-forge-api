@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import { PROVIDER_FEATURE } from '../../common/constants/plan-catalog.js';
+import { EntitlementsService } from '../entitlements/entitlements.service.js';
 import { sql } from 'drizzle-orm';
 import {
   conflict,
@@ -67,7 +69,18 @@ const toDto = (
 
 @Injectable()
 export class IntegrationsService {
-  constructor(private readonly db: DatabaseService) {}
+  constructor(
+    private readonly db: DatabaseService,
+    private readonly entitlements: EntitlementsService,
+  ) {}
+
+  /** Connecting, validating and switching ON need the plan to include the provider; switching off and removing never do. */
+  private requireProviderFeature(ctx: OrgContext, code: string) {
+    const feature = PROVIDER_FEATURE[code];
+    return feature
+      ? this.entitlements.assertFeatureAs(ctx.userId, ctx.tenantId, feature)
+      : Promise.resolve();
+  }
 
   private provider(code: string): IntegrationProvider {
     const p = findProvider(code);
@@ -162,6 +175,7 @@ export class IntegrationsService {
     input: Record<string, unknown>,
   ): Promise<IntegrationDetailDto> {
     const p = this.provider(code);
+    await this.requireProviderFeature(ctx, p.code);
     const parsed = p.parse(input);
     if (!parsed.ok)
       throw invalid(
@@ -239,6 +253,7 @@ export class IntegrationsService {
     enabled: boolean,
   ): Promise<IntegrationDetailDto> {
     const p = this.provider(code);
+    if (enabled) await this.requireProviderFeature(ctx, p.code);
     return this.db.withUser(ctx.userId, async (tx) => {
       const r = rowsOf<{ r: string }>(
         await tx.execute(sql`
@@ -260,6 +275,7 @@ export class IntegrationsService {
   /** Checks the saved configuration against the outside world. A failure never switches an integration off: it is only reported. */
   async test(ctx: OrgContext, code: string): Promise<IntegrationTestResultDto> {
     const p = this.provider(code);
+    await this.requireProviderFeature(ctx, p.code);
     const saved = await this.db.withUser(ctx.userId, (tx) =>
       this.row(tx, ctx.tenantId, p.code),
     );

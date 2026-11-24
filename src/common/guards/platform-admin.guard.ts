@@ -33,6 +33,7 @@ export const ADMIN_RATE_LIMITS = {
   'settings.update': { limit: 20, windowSeconds: 600 },
   'plan.manage': { limit: 60, windowSeconds: 600 },
   'subscription.manage': { limit: 60, windowSeconds: 600 },
+  'billing.manage': { limit: 60, windowSeconds: 600 },
 } as const;
 
 type Hit = { allowed: boolean; remaining: number; retry_after_seconds: number };
