@@ -13,10 +13,13 @@ import { loadCatalog } from './catalog-loader.js';
 import { priceLines, type RequestedLine } from './checkout-pricing.js';
 import {
   CHECKOUT_ADJUSTER,
+  CHECKOUT_DISCOUNTS,
   CHECKOUT_TAX,
   itemKeyOf,
   PAYMENT_METHOD_POLICY,
   type CheckoutAdjuster,
+  type CheckoutAdjustment,
+  type CheckoutDiscounts,
   type CheckoutTaxCalculator,
   type CheckoutTaxResult,
   type PaymentMethodPolicy,
@@ -104,6 +107,10 @@ export class CheckoutService {
     @Optional()
     @Inject(CHECKOUT_TAX)
     private readonly tax?: CheckoutTaxCalculator,
+    /** Without it no discount code is accepted (the marketing module provides it in the application). */
+    @Optional()
+    @Inject(CHECKOUT_DISCOUNTS)
+    private readonly discounts?: CheckoutDiscounts,
   ) {}
 
   /** Store slug -> tenant. Unknown, inactive and suspended stores are indistinguishable (not found). */
@@ -321,7 +328,7 @@ export class CheckoutService {
       );
 
     // 3. Shipping, tax, discounts and COD fee are decided by the server-side rules of the tenant.
-    const adjustment = await this.adjuster.adjust(
+    const baseAdjustment = await this.adjuster.adjust(
       tx,
       {
         tenantId,
@@ -339,6 +346,14 @@ export class CheckoutService {
       },
       prepared,
     );
+    // A discount code is decided by the server from the tenant's own codes; the browser only names the code.
+    const discount = dto.discountCode
+      ? await this.applyDiscount(tx, tenantId, dto, priced.lines)
+      : null;
+    const adjustment: CheckoutAdjustment = {
+      ...baseAdjustment,
+      discountMinor: discount?.discountMinor ?? baseAdjustment.discountMinor,
+    };
     const { codFeeMinor } = await this.payments.resolve(tx, {
       tenantId,
       method: dto.paymentMethod,
@@ -430,6 +445,19 @@ export class CheckoutService {
         returning id`),
     )[0].id;
 
+    // The use of the code is recorded under a lock, in this same transaction: if a limit was reached by an order placed a
+    // moment ago, this order is not created at all.
+    if (discount && this.discounts) {
+      const refused = await this.discounts.redeem(tx, {
+        tenantId,
+        discountId: discount.discountId,
+        orderId,
+        customerEmail: dto.customer.email,
+        discountMinor: discount.discountMinor,
+      });
+      if (refused) throw this.discountRefused(refused);
+    }
+
     const itemIds = new Map<string, string>();
     for (const l of priced.lines) {
       const taxed = tax.lines.find((t) => t.itemKey === itemKeyOf(l));
@@ -492,6 +520,42 @@ export class CheckoutService {
       ),
     )[0];
     return this.view(tx, tenantId, row, accessToken, false);
+  }
+
+  /** Resolves the code the shopper entered, or refuses the order with the reason (a 409 `DISCOUNT_INVALID`). */
+  private async applyDiscount(
+    tx: DbTx,
+    tenantId: string,
+    dto: PlaceOrderDto,
+    lines: Parameters<CheckoutDiscounts['resolve']>[1]['lines'],
+  ) {
+    if (!this.discounts)
+      throw this.discountRefused({
+        reason: 'NOT_FOUND',
+        message: 'This discount code is not valid.',
+      });
+    const result = await this.discounts.resolve(tx, {
+      tenantId,
+      code: dto.discountCode!,
+      lines,
+      customerEmail: dto.customer.email,
+    });
+    if (!result.ok) throw this.discountRefused(result);
+    return result;
+  }
+
+  private discountRefused(r: {
+    reason: string;
+    message: string;
+    minSubtotalMinor?: number;
+  }) {
+    return new AppException('CONFLICT', r.message, {
+      code: 'DISCOUNT_INVALID',
+      details: {
+        reason: r.reason,
+        minSubtotalMinor: r.minSubtotalMinor ?? null,
+      },
+    });
   }
 
   private address(a: CheckoutAddressDto, field: string) {

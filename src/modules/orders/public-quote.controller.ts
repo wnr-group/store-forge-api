@@ -3,6 +3,7 @@ import {
   Controller,
   HttpCode,
   Inject,
+  Optional,
   Param,
   Post,
 } from '@nestjs/common';
@@ -16,8 +17,10 @@ import { ShippingQuoteService } from '../shipping/shipping-quote.service.js';
 import { destinationOf } from '../shipping/shipping-tools.service.js';
 import { loadCatalog } from './catalog-loader.js';
 import {
+  CHECKOUT_DISCOUNTS,
   CHECKOUT_TAX,
   PAYMENT_METHOD_POLICY,
+  type CheckoutDiscounts,
   type CheckoutTaxCalculator,
   type PaymentMethodPolicy,
 } from './checkout-hooks.js';
@@ -40,6 +43,9 @@ export class PublicQuoteController {
     @Inject(PAYMENT_METHOD_POLICY)
     private readonly payments: PaymentMethodPolicy,
     @Inject(CHECKOUT_TAX) private readonly tax: CheckoutTaxCalculator,
+    @Optional()
+    @Inject(CHECKOUT_DISCOUNTS)
+    private readonly discounts?: CheckoutDiscounts,
   ) {}
 
   @Post('quote')
@@ -113,6 +119,33 @@ export class PublicQuoteController {
 
     // 3. Cash-on-delivery charge and tax, by the very code the order uses.
     return this.db.withCheckout(store.tenantId, async (tx) => {
+      // The same code path the order uses decides the discount, so the quote and the order agree.
+      let discountMinor = 0;
+      let discountCode: string | null = null;
+      if (dto.discountCode) {
+        const d = this.discounts
+          ? await this.discounts.resolve(tx, {
+              tenantId: store.tenantId,
+              code: dto.discountCode,
+              lines: priced.lines,
+              customerEmail: dto.customerEmail ?? null,
+            })
+          : null;
+        if (!d?.ok)
+          throw new AppException(
+            'CONFLICT',
+            d?.message ?? 'This discount code is not valid.',
+            {
+              code: 'DISCOUNT_INVALID',
+              details: {
+                reason: d?.reason ?? 'NOT_FOUND',
+                minSubtotalMinor: d?.minSubtotalMinor ?? null,
+              },
+            },
+          );
+        discountMinor = d.discountMinor;
+        discountCode = d.code;
+      }
       const codFeeMinor =
         dto.paymentMethod === 'cod'
           ? (
@@ -127,7 +160,7 @@ export class PublicQuoteController {
       const t = await this.tax.compute(tx, {
         tenantId: store.tenantId,
         lines: priced.lines,
-        discountMinor: 0,
+        discountMinor,
         shippingMinor,
         codFeeMinor,
         destination: {
@@ -140,12 +173,15 @@ export class PublicQuoteController {
       return {
         currency: store.currency,
         subtotalMinor: priced.subtotalMinor,
+        discountMinor,
+        discountCode,
         shippingMinor,
         codFeeMinor,
         taxMinor: t.taxMinor,
         taxInclusive: t.inclusive,
         totalMinor:
-          priced.subtotalMinor +
+          priced.subtotalMinor -
+          discountMinor +
           shippingMinor +
           codFeeMinor +
           (t.inclusive ? 0 : t.taxMinor),

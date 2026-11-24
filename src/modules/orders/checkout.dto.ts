@@ -31,6 +31,9 @@ import {
 } from '../../database/schema/enums.js';
 import { findIndianState } from './indian-states.js';
 
+/** Codes are stored upper-case; what a shopper types is upper-cased before it is checked against this. */
+export const DISCOUNT_CODE_PATTERN = /^[A-Z0-9][A-Z0-9_-]{2,31}$/;
+
 const trim = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim() : value;
 
@@ -202,6 +205,18 @@ export class PlaceOrderDto {
   @IsOptional()
   @IsUUID('4', { message: 'Choose a delivery option.' })
   shippingMethodId?: string;
+
+  @ApiPropertyOptional({
+    example: 'WELCOME10',
+    description:
+      'A discount code. The server checks it against the codes of this store (active, dates, limits, minimum purchase, eligible items) and works out the amount; a code that does not apply is a 409 `DISCOUNT_INVALID` with the reason. Only the code is taken from here, never an amount.',
+  })
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === 'string' ? value.trim().toUpperCase() || undefined : value,
+  )
+  @Matches(DISCOUNT_CODE_PATTERN, { message: 'Enter a valid discount code.' })
+  discountCode?: string;
 }
 
 export class OrderItemViewDto {

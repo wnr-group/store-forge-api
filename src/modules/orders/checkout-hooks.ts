@@ -142,3 +142,47 @@ export const CHECKOUT_TAX = Symbol('CHECKOUT_TAX');
 /** The key that ties a priced cart line to its tax line. */
 export const itemKeyOf = (l: Pick<PricedLine, 'productId' | 'variantId'>) =>
   `${l.productId}:${l.variantId ?? '-'}`;
+
+/** What the discount module is asked about a cart. `customerEmail` is null while the shopper has not given one (a quote). */
+export interface CheckoutDiscountInput {
+  tenantId: string;
+  code: string;
+  lines: readonly PricedLine[];
+  customerEmail: string | null;
+}
+
+export type CheckoutDiscountResult =
+  | {
+      ok: true;
+      discountId: string;
+      code: string;
+      discountMinor: number;
+      eligibleSubtotalMinor: number;
+    }
+  | {
+      ok: false;
+      reason: string;
+      message: string;
+      minSubtotalMinor?: number;
+    };
+
+/** Implemented by the marketing module from the tenant's own discount codes. Without it a code is simply not accepted. */
+export interface CheckoutDiscounts {
+  /** Decides whether the code applies to this cart and for how much. Reads only; the redemption is recorded by `redeem`. */
+  resolve(
+    tx: DbTx,
+    input: CheckoutDiscountInput,
+  ): Promise<CheckoutDiscountResult>;
+  /** Records the use inside the order transaction, under a lock; returns a refusal reason, or null when recorded. */
+  redeem(
+    tx: DbTx,
+    input: {
+      tenantId: string;
+      discountId: string;
+      orderId: string;
+      customerEmail: string;
+      discountMinor: number;
+    },
+  ): Promise<{ reason: string; message: string } | null>;
+}
+export const CHECKOUT_DISCOUNTS = Symbol('CHECKOUT_DISCOUNTS');
