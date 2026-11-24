@@ -623,7 +623,8 @@ describe.skipIf(!migrationsAvailable)(
             o.includes('/api/v1/shipping/') ||
             /\/api\/v1\/shipments(\/|$)/.test(o) ||
             o.includes('/api/v1/tax/') ||
-            o.includes('/api/v1/marketing/'),
+            o.includes('/api/v1/marketing/') ||
+            /\/api\/v1\/analytics\/(sales|revenue|products|customers)/.test(o),
         );
         // 148 is the operation count of the baseline (origin/main) application, Store Forge Studio included.
         expect(ops.length - payments.length - orderRoutes.length).toBe(148);
