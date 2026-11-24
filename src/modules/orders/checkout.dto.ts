@@ -217,6 +217,17 @@ export class PlaceOrderDto {
   )
   @Matches(DISCOUNT_CODE_PATTERN, { message: 'Enter a valid discount code.' })
   discountCode?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'The cart id the browser sent when it saved this cart for recovery (see the cart checkpoint). Only used to mark that cart as bought.',
+  })
+  @IsOptional()
+  @IsString()
+  @MinLength(16)
+  @MaxLength(128)
+  @Matches(/^[A-Za-z0-9_-]+$/, { message: 'Invalid cart id.' })
+  cartKey?: string;
 }
 
 export class OrderItemViewDto {

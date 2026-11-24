@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { CheckoutDiscountService } from '../marketing/checkout-discount.service.js';
+import { CartRecoveryService } from '../marketing/cart-recovery.service.js';
 import { MarketingModule } from '../marketing/marketing.module.js';
 import { CheckoutTaxService } from '../tax/checkout-tax.service.js';
 import { TaxModule } from '../tax/tax.module.js';
@@ -8,10 +9,12 @@ import { PaymentsModule } from '../payments/payments.module.js';
 import { ShippingModule } from '../shipping/shipping.module.js';
 import {
   CHECKOUT_ADJUSTER,
+  CHECKOUT_CART_TRACKER,
   CHECKOUT_DISCOUNTS,
   CHECKOUT_TAX,
   PAYMENT_METHOD_POLICY,
 } from './checkout-hooks.js';
+import { PublicCartController } from './public-cart.controller.js';
 import { PublicDiscountController } from './public-discount.controller.js';
 import { PublicQuoteController } from './public-quote.controller.js';
 import { CheckoutController } from './checkout.controller.js';
@@ -30,6 +33,7 @@ import { ReservationExpiryService } from './reservation-expiry.service.js';
     PublicShippingController,
     PublicQuoteController,
     PublicDiscountController,
+    PublicCartController,
     OrdersController,
     JobsController,
   ],
@@ -45,6 +49,8 @@ import { ReservationExpiryService } from './reservation-expiry.service.js';
     { provide: CHECKOUT_TAX, useExisting: CheckoutTaxService },
     // Discount codes are decided by the marketing module from the tenant's own codes.
     { provide: CHECKOUT_DISCOUNTS, useExisting: CheckoutDiscountService },
+    // Saved carts are cleared (or marked recovered) when an order is placed.
+    { provide: CHECKOUT_CART_TRACKER, useExisting: CartRecoveryService },
   ],
   exports: [CheckoutService, OrdersService, ReservationExpiryService],
 })

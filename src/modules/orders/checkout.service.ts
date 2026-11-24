@@ -13,12 +13,14 @@ import { loadCatalog } from './catalog-loader.js';
 import { priceLines, type RequestedLine } from './checkout-pricing.js';
 import {
   CHECKOUT_ADJUSTER,
+  CHECKOUT_CART_TRACKER,
   CHECKOUT_DISCOUNTS,
   CHECKOUT_TAX,
   itemKeyOf,
   PAYMENT_METHOD_POLICY,
   type CheckoutAdjuster,
   type CheckoutAdjustment,
+  type CheckoutCartTracker,
   type CheckoutDiscounts,
   type CheckoutTaxCalculator,
   type CheckoutTaxResult,
@@ -111,6 +113,10 @@ export class CheckoutService {
     @Optional()
     @Inject(CHECKOUT_DISCOUNTS)
     private readonly discounts?: CheckoutDiscounts,
+    /** Without it abandoned carts are simply not tracked. */
+    @Optional()
+    @Inject(CHECKOUT_CART_TRACKER)
+    private readonly carts?: CheckoutCartTracker,
   ) {}
 
   /** Store slug -> tenant. Unknown, inactive and suspended stores are indistinguishable (not found). */
@@ -167,9 +173,17 @@ export class CheckoutService {
       })),
     });
     try {
-      return await this.db.withCheckout(store.tenantId, (tx) =>
+      const placed = await this.db.withCheckout(store.tenantId, (tx) =>
         this.place(tx, store, dto, idempotencyKey, prepared),
       );
+      // After the order is saved, and never able to fail it.
+      await this.carts?.converted({
+        tenantId: store.tenantId,
+        orderNumber: placed.orderNumber,
+        cartKey: dto.cartKey ?? null,
+        email: dto.customer.email,
+      });
+      return placed;
     } catch (error) {
       // Two requests with the same key raced: the loser hits the unique index and returns the winner's order.
       if (

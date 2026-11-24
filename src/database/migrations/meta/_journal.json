@@ -386,6 +386,13 @@
       "when": 1794300037000,
       "tag": "0054_discount_checkout",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1794300038000,
+      "tag": "0055_abandoned_cart_functions",
+      "breakpoints": true
     }
   ]
 }

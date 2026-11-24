@@ -186,3 +186,17 @@ export interface CheckoutDiscounts {
   ): Promise<{ reason: string; message: string } | null>;
 }
 export const CHECKOUT_DISCOUNTS = Symbol('CHECKOUT_DISCOUNTS');
+
+/** An order was placed; the cart it came from (by the browser's cart id and/or the shopper's email) can stop being tracked. */
+export interface CartConversion {
+  tenantId: string;
+  orderNumber: number;
+  cartKey: string | null;
+  email: string;
+}
+
+/** Implemented by the marketing module. It must never throw: tracking is not allowed to cost a sale. */
+export interface CheckoutCartTracker {
+  converted(conversion: CartConversion): Promise<void>;
+}
+export const CHECKOUT_CART_TRACKER = Symbol('CHECKOUT_CART_TRACKER');
