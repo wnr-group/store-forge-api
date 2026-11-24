@@ -496,10 +496,13 @@ export class ProductsService {
     opts: {
       verified?: Map<string, { mimeType: string; sizeBytes: number }>;
       skipCategoryCheck?: boolean;
+      /** The caller already checked the plan limit for all the rows it is adding (bulk import). */
+      skipLimitCheck?: boolean;
     } = {},
   ): Promise<void> {
     // Every way of adding a product (form, import) ends here, so the plan limit cannot be bypassed by choosing another route.
-    await this.entitlements.assertWithinLimit(tx, tenantId, 'products');
+    if (!opts.skipLimitCheck)
+      await this.entitlements.assertWithinLimit(tx, tenantId, 'products');
     if (!opts.skipCategoryCheck)
       await this.assertCategory(tx, tenantId, values.categoryId);
     const slug =

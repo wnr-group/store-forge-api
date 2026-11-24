@@ -64,7 +64,7 @@ The role is read from `platform_admins` by the database on every request. `Platf
 | admins:manage, settings:manage | yes | no | no | no |
 | settings:read | yes | yes | yes | yes |
 
-Known residual: the `platform_*` SQL functions still authorise on `is_platform_admin()`, which is true for every platform role. They are reachable only through the API (the REST path is closed by `session_user`), where the guard decides. Tightening them is part of Phase 8.
+The database enforces the same matrix (migration 0067): the `platform_*` functions and the platform tables check the role with `platform_role_in(...)` (operators: `super_admin`, `admin`; billing: `super_admin`, `billing_admin`), so a mistake in an API route cannot let a Billing or Support admin reach a function meant for another role. Tests: `test/platform-hardening.e2e-spec.ts` (database level) and `test/platform-security-matrix.e2e-spec.ts` (every route, every role).
 
 Platform authority and tenant roles are disjoint: an account that belongs to an organization cannot become a platform admin.
 

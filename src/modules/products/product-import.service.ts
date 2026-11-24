@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { EntitlementsService } from '../entitlements/entitlements.service.js';
 import { and, eq, inArray } from 'drizzle-orm';
 import { AppException, notFound } from '../../common/app.exception.js';
 import { mapErrors } from '../../common/db-errors.js';
@@ -26,6 +27,7 @@ export class ProductImportService {
   constructor(
     private readonly db: DatabaseService,
     private readonly productsService: ProductsService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   async import(
@@ -148,6 +150,13 @@ export class ProductImportService {
           ctx.tenantId,
           categoryIds,
         );
+        // One plan-limit check for the whole file (it counts the rows about to be added), instead of one per row.
+        await this.entitlements.assertWithinLimit(
+          tx,
+          ctx.tenantId,
+          'products',
+          rows.length,
+        );
         for (const r of rows)
           await this.productsService.insertNewProductInTx(
             tx,
@@ -158,7 +167,7 @@ export class ProductImportService {
               slug: r.explicitSlug ?? read.generated.get(r.row),
             },
             read.currency,
-            { skipCategoryCheck: true },
+            { skipCategoryCheck: true, skipLimitCheck: true },
           );
       }),
     );
