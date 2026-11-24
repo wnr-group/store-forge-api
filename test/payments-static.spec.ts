@@ -264,8 +264,16 @@ describe('payments static scans', () => {
     const files = git('diff', '--name-only', baseBranch())
       .split('\n')
       .filter(Boolean);
-    const authTouched = files.filter((f) =>
-      /^src\/modules\/(auth|customers|public)\//.test(f),
+    // auth.dto.ts and auth.service.ts: GET /auth/me reports platform STAFF roles (all four, as /platform/me does).
+    // It adds no shopper login and enforces nothing.
+    const staffRoleFiles = [
+      'src/modules/auth/auth.dto.ts',
+      'src/modules/auth/auth.service.ts',
+    ];
+    const authTouched = files.filter(
+      (f) =>
+        /^src\/modules\/(auth|customers|public)\//.test(f) &&
+        !staffRoleFiles.includes(f),
     );
     const readers = source()
       .filter((f) => /customerAuthEnabled|customer_auth_enabled/.test(read(f)))

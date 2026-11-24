@@ -4,6 +4,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { eq, sql } from 'drizzle-orm';
 import { AppException, invalid } from '../../common/app.exception.js';
 import { effectiveCapabilities } from '../../common/constants/permissions.js';
+import { isPlatformRole } from '../../common/constants/platform-permissions.js';
 import type { AuthUser } from '../../common/interfaces/request-context.js';
 import { listActiveMemberships } from '../../common/tenancy/memberships.js';
 import type { AppConfig } from '../../config/configuration.js';
@@ -41,9 +42,8 @@ export class AuthService {
         return {
           memberships,
           fullName: profile[0]?.fullName ?? null,
-          level: (role === 'super_admin' || role === 'admin'
-            ? role
-            : null) as MeDto['platformAdminLevel'],
+          // Every platform role, the same set `GET /platform/me` reports. Anything else (null, an unknown value) is not staff.
+          level: isPlatformRole(role) ? role : null,
         };
       },
     );

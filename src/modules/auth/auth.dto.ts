@@ -6,6 +6,10 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
+import {
+  PLATFORM_ADMIN_ROLES,
+  type PlatformAdminRole,
+} from '../../database/schema/enums.js';
 import { EmailField, PasswordField } from '../../common/validation/fields.js';
 
 /** Same rules as the Next.js login form: a trimmed, lower-cased e-mail and a non-empty password of at most 72 characters. */
@@ -86,12 +90,12 @@ export class MeDto {
   })
   fullName!: string | null;
   @ApiProperty({
-    enum: ['super_admin', 'admin'],
+    enum: PLATFORM_ADMIN_ROLES,
     nullable: true,
     description:
-      'Your Platform Admin level, or null if you are not a Platform Admin.',
+      'Your platform role (`super_admin`, `admin`, `billing_admin` or `support_admin`), or null if you are not platform staff. It says who you are; what the role may do is returned by `GET /platform/me`, and every platform route checks it again.',
   })
-  platformAdminLevel!: 'super_admin' | 'admin' | null;
+  platformAdminLevel!: PlatformAdminRole | null;
   @ApiProperty({ type: [MembershipDto] }) memberships!: MembershipDto[];
 }
 

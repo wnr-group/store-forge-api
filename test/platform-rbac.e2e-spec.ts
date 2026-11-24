@@ -53,6 +53,24 @@ describe.skipIf(!migrationsAvailable)('platform RBAC (e2e)', () => {
     expect(s.permissions).not.toContain('billing:read');
   });
 
+  it('reports the same role from /auth/me as from /platform/me, for every platform role, and none to a tenant Owner', async () => {
+    for (const [c, level] of [
+      [sup, 'super_admin'],
+      [admin, 'admin'],
+      [billing, 'billing_admin'],
+      [support, 'support_admin'],
+    ] as const) {
+      const me = (await c.get('/auth/me').expect(200)).body.data;
+      const platform = (await c.get('/platform/me').expect(200)).body.data;
+      expect(me.platformAdminLevel).toBe(level);
+      expect(me.platformAdminLevel).toBe(platform.level);
+    }
+    expect(
+      (await owner.get('/auth/me').expect(200)).body.data.platformAdminLevel,
+    ).toBeNull();
+    await owner.get('/platform/me').expect(403);
+  });
+
   it('lets Billing and Support admins read what their role includes', async () => {
     for (const c of [billing, support]) {
       await c.get('/platform/organizations').expect(200);
