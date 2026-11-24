@@ -31,6 +31,7 @@ const PUBLIC_ROUTES = new Set([
   'POST /api/v1/public/stores/{slug}/discounts/validate',
   'POST /api/v1/public/stores/{slug}/cart/checkpoint',
   'GET /api/v1/public/stores/{slug}/cart/recovery/{token}',
+  'GET /api/v1/public/stores/{slug}/tracking',
   'POST /api/v1/webhooks/razorpay/{tenantPublicId}',
   'POST /api/v1/webhooks/carriers/{providerCode}',
   'GET /api/v1/public/stores/{slug}/payment-methods',
@@ -173,6 +174,9 @@ describe('OpenAPI coverage (e2e)', () => {
       'POST /api/v1/shipments/{id}/label', // acts on the id alone
       'POST /api/v1/payments/refunds/{id}/sync', // acts on the id alone
       'POST /api/v1/orders/{id}/cod/collect', // acts on the id alone
+      'POST /api/v1/integrations/{provider}/enable', // acts on the provider alone
+      'POST /api/v1/integrations/{provider}/disable',
+      'POST /api/v1/integrations/{provider}/test',
       'POST /api/v1/auth/logout', // the session is the cookie
       'POST /api/v1/auth/refresh',
     ]);

@@ -31,6 +31,7 @@ import { ShipmentsModule } from './modules/shipments/shipments.module.js';
 import { ShippingModule } from './modules/shipping/shipping.module.js';
 import { TaxModule } from './modules/tax/tax.module.js';
 import { CheckoutPaymentsModule } from './modules/checkout-payments/checkout-payments.module.js';
+import { IntegrationsModule } from './modules/integrations/integrations.module.js';
 import { ReportsModule } from './modules/reports/reports.module.js';
 import { MarketingModule } from './modules/marketing/marketing.module.js';
 import { PagesModule } from './modules/pages/pages.module.js';
@@ -82,6 +83,7 @@ import { UsersModule } from './modules/users/users.module.js';
     TaxModule,
     MarketingModule,
     ReportsModule,
+    IntegrationsModule,
     ThemesModule,
     StudioModule,
     PagesModule,

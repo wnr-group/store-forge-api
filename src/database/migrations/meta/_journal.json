@@ -400,6 +400,13 @@
       "when": 1794300039000,
       "tag": "0056_order_refund_totals",
       "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1794300040000,
+      "tag": "0057_public_tracking_config",
+      "breakpoints": true
     }
   ]
 }
