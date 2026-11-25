@@ -14,6 +14,7 @@ Base path `/api/v1`. All JSON. Success envelope `{success,message,data,meta?}`; 
 | 1 | health | Liveness (no dependencies) | GET `/health` | Public | - | - | `{status, service}` | - | process is up |
 | 74 | health | Readiness (database) | GET `/health/ready` | Public | - | - | `{status, service, database}`; 503 when the DB is down | `select 1` through the RLS-guarded path | new infra |
 | 2 | public | Platform branding | GET `/public/branding` | Public | - | - | `{platformName, supportEmail}` | `get_public_platform_settings()` | defaults to `StoreForge` if DB fails (`getPublicBranding`) |
+| 2a | public | Subscription plans on offer | GET `/public/plans` | Public | - | - | array of `{code, name, description, currency, monthlyPrice, yearlyPrice, trialDays, features[], limits[]}` | `get_public_plans()` | only active, restricted plans (an admin "publishes" a plan by making it active); no ids or subscriber counts; limit `null` = unlimited; read-only, no purchase |
 | 3 | public | Public storefront | GET `/public/storefronts/:slug` | Public | - | slug | storefront JSON or 404 | `get_public_storefront(slug)` | unknown/inactive/suspended look identical (404); runs as no-identity request role |
 
 ## Auth & profile

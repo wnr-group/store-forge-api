@@ -634,8 +634,9 @@ describe.skipIf(!migrationsAvailable)(
         // 184 adds the dashboard, billing and tenant billing routes of phase 5;
         // 185 adds the audit log filter options of phase 6.
         // 188 adds the three monitoring routes of phase 7;
-        // 191 adds the three platform logo routes (upload link, set, remove).
-        expect(ops.length - payments.length - orderRoutes.length).toBe(191);
+        // 191 adds the three platform logo routes (upload link, set, remove);
+        // 192 adds the public subscription plans route (GET /public/plans).
+        expect(ops.length - payments.length - orderRoutes.length).toBe(192);
         expect(payments.sort()).toEqual([
           'delete /api/v1/payments/razorpay',
           'get /api/v1/payments/cod',
