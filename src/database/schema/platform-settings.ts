@@ -26,6 +26,8 @@ export const platformSettings = pgTable(
     defaultStoreStatus: text('default_store_status')
       .notNull()
       .default('active'),
+    /** Path of the platform logo inside the public `platform-assets` bucket; null means the built-in logo. */
+    logoPath: text('logo_path'),
     updatedAt: timestamp('updated_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -40,6 +42,10 @@ export const platformSettings = pgTable(
     check(
       'platform_settings_support_email_check',
       sql`${t.supportEmail} is null or (char_length(${t.supportEmail}) <= 254 and position('@' in ${t.supportEmail}) > 1)`,
+    ),
+    check(
+      'platform_settings_logo_path_check',
+      sql`${t.logoPath} is null or ${t.logoPath} ~ '^logo/[A-Za-z0-9._-]{1,120}$'`,
     ),
     check(
       'platform_settings_currency_check',

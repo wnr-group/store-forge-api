@@ -1,7 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { sql } from 'drizzle-orm';
 import { notFound } from '../../common/app.exception.js';
 import { DatabaseService, rowsOf } from '../../database/database.service.js';
+import type { AppConfig } from '../../config/configuration.js';
+import { platformAssetUrl } from '../storage/storage-paths.js';
 import { RecommendationsService } from '../recommendations/recommendations.service.js';
 import type { PublicRecommendationsQueryDto } from '../recommendations/recommendations.dto.js';
 import type { RecordWebVitalsDto } from '../studio/studio.dto.js';
@@ -14,6 +17,7 @@ import type {
 const DEFAULT_BRANDING: PublicBrandingDto = {
   platformName: 'StoreForge',
   supportEmail: null,
+  logoUrl: null,
 };
 
 interface StorefrontRaw {
@@ -45,6 +49,7 @@ export class PublicService {
   constructor(
     private readonly db: DatabaseService,
     private readonly recommendationsService: RecommendationsService,
+    private readonly config: ConfigService<AppConfig, true>,
   ) {}
 
   /** The platform name and support contact. If the database cannot be reached the defaults are used. */
@@ -52,14 +57,27 @@ export class PublicService {
     try {
       const row = await this.db.withPublic(
         async (tx) =>
-          rowsOf<{ platform_name: string; support_email: string | null }>(
+          rowsOf<{
+            platform_name: string;
+            support_email: string | null;
+            logo_path: string | null;
+          }>(
             await tx.execute(
               sql`select * from public.get_public_platform_settings()`,
             ),
           )[0],
       );
       return row
-        ? { platformName: row.platform_name, supportEmail: row.support_email }
+        ? {
+            platformName: row.platform_name,
+            supportEmail: row.support_email,
+            logoUrl: row.logo_path
+              ? platformAssetUrl(
+                  this.config.get('supabase', { infer: true }).url,
+                  row.logo_path,
+                )
+              : null,
+          }
         : DEFAULT_BRANDING;
     } catch (error) {
       this.logger.error(
@@ -244,15 +262,19 @@ export class PublicService {
 
   /** Published reviews for a product with mandatory disclosure wording. */
   async reviews(slug: string, productSlug: string, limit = 20, offset = 0) {
-    const raw = await this.db.withPublic(async (tx) =>
-      rowsOf<{ r: unknown }>(
-        await tx.execute(
-          sql`select public.get_public_product_reviews(${slug}, ${productSlug}, ${limit}, ${offset}) as r`,
-        ),
-      )[0]?.r,
+    const raw = await this.db.withPublic(
+      async (tx) =>
+        rowsOf<{ r: unknown }>(
+          await tx.execute(
+            sql`select public.get_public_product_reviews(${slug}, ${productSlug}, ${limit}, ${offset}) as r`,
+          ),
+        )[0]?.r,
     );
     if (!raw) throw notFound('Product or store not found.', 'NOT_FOUND');
-    return (typeof raw === 'string' ? JSON.parse(raw) : raw) as Record<string, unknown>;
+    return (typeof raw === 'string' ? JSON.parse(raw) : raw) as Record<
+      string,
+      unknown
+    >;
   }
 
   /** Recommendations for a product / collection on the storefront. */
@@ -307,14 +329,18 @@ export class PublicService {
 
   /** One published landing page (kind = 'page'). */
   async landingPage(slug: string, pageSlug: string) {
-    const raw = await this.db.withPublic(async (tx) =>
-      rowsOf<{ p: unknown }>(
-        await tx.execute(
-          sql`select public.get_public_landing_page(${slug}, ${pageSlug}) as p`,
-        ),
-      )[0]?.p,
+    const raw = await this.db.withPublic(
+      async (tx) =>
+        rowsOf<{ p: unknown }>(
+          await tx.execute(
+            sql`select public.get_public_landing_page(${slug}, ${pageSlug}) as p`,
+          ),
+        )[0]?.p,
     );
     if (!raw) throw notFound('Landing page not found.', 'PAGE_NOT_FOUND');
-    return (typeof raw === 'string' ? JSON.parse(raw) : raw) as Record<string, unknown>;
+    return (typeof raw === 'string' ? JSON.parse(raw) : raw) as Record<
+      string,
+      unknown
+    >;
   }
 }

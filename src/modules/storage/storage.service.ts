@@ -12,6 +12,9 @@ import {
   IMAGE_TYPES,
   isDirectChild,
   newObjectName,
+  LOGO_FOLDER,
+  LOGO_MAX_BYTES,
+  PLATFORM_ASSETS_BUCKET,
   PRODUCT_BUCKET,
   VIDEO_MAX_BYTES,
   VIDEO_TYPES,
@@ -181,6 +184,68 @@ export class StorageService {
     )
       throw invalid('The uploaded image is not an allowed type or size.');
     return { path, mimeType: meta.mimetype, sizeBytes: meta.size };
+  }
+
+  /** One signed upload link for a new platform logo file. The Storage policy lets only super admins write there. */
+  async createLogoUploadTarget(
+    token: string,
+    file: FileMeta,
+  ): Promise<UploadTarget> {
+    if (!(IMAGE_TYPES as readonly string[]).includes(file.type))
+      throw invalid('The logo must be a JPEG, PNG or WebP image.');
+    if (file.size <= 0 || file.size > LOGO_MAX_BYTES)
+      throw invalid('The logo must be 2 MB or smaller.');
+    const name = newObjectName(file.type);
+    if (!name) throw invalid('Unsupported image type.');
+    const path = `${LOGO_FOLDER}/${name}`;
+    const { data, error } = await this.clientFor(token)
+      .storage.from(PLATFORM_ASSETS_BUCKET)
+      .createSignedUploadUrl(path);
+    if (error || !data) {
+      this.logger.error(`createSignedUploadUrl failed: ${error?.message}`);
+      throw forbidden('You are not allowed to upload here.');
+    }
+    return { path, token: data.token, signedUrl: data.signedUrl };
+  }
+
+  /** Confirms the logo file really exists in Storage and is an allowed type and size, taking both from Storage, never the client. */
+  async verifyLogo(token: string, path: string): Promise<void> {
+    if (!isDirectChild(path, LOGO_FOLDER))
+      throw invalid('The uploaded logo has an invalid path.');
+    const name = path.slice(LOGO_FOLDER.length + 1);
+    const { data, error } = await this.clientFor(token)
+      .storage.from(PLATFORM_ASSETS_BUCKET)
+      .list(LOGO_FOLDER, { limit: 100, search: name });
+    if (error) {
+      this.logger.error(`storage list failed: ${error.message}`);
+      throw new AppException(
+        'UNKNOWN',
+        'Could not verify the uploaded logo. Please try again.',
+      );
+    }
+    const obj = (data ?? []).find((o) => o.name === name);
+    const meta = obj?.metadata as { mimetype?: string; size?: number } | null;
+    if (!obj || !meta?.mimetype || !meta.size)
+      throw invalid('The logo upload did not finish. Please upload it again.');
+    if (
+      !(IMAGE_TYPES as readonly string[]).includes(meta.mimetype) ||
+      meta.size > LOGO_MAX_BYTES
+    )
+      throw invalid('The uploaded logo is not an allowed type or size.');
+  }
+
+  /** Best-effort removal of an old logo file; a failure leaves an unreferenced file, never a dangling reference. */
+  async removeLogoFile(token: string, path: string): Promise<void> {
+    try {
+      const { error } = await this.clientFor(token)
+        .storage.from(PLATFORM_ASSETS_BUCKET)
+        .remove([path]);
+      if (error) this.logger.error(`logo remove failed: ${error.message}`);
+    } catch (e) {
+      this.logger.error(
+        `logo remove threw: ${e instanceof Error ? e.message : 'unknown'}`,
+      );
+    }
   }
 
   /** Best-effort removal; a failure leaves an unreferenced object, never a dangling DB reference. */

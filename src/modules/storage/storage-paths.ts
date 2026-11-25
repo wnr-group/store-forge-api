@@ -46,3 +46,17 @@ export function newObjectName(mimeType: string): string | null {
   const ext = EXTENSIONS[mimeType];
   return ext ? `${crypto.randomUUID()}.${ext}` : null;
 }
+
+/**
+ * The platform logo lives in its own public bucket, `platform-assets`, as `logo/{file}`. Only super admins can write there
+ * (Storage policies from migration 0068); anyone can read, like store images.
+ */
+export const PLATFORM_ASSETS_BUCKET = 'platform-assets';
+export const LOGO_FOLDER = 'logo';
+export const LOGO_MAX_BYTES = 2 * 1024 * 1024;
+
+export const platformAssetUrl = (supabaseUrl: string, path: string) =>
+  `${supabaseUrl.replace(/\/$/, '')}/storage/v1/object/public/${PLATFORM_ASSETS_BUCKET}/${path
+    .split('/')
+    .map(encodeURIComponent)
+    .join('/')}`;

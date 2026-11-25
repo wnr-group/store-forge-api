@@ -477,6 +477,13 @@
       "when": 1794300050000,
       "tag": "0067_platform_role_enforcement",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1794300051000,
+      "tag": "0068_platform_logo",
+      "breakpoints": true
     }
   ]
 }

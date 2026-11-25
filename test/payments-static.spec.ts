@@ -266,9 +266,12 @@ describe('payments static scans', () => {
       .filter(Boolean);
     // auth.dto.ts and auth.service.ts: GET /auth/me reports platform STAFF roles (all four, as /platform/me does).
     // It adds no shopper login and enforces nothing.
+    // public.dto.ts and public.service.ts: GET /public/branding also returns the platform logo address (no sign-in needed, nothing enforced).
     const staffRoleFiles = [
       'src/modules/auth/auth.dto.ts',
       'src/modules/auth/auth.service.ts',
+      'src/modules/public/public.dto.ts',
+      'src/modules/public/public.service.ts',
     ];
     const authTouched = files.filter(
       (f) =>
