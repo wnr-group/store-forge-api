@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { EntitlementsService } from '../entitlements/entitlements.service.js';
 import {
   and,
   asc,
@@ -108,6 +109,7 @@ export class ProductsService {
   constructor(
     private readonly db: DatabaseService,
     private readonly references: StorageReferencesService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   // -------------------------------------------------------------------------------------------------------------------
@@ -494,8 +496,13 @@ export class ProductsService {
     opts: {
       verified?: Map<string, { mimeType: string; sizeBytes: number }>;
       skipCategoryCheck?: boolean;
+      /** The caller already checked the plan limit for all the rows it is adding (bulk import). */
+      skipLimitCheck?: boolean;
     } = {},
   ): Promise<void> {
+    // Every way of adding a product (form, import) ends here, so the plan limit cannot be bypassed by choosing another route.
+    if (!opts.skipLimitCheck)
+      await this.entitlements.assertWithinLimit(tx, tenantId, 'products');
     if (!opts.skipCategoryCheck)
       await this.assertCategory(tx, tenantId, values.categoryId);
     const slug =
@@ -575,6 +582,9 @@ export class ProductsService {
       trackInventory: v.trackInventory,
       quantity: hasVariants ? 0 : v.quantity,
       lowStockThreshold: v.lowStockThreshold,
+      weightGrams: v.weightGrams,
+      taxRateBps: v.taxRateBps,
+      hsnCode: v.hsnCode,
       status: v.status,
     };
   }
@@ -621,6 +631,9 @@ export class ProductsService {
       trackInventory: dto.trackInventory ?? true,
       quantity: dto.quantity ?? 0,
       lowStockThreshold: dto.lowStockThreshold ?? 5,
+      weightGrams: dto.weightGrams ?? 0,
+      taxRateBps: dto.taxRateBps ?? null,
+      hsnCode: dto.hsnCode ?? null,
       status: dto.status ?? 'draft',
       options: (dto.options ?? []).map((o) => ({
         name: o.name,
@@ -703,6 +716,9 @@ export class ProductsService {
       trackInventory: dto.trackInventory ?? p.trackInventory,
       quantity: dto.quantity ?? p.quantity,
       lowStockThreshold: dto.lowStockThreshold ?? p.lowStockThreshold,
+      weightGrams: dto.weightGrams ?? p.weightGrams,
+      taxRateBps: pick(dto.taxRateBps, p.taxRateBps),
+      hsnCode: pick(dto.hsnCode, p.hsnCode),
       status: dto.status ?? p.status,
       options: dto.options
         ? dto.options.map((o) => ({ name: o.name, values: o.values }))
@@ -886,6 +902,7 @@ export class ProductsService {
           .from(products)
           .where(and(eq(products.id, id), eq(products.tenantId, ctx.tenantId)));
         if (!src) throw productNotFound();
+        await this.entitlements.assertWithinLimit(tx, ctx.tenantId, 'products');
         const [options, variants] = await Promise.all([
           tx
             .select()

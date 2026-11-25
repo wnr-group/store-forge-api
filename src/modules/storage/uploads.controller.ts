@@ -9,6 +9,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
+import { EntitlementsService } from '../entitlements/entitlements.service.js';
 import { Body, Controller, Post } from '@nestjs/common';
 import { ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
@@ -97,7 +98,10 @@ class UploadTargetDto {
 @Controller('uploads')
 @OrgScoped()
 export class UploadsController {
-  constructor(private readonly storage: StorageService) {}
+  constructor(
+    private readonly storage: StorageService,
+    private readonly entitlements: EntitlementsService,
+  ) {}
 
   @Post('signed-urls')
   @ApiEndpoint({
@@ -138,6 +142,13 @@ export class UploadsController {
         : dto.scope === 'collection'
           ? collectionFolder(org.tenantId, dto.ownerId!)
           : productFolder(org.tenantId, dto.ownerId!);
+    // New uploads stop once the plan storage limit is reached (the file sizes being asked for count too).
+    await this.entitlements.assertWithinLimitAs(
+      user.id,
+      org.tenantId,
+      'storage_bytes',
+      dto.files.reduce((sum, file) => sum + file.size, 0),
+    );
     return this.storage.createUploadTargets(
       user.token,
       folder,

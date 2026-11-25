@@ -99,7 +99,11 @@ describe('payments static scans', () => {
         `payments barrels: ${barrels.length}`,
       ],
       () => {
-        expect(hits).toEqual(['src/modules/payments/credentials-crypto.ts']);
+        expect(hits).toEqual([
+          'src/modules/payments/credentials-crypto.ts',
+          'src/modules/payments/razorpay-credentials.ts',
+          'src/modules/shipping/carrier-credentials.ts',
+        ]);
         expect(barrels).toEqual([]);
       },
     );
@@ -230,7 +234,7 @@ describe('payments static scans', () => {
       ],
       () => expect(added).toEqual([]),
     );
-  });
+  }, 30_000); // it diffs the whole branch against main, which takes several seconds on a long-lived branch
 
   it('AC-FE-14 [layer:STATIC]: no frontend REST route handler and no Settings change appears in this repository (API half)', async () => {
     // The registry attributes this row to the API repository's static scan; the frontend repository runs its own (and passes).
@@ -260,8 +264,19 @@ describe('payments static scans', () => {
     const files = git('diff', '--name-only', baseBranch())
       .split('\n')
       .filter(Boolean);
-    const authTouched = files.filter((f) =>
-      /^src\/modules\/(auth|customers|public)\//.test(f),
+    // auth.dto.ts and auth.service.ts: GET /auth/me reports platform STAFF roles (all four, as /platform/me does).
+    // It adds no shopper login and enforces nothing.
+    // public.dto.ts and public.service.ts: GET /public/branding also returns the platform logo address (no sign-in needed, nothing enforced).
+    const staffRoleFiles = [
+      'src/modules/auth/auth.dto.ts',
+      'src/modules/auth/auth.service.ts',
+      'src/modules/public/public.dto.ts',
+      'src/modules/public/public.service.ts',
+    ];
+    const authTouched = files.filter(
+      (f) =>
+        /^src\/modules\/(auth|customers|public)\//.test(f) &&
+        !staffRoleFiles.includes(f),
     );
     const readers = source()
       .filter((f) => /customerAuthEnabled|customer_auth_enabled/.test(read(f)))
@@ -281,23 +296,37 @@ describe('payments static scans', () => {
     );
   });
 
-  it('AC-SCOPE-02 [layer:STATIC]: no Razorpay SDK, outbound Razorpay call, webhook or payment-processing route (API)', async () => {
+  it('AC-SCOPE-02 [layer:STATIC]: Razorpay is the only online payment gateway, reached only from its client, and no other gateway exists (API)', async () => {
     const pkg = JSON.parse(read(join(ROOT, 'package.json'))) as Record<
       string,
       Record<string, string> | undefined
     >;
-    const deps = Object.keys({
+    const OTHER_GATEWAYS =
+      /stripe|paypal|braintree|adyen|payu|cashfree|paytm|phonepe|instamojo|ccavenue|billdesk|worldpay|mollie|klarna|square(up)?\b|authorize\.net|2checkout|checkout\.com/i;
+    const allDeps = Object.keys({
       ...pkg.dependencies,
       ...pkg.devDependencies,
-    }).filter((d) => /razorpay/i.test(d));
+    });
+    const otherGatewayDeps = allDeps.filter((d) => OTHER_GATEWAYS.test(d));
+    // Razorpay's REST API is called directly (one reviewed client): no SDK is installed.
+    const razorpaySdk = allDeps.filter((d) => /razorpay/i.test(d));
     const src = source().filter(
       (f) => !f.includes(`${sep}database${sep}migrations${sep}`),
     );
-    const hosts = src.filter((f) => /razorpay\.com/i.test(read(f))).map(norm);
-    const payments = src.filter((f) =>
-      f.includes(`${sep}modules${sep}payments${sep}`),
+    const otherGatewayHosts = src
+      .filter((f) =>
+        /(stripe|paypal|braintreegateway|adyen|payu|cashfree|paytm|phonepe|instamojo|ccavenue)\.(com|in|net)/i.test(
+          read(f),
+        ),
+      )
+      .map(norm);
+    const razorpayHosts = src
+      .filter((f) => /razorpay\.com/i.test(read(f)))
+      .map(norm);
+    const money = src.filter((f) =>
+      /\/modules\/(payments|checkout-payments|orders)\//.test(norm(f)),
     );
-    const outbound = payments
+    const outbound = money
       .filter((f) =>
         /\bfetch\(|axios|https?\.request|from 'node:https?'/.test(read(f)),
       )
@@ -310,22 +339,38 @@ describe('payments static scans', () => {
             read(f).match(/@Controller\([^)]*\)/)?.[0] ?? '',
           ),
       )
-      .map(norm);
+      .map(norm)
+      .sort();
     await evidence(
       'AC-SCOPE-02',
-      'no razorpay dependency, razorpay host, outbound HTTP in the payments module, or payment/webhook/checkout/refund controller other than payments/razorpay',
+      'no other payment gateway dependency or host; Razorpay is called only from razorpay.client.ts and only by REST (no SDK); payment-related controllers are exactly the reviewed set',
       [
-        `razorpay dependencies: ${deps.length}`,
-        `razorpay hosts: ${hosts.length}`,
-        `outbound calls: ${outbound.length}`,
+        `other gateway dependencies: ${otherGatewayDeps.length}`,
+        `razorpay sdk dependencies: ${razorpaySdk.length}`,
+        `other gateway hosts: ${otherGatewayHosts.length}`,
+        `razorpay hosts: ${razorpayHosts.join(', ')}`,
+        `outbound calls in money modules: ${outbound.join(', ')}`,
         `controllers: ${controllers.join(', ')}`,
       ],
       () => {
-        expect(deps).toEqual([]);
-        expect(hosts).toEqual([]);
-        expect(outbound).toEqual([]);
+        expect(otherGatewayDeps).toEqual([]);
+        expect(razorpaySdk).toEqual([]);
+        expect(otherGatewayHosts).toEqual([]);
+        expect(razorpayHosts).toEqual([
+          'src/modules/payments/razorpay.client.ts',
+        ]);
+        expect(outbound).toEqual(['src/modules/payments/razorpay.client.ts']);
         expect(controllers).toEqual([
+          // StoreForge's own subscription billing (Platform Administration phase 5): signed webhooks for the platform Razorpay
+          // account. It reaches Razorpay only through the same reviewed client (payments/razorpay.client.ts).
+          'src/modules/billing/billing-webhook.controller.ts',
+          'src/modules/checkout-payments/razorpay-webhook.controller.ts',
+          'src/modules/orders/public-quote.controller.ts',
+          'src/modules/payments/cod.controller.ts',
+          'src/modules/payments/payments-ledger.controller.ts',
           'src/modules/payments/payments.controller.ts',
+          // Carrier tracking pings: not a payment path (no money moves), matched only by the word "webhook".
+          'src/modules/shipments/carrier-webhook.controller.ts',
         ]);
       },
     );

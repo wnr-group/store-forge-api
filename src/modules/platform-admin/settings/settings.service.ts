@@ -1,13 +1,19 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { sql } from 'drizzle-orm';
 import {
   DatabaseService,
   rowsOf,
   type DbTx,
 } from '../../../database/database.service.js';
+import type { AppConfig } from '../../../config/configuration.js';
+import { StorageService } from '../../storage/storage.service.js';
+import { platformAssetUrl } from '../../storage/storage-paths.js';
 import { recordAudit } from '../audit/audit.service.js';
 import { mapProvisioningError } from '../platform-errors.js';
 import type {
+  LogoUploadRequestDto,
+  LogoUploadTargetDto,
   PlatformSettingsDto,
   UpdatePlatformSettingsDto,
 } from './settings.dto.js';
@@ -20,6 +26,7 @@ type SettingsRaw = {
   default_store_status: 'active' | 'inactive';
   updated_at: string | Date;
   updated_by_email: string | null;
+  logo_path: string | null;
 };
 
 /**
@@ -29,7 +36,11 @@ type SettingsRaw = {
  */
 @Injectable()
 export class PlatformSettingsService {
-  constructor(private readonly db: DatabaseService) {}
+  constructor(
+    private readonly db: DatabaseService,
+    private readonly storage: StorageService,
+    private readonly config: ConfigService<AppConfig, true>,
+  ) {}
 
   private async fetch(tx: DbTx): Promise<PlatformSettingsDto> {
     const r = rowsOf<SettingsRaw>(
@@ -41,6 +52,12 @@ export class PlatformSettingsService {
       defaultCurrency: r.default_currency,
       defaultTimezone: r.default_timezone,
       defaultStoreStatus: r.default_store_status,
+      logoUrl: r.logo_path
+        ? platformAssetUrl(
+            this.config.get('supabase', { infer: true }).url,
+            r.logo_path,
+          )
+        : null,
       updatedAt: new Date(r.updated_at),
       updatedByEmail: r.updated_by_email,
     };
@@ -48,6 +65,51 @@ export class PlatformSettingsService {
 
   get(adminId: string): Promise<PlatformSettingsDto> {
     return this.db.withUser(adminId, (tx) => this.fetch(tx));
+  }
+
+  /** A one-time link to upload a new logo straight to Storage. Super admins only (the Storage policy checks again). */
+  uploadTarget(
+    token: string,
+    file: LogoUploadRequestDto,
+  ): Promise<LogoUploadTargetDto> {
+    return this.storage.createLogoUploadTarget(token, file);
+  }
+
+  /**
+   * Make an uploaded file the platform logo, or go back to the built-in one when `path` is null. The file is checked in
+   * Storage first, the change is audited, and the logo it replaces is deleted afterwards.
+   */
+  async setLogo(
+    adminId: string,
+    token: string,
+    path: string | null,
+  ): Promise<PlatformSettingsDto> {
+    if (path) await this.storage.verifyLogo(token, path);
+    let previous: string | null = null;
+    try {
+      previous = await this.db.withUser(adminId, async (tx) => {
+        const r = rowsOf<{ platform_set_logo: string | null }>(
+          await tx.execute(sql`select public.platform_set_logo(${path})`),
+        )[0];
+        const old = r?.platform_set_logo ?? null;
+        if (old === path) return old;
+        await recordAudit(tx, {
+          action: 'platform_settings.updated',
+          entityType: 'platform_settings',
+          description: path
+            ? 'Changed the platform logo'
+            : 'Removed the platform logo',
+          previous: { logo: old },
+          next: { logo: path },
+        });
+        return old;
+      });
+    } catch (error) {
+      return mapProvisioningError(error);
+    }
+    if (previous && previous !== path)
+      await this.storage.removeLogoFile(token, previous);
+    return this.get(adminId);
   }
 
   /** Super admins only (the guard checks first, the SQL function again). Nothing is written or logged when nothing changed. */

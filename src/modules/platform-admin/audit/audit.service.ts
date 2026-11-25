@@ -6,6 +6,7 @@ import {
   rowsOf,
   type DbTx,
 } from '../../../database/database.service.js';
+import { currentRequestMeta } from '../../../common/request-meta.js';
 import type { AuditEntry } from './audit-actions.js';
 import type { AuditLogDto, AuditQueryDto } from './audit.dto.js';
 
@@ -15,9 +16,11 @@ import type { AuditLogDto, AuditQueryDto } from './audit.dto.js';
  * from the session, never from input.
  */
 export async function recordAudit(tx: DbTx, e: AuditEntry): Promise<void> {
+  const meta = currentRequestMeta();
   await tx.execute(sql`select public.platform_record_audit(
     ${e.action}, ${e.entityType}, ${e.entityId ?? null}::uuid, ${e.organizationId ?? null}::uuid, ${e.description},
-    ${e.previous ? JSON.stringify(e.previous) : null}::jsonb, ${e.next ? JSON.stringify(e.next) : null}::jsonb)`);
+    ${e.previous ? JSON.stringify(e.previous) : null}::jsonb, ${e.next ? JSON.stringify(e.next) : null}::jsonb,
+    ${meta ? JSON.stringify(meta) : null}::jsonb)`);
 }
 
 type AuditRaw = {
@@ -33,6 +36,9 @@ type AuditRaw = {
   previous_data: unknown;
   new_data: unknown;
   created_at: string | Date;
+  ip: string | null;
+  user_agent: string | null;
+  request_id: string | null;
   total_count: string | number | bigint;
 };
 
@@ -54,7 +60,7 @@ export class AuditService {
       .execute(
         sql`select * from public.platform_list_audit(
           ${q.action === 'all' ? null : q.action}, ${q.admin === 'all' ? null : q.admin}::uuid, ${q.org || null}::uuid, ${q.search || null},
-          ${day(q.from)}::timestamptz, ${day(q.to, 1)}::timestamptz, ${q.limit}, ${(page - 1) * q.limit})`,
+          ${day(q.from)}::timestamptz, ${day(q.to, 1)}::timestamptz, ${q.limit}, ${(page - 1) * q.limit}, ${q.entity === 'all' ? null : q.entity})`,
       )
       .then((r) => rowsOf<AuditRaw>(r));
   }
@@ -89,6 +95,9 @@ export class AuditService {
           previousData: r.previous_data,
           newData: r.new_data,
           createdAt: new Date(r.created_at),
+          ip: r.ip,
+          userAgent: r.user_agent,
+          requestId: r.request_id,
         })),
         { page, limit: q.limit, total: Number(raw[0]?.total_count ?? 0) },
       );

@@ -6,12 +6,19 @@ import {
   PlatformAccess,
 } from '../../../common/decorators/decorators.js';
 import type { AuthUser } from '../../../common/interfaces/request-context.js';
-import { AuditAdminDto, AuditLogDto, AuditQueryDto } from './audit.dto.js';
+import { ADMIN_AUDIT_ENTITY_TYPES } from '../../../database/schema/admin-audit.js';
+import { AUDIT_ACTIONS } from './audit-actions.js';
+import {
+  AuditAdminDto,
+  AuditFiltersDto,
+  AuditLogDto,
+  AuditQueryDto,
+} from './audit.dto.js';
 import { AuditService } from './audit.service.js';
 
 @ApiTags('platform-admin')
 @Controller('platform/audit-logs')
-@PlatformAccess()
+@PlatformAccess({ permission: 'audit:read' })
 export class AuditController {
   constructor(private readonly audit: AuditService) {}
 
@@ -27,6 +34,22 @@ export class AuditController {
   })
   list(@CurrentUser() admin: AuthUser, @Query() query: AuditQueryDto) {
     return this.audit.list(admin.id, query);
+  }
+
+  @Get('filters')
+  @ApiEndpoint({
+    summary: 'List the filter options of the activity log',
+    description:
+      'The actions and kinds of thing an entry can have, so a screen can offer them as filters without hard-coding them.',
+    auth: 'platform',
+    response: AuditFiltersDto,
+    message: 'Filters retrieved successfully',
+  })
+  filters() {
+    return {
+      actions: [...AUDIT_ACTIONS],
+      entityTypes: [...ADMIN_AUDIT_ENTITY_TYPES],
+    };
   }
 
   @Get('admins')

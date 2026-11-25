@@ -132,6 +132,42 @@ const RULES: Rule[] = [
         'TEMPLATE_DOCUMENT_INVALID',
       ),
   },
+  {
+    match: /dc_tenant_code_key/,
+    error: () =>
+      conflict(
+        'That discount code already exists.',
+        field('code', 'This code is already in use.'),
+        'DISCOUNT_CODE_TAKEN',
+      ),
+  },
+  {
+    match: /pc_tenant_name_key/,
+    error: () =>
+      conflict(
+        'A campaign with that name already exists.',
+        field('name', 'This name is already in use.'),
+        'CAMPAIGN_NAME_TAKEN',
+      ),
+  },
+  {
+    match: /dc_campaign_fk/,
+    error: () =>
+      invalid(
+        'That campaign no longer exists.',
+        field('campaignId', 'Choose a campaign from your store.'),
+        'CAMPAIGN_NOT_FOUND',
+      ),
+  },
+  {
+    match: /(dct|ct)_(product|collection)_fk/,
+    error: () =>
+      invalid(
+        'One of the selected products or collections no longer exists.',
+        field('productIds', 'Choose products and collections from your store.'),
+        'TARGET_NOT_FOUND',
+      ),
+  },
   { match: /row-level security|permission denied/, error: () => forbidden() },
 ];
 

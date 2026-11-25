@@ -309,6 +309,181 @@
       "when": 1794300026000,
       "tag": "0043_tenant_customer_auth_flag",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1794300027000,
+      "tag": "0044_tenant_razorpay_webhook_secret",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1794300028000,
+      "tag": "0045_order_lifecycle",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1794300029000,
+      "tag": "0046_checkout_support",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1794300030000,
+      "tag": "0047_payments_core",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1794300031000,
+      "tag": "0048_refunds_webhooks",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1794300032000,
+      "tag": "0049_carrier_connections",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1794300033000,
+      "tag": "0050_shipping_zones_methods",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1794300034000,
+      "tag": "0051_shipments",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1794300035000,
+      "tag": "0052_gst_tax",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1794300036000,
+      "tag": "0053_marketing_analytics",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1794300037000,
+      "tag": "0054_discount_checkout",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1794300038000,
+      "tag": "0055_abandoned_cart_functions",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1794300039000,
+      "tag": "0056_order_refund_totals",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1794300040000,
+      "tag": "0057_public_tracking_config",
+      "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1794300041000,
+      "tag": "0058_abandoned_cart_retention",
+      "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1794300042000,
+      "tag": "0059_report_read_functions",
+      "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1794300043000,
+      "tag": "0060_platform_roles",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1794300044000,
+      "tag": "0061_tenant_search",
+      "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1794300045000,
+      "tag": "0062_subscription_plans",
+      "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1794300046000,
+      "tag": "0063_entitlements",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1794300047000,
+      "tag": "0064_billing",
+      "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1794300048000,
+      "tag": "0065_audit_request_metadata",
+      "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1794300049000,
+      "tag": "0066_monitoring",
+      "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1794300050000,
+      "tag": "0067_platform_role_enforcement",
+      "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1794300051000,
+      "tag": "0068_platform_logo",
+      "breakpoints": true
     }
   ]
 }

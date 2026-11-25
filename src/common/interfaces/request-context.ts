@@ -1,5 +1,6 @@
 import type { Request } from 'express';
 import type {
+  PlatformAdminRole,
   MemberCapability,
   MemberPermissions,
   MembershipRole,
@@ -28,7 +29,7 @@ export interface OrgContext {
   capabilities: MemberCapability[];
 }
 
-export type PlatformLevel = 'super_admin' | 'admin';
+export type PlatformLevel = PlatformAdminRole;
 
 export interface AuthenticatedRequest extends Request {
   user: AuthUser;

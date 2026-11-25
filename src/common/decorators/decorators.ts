@@ -4,6 +4,8 @@ import {
   SetMetadata,
 } from '@nestjs/common';
 import type { Permission } from '../constants/permissions.js';
+import type { FeatureKey } from '../constants/plan-catalog.js';
+import type { PlatformPermission } from '../constants/platform-permissions.js';
 import type { AuthenticatedRequest } from '../interfaces/request-context.js';
 
 export const IS_PUBLIC = 'isPublic';
@@ -42,6 +44,14 @@ export const RequirePermission = (permission: Permission) =>
 export interface PlatformAccessOptions {
   /** `super_admin` for operations only a super admin may perform. Default: any Platform Admin. */
   level?: 'admin' | 'super_admin';
+  /**
+   * The platform permission this route needs (see platform-permissions.ts). A route with neither `permission`, `level` nor
+   * `anyStaff` is limited to the full-access roles (super_admin, admin), so Billing and Support admins never reach a
+   * route that has not explicitly opted them in.
+   */
+  permission?: PlatformPermission;
+  /** Any platform role may call this (identity and navigation only, e.g. "who am I"). */
+  anyStaff?: boolean;
   /** Per-admin rate-limit bucket (database counters), counted before the operation runs. */
   bucket?:
     | 'org.create'
@@ -50,12 +60,23 @@ export interface PlatformAccessOptions {
     | 'team.manage'
     | 'ownership.change'
     | 'admin.manage'
-    | 'settings.update';
+    | 'settings.update'
+    | 'plan.manage'
+    | 'subscription.manage'
+    | 'billing.manage';
 }
 export const PLATFORM_ACCESS = 'platformAccess';
 /** Platform Admin only. Answered by the database (`platform_admin_role()`), never by token claims or the request. */
 export const PlatformAccess = (options: PlatformAccessOptions = {}) =>
   SetMetadata(PLATFORM_ACCESS, options);
+
+export const REQUIRED_FEATURE = 'requiredFeature';
+/**
+ * The organization's plan must include this feature (see plan-catalog.ts), or the request is refused with 403 before the handler runs
+ * (FeatureGuard). Needs an organization-scoped route. Services that cannot use the decorator call EntitlementsService themselves.
+ */
+export const RequireFeature = (feature: FeatureKey) =>
+  SetMetadata(REQUIRED_FEATURE, feature);
 
 export const CurrentUser = createParamDecorator(
   (_data: unknown, ctx: ExecutionContext) =>

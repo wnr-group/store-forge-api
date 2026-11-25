@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsIn, IsOptional, IsUUID } from 'class-validator';
+import { BILLING_INTERVALS } from '../../../common/constants/plan-catalog.js';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto.js';
 import {
   CurrencyField,
@@ -150,6 +151,20 @@ export class CreateOrganizationDto {
   })
   @PasswordField()
   ownerPassword!: string;
+
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description:
+      'The plan to start on. It must be active. Leave it out to use the default plan.',
+  })
+  @IsOptional()
+  @IsUUID(undefined, { message: 'Choose a plan.' })
+  planId?: string;
+
+  @ApiPropertyOptional({ enum: BILLING_INTERVALS, default: 'monthly' })
+  @IsOptional()
+  @IsIn(BILLING_INTERVALS, { message: 'Choose monthly or yearly billing.' })
+  billingInterval?: (typeof BILLING_INTERVALS)[number];
 }
 
 /** Organization: name, contact phone and address. The slug and status are not editable here. */

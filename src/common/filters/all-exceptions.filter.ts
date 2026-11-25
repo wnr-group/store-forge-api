@@ -6,6 +6,9 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
+import { reportServerError } from '../error-sink.js';
+import { currentRequestMeta } from '../request-meta.js';
+import { templateOf } from '../../modules/monitoring/error-sanitizer.js';
 import { ThrottlerException } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { AppException } from '../app.exception.js';
@@ -77,7 +80,24 @@ export class AllExceptionsFilter implements ExceptionFilter {
       timestamp: new Date().toISOString(),
       path,
     };
-    response.status(status).json(payload);
+    const send = () => response.status(status).json(payload);
+
+    // Monitoring: remember unhandled server errors (route template, class and a sanitised message only). The write is awaited before the
+    // answer goes out, because a serverless function may be frozen once the response is sent; it is time-limited and never throws.
+    const recorded =
+      status >= 500 && !expected
+        ? reportServerError({
+            method: request.method,
+            route:
+              (request as { route?: { path?: string } }).route?.path ??
+              templateOf(path),
+            status,
+            error: exception,
+            requestId: currentRequestMeta()?.requestId ?? null,
+          })
+        : undefined;
+    if (recorded) void recorded.then(send, send);
+    else send();
   }
 
   private describe(exception: unknown): {

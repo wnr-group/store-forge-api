@@ -3,13 +3,14 @@ import type { AdminAuditEntityType } from '../../../database/schema/admin-audit.
 /**
  * Every action a Platform Admin can leave in the audit log (ported from lib/admin/audit.ts).
  * The database only checks the shape (`entity.verb`); this list is the single source of truth for what the API records.
- * Organization deletion is intentionally not logged, as in the Next.js app.
+ * Organization deletion IS logged (unlike the Next.js app): the entry keeps the organization's name and key facts, since the tenant itself is gone.
  */
 export const AUDIT_ACTIONS = [
   'organization.created',
   'organization.updated',
   'organization.suspended',
   'organization.reactivated',
+  'organization.deleted',
   'store.updated',
   'store.studio_rollout_changed',
   'team_member.added',
@@ -21,6 +22,24 @@ export const AUDIT_ACTIONS = [
   'platform_admin.removed',
   'platform_admin.role_changed',
   'platform_settings.updated',
+  'plan.created',
+  'plan.updated',
+  'plan.activated',
+  'plan.deactivated',
+  'plan.default_changed',
+  'subscription.created',
+  'subscription.changed',
+  'entitlement.feature_overridden',
+  'entitlement.feature_override_removed',
+  'entitlement.limit_overridden',
+  'entitlement.limit_override_removed',
+  'invoice.issued',
+  'invoice.voided',
+  'payment.manual_recorded',
+  'payment.refunded',
+  'payment.refund_failed',
+  'billing.settings_updated',
+  'billing.run_completed',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 

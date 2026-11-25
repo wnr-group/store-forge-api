@@ -185,7 +185,7 @@ describe('other request DTOs', () => {
       (
         await check(CreateMemberDto, {
           ...base,
-          permissions: { ...base.permissions, orders: 'write' },
+          permissions: { ...base.permissions, orders: 'owner' as never },
         })
       ).failed,
     ).toContain('permissions.orders');

@@ -3,6 +3,11 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 export class PublicBrandingDto {
   @ApiProperty({ example: 'StoreForge' }) platformName!: string;
   @ApiPropertyOptional({ nullable: true }) supportEmail!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description: 'Address of the platform logo, or null for the built-in logo.',
+  })
+  logoUrl!: string | null;
 }
 
 export class StorefrontProductDto {

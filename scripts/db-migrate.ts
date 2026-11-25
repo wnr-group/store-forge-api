@@ -14,6 +14,7 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const url = process.env.DIRECT_URL;
@@ -29,6 +30,25 @@ const sql = postgres(url, {
   ssl: 'require',
   onnotice: () => undefined,
 });
+
+/**
+ * The migrations Drizzle is about to run. Drizzle runs every journal entry newer than the latest one recorded in its log, so the
+ * same rule is applied here (read-only) to name them before and after the run.
+ */
+async function findPending(folder: string): Promise<string[]> {
+  const journal = JSON.parse(
+    readFileSync(resolve(folder, 'meta/_journal.json'), 'utf8'),
+  ) as { entries: { tag: string; when: number }[] };
+  let last = 0;
+  const [{ t }] =
+    await sql`select to_regclass('drizzle.__drizzle_migrations') as t`;
+  if (t) {
+    const [row] =
+      await sql`select max(created_at)::bigint as last from drizzle.__drizzle_migrations`;
+    last = Number(row?.last ?? 0);
+  }
+  return journal.entries.filter((e) => e.when > last).map((e) => e.tag);
+}
 
 try {
   const wantsReset = process.argv.includes('--reset-log');
@@ -72,12 +92,21 @@ try {
       );
     }
   }
-  await migrate(drizzle(sql), {
-    migrationsFolder: resolve('src/database/migrations'),
-    migrationsSchema: 'drizzle',
-    migrationsTable: '__drizzle_migrations',
-  });
-  console.log('Migrations applied.');
+  const migrationsFolder = resolve('src/database/migrations');
+  const pending = await findPending(migrationsFolder);
+  if (pending.length === 0) {
+    console.log('No pending migrations. The database is already up to date.');
+  } else {
+    console.log(`Applying ${pending.length} pending migration(s):`);
+    for (const tag of pending) console.log(`  - ${tag}`);
+    await migrate(drizzle(sql), {
+      migrationsFolder,
+      migrationsSchema: 'drizzle',
+      migrationsTable: '__drizzle_migrations',
+    });
+    console.log(`Applied ${pending.length} migration(s):`);
+    for (const tag of pending) console.log(`  ✓ ${tag}`);
+  }
 } catch (error) {
   const e = error as Error & { cause?: Error };
   console.error(

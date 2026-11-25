@@ -29,6 +29,10 @@ export interface ProductValues {
   trackInventory: boolean;
   quantity: number;
   lowStockThreshold: number;
+  weightGrams: number;
+  /** GST rate in basis points, or null for the organization's default. */
+  taxRateBps: number | null;
+  hsnCode: string | null;
   status: 'draft' | 'active';
   options: { name: string; values: string[] }[];
   variants: VariantValues[];

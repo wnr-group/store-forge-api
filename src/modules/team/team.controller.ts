@@ -15,6 +15,7 @@ import {
   CurrentOrg,
   OrgScoped,
   RequirePermission,
+  RequireFeature,
 } from '../../common/decorators/decorators.js';
 import type { OrgContext } from '../../common/interfaces/request-context.js';
 import {
@@ -51,6 +52,7 @@ export class TeamController {
   }
 
   @Post()
+  @RequireFeature('multiple_staff')
   @Throttle(SENSITIVE)
   @ApiEndpoint({
     summary: 'Add a team member',
