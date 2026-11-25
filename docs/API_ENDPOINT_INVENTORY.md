@@ -163,6 +163,9 @@ All: Auth `JWT+Org`, permission `members:manage`. DB `memberships`, `profiles`, 
 | 65 | Remove admin | DELETE `/platform/admins/:userId` | **super_admin** | admin.manage | audit first, then remove, then delete Auth user |
 | 66 | Read settings | GET `/platform/settings` | admin | - | - |
 | 67 | Update settings | PATCH `/platform/settings` | **super_admin** | settings.update | diff-only audit |
+| 67a | Get a logo upload link | POST `/platform/settings/logo/upload-url` | **super_admin** | settings.update | JPEG, PNG or WebP, at most 2 MB; one-time link |
+| 67b | Set the logo | PUT `/platform/settings/logo` | **super_admin** | settings.update | uses the uploaded file; old file deleted; audited |
+| 67c | Remove the logo | DELETE `/platform/settings/logo` | **super_admin** | settings.update | back to the built-in logo; file deleted; audited |
 | 68 | Audit log `?action&admin&org&q&from&to&page&limit` | GET `/platform/audit-logs` | admin | - | append-only |
 | 69 | Audit admins | GET `/platform/audit-logs/admins` | admin | - | filter dropdown |
 | 70 | Usage table | GET `/platform/usage` | admin | - | - |
