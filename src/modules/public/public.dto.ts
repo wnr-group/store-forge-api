@@ -44,6 +44,20 @@ export class StorefrontDto {
   publicId!: string;
   @ApiPropertyOptional({ nullable: true }) description!: string | null;
   @ApiPropertyOptional({ nullable: true }) logoPath!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    maxLength: 70,
+    description:
+      'SEO title for the home page, or null (use the store name instead).',
+  })
+  metaTitle!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    maxLength: 160,
+    description:
+      'SEO description for the home page, or null (use the store description instead).',
+  })
+  metaDescription!: string | null;
   @ApiProperty({ example: 'INR' }) currency!: string;
   @ApiProperty({ type: [StorefrontProductDto] })
   products!: StorefrontProductDto[];

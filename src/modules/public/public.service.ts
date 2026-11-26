@@ -33,6 +33,9 @@ interface StorefrontRaw {
   slug: string;
   description: string | null;
   logo_path: string | null;
+  /** Absent when the database function predates migration 0071. */
+  meta_title?: string | null;
+  meta_description?: string | null;
   currency: string;
   products: {
     name: string;
@@ -186,6 +189,8 @@ export class PublicService {
       publicId,
       description: s.description,
       logoPath: s.logo_path,
+      metaTitle: s.meta_title ?? null,
+      metaDescription: s.meta_description ?? null,
       currency: s.currency,
       products: s.products.map((p) => ({
         name: p.name,

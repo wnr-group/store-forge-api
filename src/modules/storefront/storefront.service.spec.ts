@@ -95,6 +95,28 @@ describe('StorefrontService unit tests (PR-D, T-D3)', () => {
       expect(res?.slug).toBe('test-store');
     });
 
+    it('keeps the SEO fields the database function returns', async () => {
+      const rawStore = {
+        name: 'Test Store',
+        slug: 'test-store',
+        description: null,
+        logo_path: null,
+        meta_title: 'Test | Shop',
+        meta_description: 'A test shop.',
+        currency: 'INR',
+        products: [],
+        template: null,
+      };
+      const mockDb = createMockDb(async (fn) =>
+        fn({ execute: vi.fn().mockResolvedValue([{ s: rawStore }]) }),
+      );
+      const res = await new StorefrontService(mockDb).getStorefront(
+        'test-store',
+      );
+      expect(res?.meta_title).toBe('Test | Shop');
+      expect(res?.meta_description).toBe('A test shop.');
+    });
+
     it('returns null without querying DB when slug is empty or whitespace', async () => {
       const mockDb = createMockDb(async () => {});
       const service = new StorefrontService(mockDb);

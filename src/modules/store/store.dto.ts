@@ -22,6 +22,18 @@ export class StoreDto {
       'Where the logo file is stored in the `products` storage bucket (`{tenantId}/store/...`). This is a storage path, not a web address.',
   })
   logoPath!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    maxLength: 70,
+    description: 'SEO title of the storefront home page.',
+  })
+  metaTitle!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    maxLength: 160,
+    description: 'SEO description of the storefront home page.',
+  })
+  metaDescription!: string | null;
   @ApiPropertyOptional({ nullable: true }) contactEmail!: string | null;
   @ApiPropertyOptional({ nullable: true }) contactPhone!: string | null;
   @ApiProperty({ example: 'INR' }) currency!: string;
@@ -54,6 +66,24 @@ export class UpdateStoreDto {
   @ApiPropertyOptional({ nullable: true, maxLength: 500 })
   @OptionalText('Store description', 500)
   description?: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    maxLength: 70,
+    description:
+      'SEO title of the storefront home page. Send null or an empty value to clear it.',
+  })
+  @OptionalText('Meta title', 70)
+  metaTitle?: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    maxLength: 160,
+    description:
+      'SEO description of the storefront home page. Send null or an empty value to clear it.',
+  })
+  @OptionalText('Meta description', 160)
+  metaDescription?: string | null;
 
   @ApiPropertyOptional({ nullable: true })
   @OptionalEmail('Store email')

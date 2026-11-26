@@ -68,6 +68,103 @@ describe.skipIf(!migrationsAvailable)(
         });
       });
 
+      describe('SEO metadata', () => {
+        it('starts empty, saves both fields and reads them back', async () => {
+          const before = (await alice.get('/store').expect(200)).body.data;
+          expect(before.metaTitle).toBeNull();
+          expect(before.metaDescription).toBeNull();
+
+          const saved = await alice
+            .patch('/store', {
+              metaTitle: '  Alpha Prime | Handmade goods  ',
+              metaDescription: 'Handmade goods, shipped across India.',
+            })
+            .expect(200);
+          expect(saved.body.data).toMatchObject({
+            metaTitle: 'Alpha Prime | Handmade goods',
+            metaDescription: 'Handmade goods, shipped across India.',
+          });
+          const read = (await alice.get('/store').expect(200)).body.data;
+          expect(read.metaTitle).toBe('Alpha Prime | Handmade goods');
+          expect(read.metaDescription).toBe(
+            'Handmade goods, shipped across India.',
+          );
+          // The organization endpoint serves the same store, so the settings page sees the values too.
+          const current = (
+            await alice.get('/organizations/current').expect(200)
+          ).body.data;
+          expect(current.store.metaTitle).toBe('Alpha Prime | Handmade goods');
+        });
+
+        it('keeps the values when the fields are omitted', async () => {
+          const res = await alice
+            .patch('/store', { description: 'Changed elsewhere' })
+            .expect(200);
+          expect(res.body.data).toMatchObject({
+            description: 'Changed elsewhere',
+            metaTitle: 'Alpha Prime | Handmade goods',
+            metaDescription: 'Handmade goods, shipped across India.',
+          });
+        });
+
+        it('clears one field with null and the other with an empty string', async () => {
+          const one = await alice
+            .patch('/store', { metaTitle: null })
+            .expect(200);
+          expect(one.body.data.metaTitle).toBeNull();
+          expect(one.body.data.metaDescription).toBe(
+            'Handmade goods, shipped across India.',
+          );
+          const two = await alice
+            .patch('/store', { metaDescription: '   ' })
+            .expect(200);
+          expect(two.body.data.metaDescription).toBeNull();
+        });
+
+        it('accepts the exact limits and refuses one character more (400)', async () => {
+          const ok = await alice
+            .patch('/store', {
+              metaTitle: 't'.repeat(70),
+              metaDescription: 'd'.repeat(160),
+            })
+            .expect(200);
+          expect(ok.body.data.metaTitle).toHaveLength(70);
+          expect(ok.body.data.metaDescription).toHaveLength(160);
+          await alice
+            .patch('/store', { metaTitle: 't'.repeat(71) })
+            .expect(400);
+          await alice
+            .patch('/store', { metaDescription: 'd'.repeat(161) })
+            .expect(400);
+          await alice.patch('/store', { metaTitle: 42 }).expect(400);
+          // The refused requests changed nothing.
+          const read = (await alice.get('/store').expect(200)).body.data;
+          expect(read.metaTitle).toHaveLength(70);
+          expect(read.metaDescription).toHaveLength(160);
+        });
+
+        it('needs store:manage (403) and never touches another organization', async () => {
+          const reader = await as(t, w.members.reader, w.tenantA);
+          await reader.patch('/store', { metaTitle: 'Hijacked' }).expect(403);
+          const bob = await as(t, w.bob);
+          const own = await bob
+            .patch('/store', { metaTitle: 'Beta Shop' })
+            .expect(200);
+          expect(own.body.data.metaTitle).toBe('Beta Shop');
+          // A's values are untouched by B's save, and by the refused member request.
+          const a = (await alice.get('/store').expect(200)).body.data;
+          expect(a.metaTitle).toHaveLength(70);
+          expect(a.metaTitle).not.toBe('Hijacked');
+          // The caller cannot name another organization in the body.
+          await alice
+            .patch('/store', { organizationId: w.tenantB, metaTitle: 'x' })
+            .expect(400);
+          expect(
+            (await bob.get('/store').expect(200)).body.data.metaTitle,
+          ).toBe('Beta Shop');
+        });
+      });
+
       it('validates name, slug, currency, timezone and email', async () => {
         await alice.patch('/store', { name: 'A' }).expect(400);
         await alice.patch('/store', { slug: 'ab' }).expect(400);

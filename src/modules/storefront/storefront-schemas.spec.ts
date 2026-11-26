@@ -29,6 +29,28 @@ describe('Storefront Schemas and Golden Fixtures (AC-D-03, T-D2)', () => {
     }
   });
 
+  it('keeps meta_title and meta_description through parsing, and accepts a database that does not send them', () => {
+    const base = JSON.parse(
+      readFileSync(resolve(fixturesDir, 'storefront.fixture.json'), 'utf-8'),
+    );
+    const withSeo = storefrontSchema.parse({
+      ...base,
+      meta_title: 'Acme | Handmade goods',
+      meta_description: 'Premium handcrafted goods.',
+    });
+    expect(withSeo.meta_title).toBe('Acme | Handmade goods');
+    expect(withSeo.meta_description).toBe('Premium handcrafted goods.');
+    const nulls = storefrontSchema.parse({
+      ...base,
+      meta_title: null,
+      meta_description: null,
+    });
+    expect(nulls.meta_title).toBeNull();
+    expect(nulls.meta_description).toBeNull();
+    // Older database function (before migration 0071): the keys are simply absent.
+    expect(storefrontSchema.parse(base).meta_title).toBeUndefined();
+  });
+
   it('AC-D-03: layoutPayloadSchema validates template-layout.fixture.json', () => {
     const raw = readFileSync(
       resolve(fixturesDir, 'template-layout.fixture.json'),

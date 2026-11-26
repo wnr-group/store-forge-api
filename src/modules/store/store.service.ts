@@ -27,6 +27,8 @@ export const toStoreDto = (s: Store, currencyLocked: boolean): StoreDto => ({
   slug: s.slug,
   description: s.description,
   logoPath: s.logoUrl,
+  metaTitle: s.metaTitle,
+  metaDescription: s.metaDescription,
   contactEmail: s.contactEmail,
   contactPhone: s.contactPhone,
   currency: s.currency,
@@ -120,6 +122,12 @@ export class StoreService {
           slug: dto.slug ?? store.slug,
           description:
             dto.description !== undefined ? dto.description : store.description,
+          metaTitle:
+            dto.metaTitle !== undefined ? dto.metaTitle : store.metaTitle,
+          metaDescription:
+            dto.metaDescription !== undefined
+              ? dto.metaDescription
+              : store.metaDescription,
           contactEmail:
             dto.contactEmail !== undefined
               ? dto.contactEmail
@@ -190,6 +198,8 @@ export class StoreService {
             name: next.name,
             slug: next.slug,
             description: next.description,
+            metaTitle: next.metaTitle,
+            metaDescription: next.metaDescription,
             contactEmail: next.contactEmail,
             contactPhone: next.contactPhone,
             currency: next.currency,
