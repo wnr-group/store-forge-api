@@ -6,6 +6,7 @@ import { migrate } from 'drizzle-orm/pglite/migrator';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { dbSchema } from '../../src/database/database.types.js';
+import type { PlatformAdminRole } from '../../src/database/schema/enums.js';
 import {
   DatabaseService,
   rowsOf,
@@ -124,7 +125,7 @@ export async function createUser(
 export async function createPlatformAdmin(
   t: TestDb,
   email = 'platform.admin@example.test',
-  role: 'super_admin' | 'admin' = 'super_admin',
+  role: PlatformAdminRole = 'super_admin',
 ): Promise<string> {
   const id = await createUser(t, email, 'Platform Admin');
   await t.asOwner((pg) =>

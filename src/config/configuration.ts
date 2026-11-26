@@ -27,6 +27,15 @@ export interface AppConfig {
     connectTimeoutSeconds: number;
   };
   throttle: { ttlMs: number; limit: number };
+  checkout: { reservationMinutes: number };
+  cron: { secret?: string };
+  razorpay: { apiBaseUrl?: string };
+  /** StoreForge's OWN Razorpay account, used to collect subscription payments from tenants. Optional. */
+  razorpayPlatform: {
+    keyId?: string;
+    keySecret?: string;
+    webhookSecret?: string;
+  };
 }
 
 /** Pure mapping from validated environment variables to AppConfig. */
@@ -61,6 +70,14 @@ export function buildConfig(env: EnvironmentVariables): AppConfig {
     throttle: {
       ttlMs: env.THROTTLE_TTL_SECONDS * 1000,
       limit: env.THROTTLE_LIMIT,
+    },
+    checkout: { reservationMinutes: env.CHECKOUT_RESERVATION_MINUTES },
+    cron: { secret: env.CRON_SECRET },
+    razorpay: { apiBaseUrl: env.RAZORPAY_API_BASE_URL },
+    razorpayPlatform: {
+      keyId: env.RAZORPAY_PLATFORM_KEY_ID,
+      keySecret: env.RAZORPAY_PLATFORM_KEY_SECRET,
+      webhookSecret: env.RAZORPAY_PLATFORM_WEBHOOK_SECRET,
     },
   };
 }

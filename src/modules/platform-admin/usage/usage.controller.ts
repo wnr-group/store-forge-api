@@ -21,7 +21,7 @@ import { PlatformUsageService } from './usage.service.js';
 
 @ApiTags('platform-admin')
 @Controller('platform')
-@PlatformAccess()
+@PlatformAccess({ permission: 'usage:read' })
 export class PlatformUsageController {
   constructor(private readonly usage: PlatformUsageService) {}
 

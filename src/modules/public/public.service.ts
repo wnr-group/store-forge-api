@@ -1,19 +1,31 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { sql } from 'drizzle-orm';
 import { notFound } from '../../common/app.exception.js';
 import { DatabaseService, rowsOf } from '../../database/database.service.js';
+import type { AppConfig } from '../../config/configuration.js';
+import { platformAssetUrl } from '../storage/storage-paths.js';
 import { RecommendationsService } from '../recommendations/recommendations.service.js';
 import type { PublicRecommendationsQueryDto } from '../recommendations/recommendations.dto.js';
 import type { RecordWebVitalsDto } from '../studio/studio.dto.js';
+import {
+  FEATURE_CATALOG,
+  FEATURE_KEYS,
+  LIMIT_CATALOG,
+  LIMIT_KEYS,
+} from '../../common/constants/plan-catalog.js';
+import { minorToInput } from '../../common/utils/money.js';
 import type {
   PublicBrandingDto,
   PublicHostDto,
+  PublicPlanDto,
   StorefrontDto,
 } from './public.dto.js';
 
 const DEFAULT_BRANDING: PublicBrandingDto = {
   platformName: 'StoreForge',
   supportEmail: null,
+  logoUrl: null,
 };
 
 interface StorefrontRaw {
@@ -45,6 +57,7 @@ export class PublicService {
   constructor(
     private readonly db: DatabaseService,
     private readonly recommendationsService: RecommendationsService,
+    private readonly config: ConfigService<AppConfig, true>,
   ) {}
 
   /** The platform name and support contact. If the database cannot be reached the defaults are used. */
@@ -52,14 +65,27 @@ export class PublicService {
     try {
       const row = await this.db.withPublic(
         async (tx) =>
-          rowsOf<{ platform_name: string; support_email: string | null }>(
+          rowsOf<{
+            platform_name: string;
+            support_email: string | null;
+            logo_path: string | null;
+          }>(
             await tx.execute(
               sql`select * from public.get_public_platform_settings()`,
             ),
           )[0],
       );
       return row
-        ? { platformName: row.platform_name, supportEmail: row.support_email }
+        ? {
+            platformName: row.platform_name,
+            supportEmail: row.support_email,
+            logoUrl: row.logo_path
+              ? platformAssetUrl(
+                  this.config.get('supabase', { infer: true }).url,
+                  row.logo_path,
+                )
+              : null,
+          }
         : DEFAULT_BRANDING;
     } catch (error) {
       this.logger.error(
@@ -67,6 +93,55 @@ export class PublicService {
       );
       return DEFAULT_BRANDING;
     }
+  }
+
+  /**
+   * The subscription plans on offer: the active, restricted plans a Platform Admin has published. Read through a narrow
+   * SECURITY DEFINER function, because the plan tables are visible to Platform Admins only. A limit with no number is unlimited.
+   */
+  async plans(): Promise<PublicPlanDto[]> {
+    const rows = await this.db.withPublic(async (tx) =>
+      rowsOf<{
+        code: string;
+        name: string;
+        description: string | null;
+        currency: string;
+        monthly_price_minor: number | string;
+        yearly_price_minor: number | string;
+        trial_days: number;
+        features: string[];
+        limits: Record<string, number | string | null>;
+      }>(await tx.execute(sql`select * from public.get_public_plans()`)),
+    );
+    return rows.map((r) => {
+      const monthly = Number(r.monthly_price_minor);
+      const yearly = Number(r.yearly_price_minor);
+      const included = new Set(r.features ?? []);
+      return {
+        code: r.code,
+        name: r.name,
+        description: r.description,
+        currency: r.currency,
+        monthlyPrice: minorToInput(monthly, r.currency),
+        monthlyPriceMinor: monthly,
+        yearlyPrice: minorToInput(yearly, r.currency),
+        yearlyPriceMinor: yearly,
+        trialDays: r.trial_days,
+        features: FEATURE_KEYS.filter((k) => included.has(k)).map((key) => ({
+          key,
+          label: FEATURE_CATALOG[key].label,
+        })),
+        limits: LIMIT_KEYS.map((key) => {
+          const v = r.limits?.[key];
+          return {
+            key,
+            label: LIMIT_CATALOG[key].label,
+            unit: LIMIT_CATALOG[key].unit,
+            value: v === null || v === undefined ? null : Number(v),
+          };
+        }),
+      };
+    });
   }
 
   /**
@@ -244,15 +319,19 @@ export class PublicService {
 
   /** Published reviews for a product with mandatory disclosure wording. */
   async reviews(slug: string, productSlug: string, limit = 20, offset = 0) {
-    const raw = await this.db.withPublic(async (tx) =>
-      rowsOf<{ r: unknown }>(
-        await tx.execute(
-          sql`select public.get_public_product_reviews(${slug}, ${productSlug}, ${limit}, ${offset}) as r`,
-        ),
-      )[0]?.r,
+    const raw = await this.db.withPublic(
+      async (tx) =>
+        rowsOf<{ r: unknown }>(
+          await tx.execute(
+            sql`select public.get_public_product_reviews(${slug}, ${productSlug}, ${limit}, ${offset}) as r`,
+          ),
+        )[0]?.r,
     );
     if (!raw) throw notFound('Product or store not found.', 'NOT_FOUND');
-    return (typeof raw === 'string' ? JSON.parse(raw) : raw) as Record<string, unknown>;
+    return (typeof raw === 'string' ? JSON.parse(raw) : raw) as Record<
+      string,
+      unknown
+    >;
   }
 
   /** Recommendations for a product / collection on the storefront. */
@@ -307,14 +386,18 @@ export class PublicService {
 
   /** One published landing page (kind = 'page'). */
   async landingPage(slug: string, pageSlug: string) {
-    const raw = await this.db.withPublic(async (tx) =>
-      rowsOf<{ p: unknown }>(
-        await tx.execute(
-          sql`select public.get_public_landing_page(${slug}, ${pageSlug}) as p`,
-        ),
-      )[0]?.p,
+    const raw = await this.db.withPublic(
+      async (tx) =>
+        rowsOf<{ p: unknown }>(
+          await tx.execute(
+            sql`select public.get_public_landing_page(${slug}, ${pageSlug}) as p`,
+          ),
+        )[0]?.p,
     );
     if (!raw) throw notFound('Landing page not found.', 'PAGE_NOT_FOUND');
-    return (typeof raw === 'string' ? JSON.parse(raw) : raw) as Record<string, unknown>;
+    return (typeof raw === 'string' ? JSON.parse(raw) : raw) as Record<
+      string,
+      unknown
+    >;
   }
 }

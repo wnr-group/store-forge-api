@@ -1,4 +1,5 @@
 import type { PGlite } from '@electric-sql/pglite';
+import type { PlatformAdminRole } from '../../../src/database/schema/enums.js';
 
 export async function withSuperuser<T>(
   pg: PGlite,
@@ -54,7 +55,7 @@ export async function asUser<T>(
 
 export async function createPlatformAdmin(
   pg: PGlite,
-  opts: { email?: string; role?: 'super_admin' | 'admin' } = {},
+  opts: { email?: string; role?: PlatformAdminRole } = {},
 ): Promise<string> {
   return withSuperuser(pg, async () => {
     const email = opts.email ?? 'platform.admin@example.test';

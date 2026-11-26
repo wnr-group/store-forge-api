@@ -1,12 +1,21 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  Equals,
   IsBoolean,
   IsOptional,
   IsString,
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { EmailField, PasswordField } from '../../common/validation/fields.js';
+import {
+  PLATFORM_ADMIN_ROLES,
+  type PlatformAdminRole,
+} from '../../database/schema/enums.js';
+import {
+  EmailField,
+  PasswordField,
+  RequiredText,
+} from '../../common/validation/fields.js';
 
 /** Same rules as the Next.js login form: a trimmed, lower-cased e-mail and a non-empty password of at most 72 characters. */
 export class LoginDto {
@@ -27,6 +36,51 @@ export class LoginDto {
     default: true,
     description:
       'Set this to false if you only need the session cookies. The response then contains just `id`, `email` and `expiresAt`, and the database lookup for your profile and organizations is skipped.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  includeProfile?: boolean;
+}
+
+/**
+ * Self-service account creation (no email verification in this version). The same password rules as every other place that sets
+ * one; the confirmation and the terms are checked here too, never only in the browser.
+ */
+export class RegisterDto {
+  @ApiProperty({ example: 'Asha Rao', description: 'Your full name.' })
+  @RequiredText('Full name', 80, 2)
+  fullName!: string;
+
+  @ApiProperty({ example: 'asha@example.com' })
+  @EmailField('Email')
+  email!: string;
+
+  @ApiProperty({
+    description:
+      'A password of 8 to 72 characters with at least one letter and one number. It is never saved or written to logs.',
+  })
+  @PasswordField()
+  password!: string;
+
+  @ApiProperty({
+    description: 'Type the password again. It must be exactly the same.',
+  })
+  @IsString({ message: 'Confirm your password' })
+  @MaxLength(72)
+  confirmPassword!: string;
+
+  @ApiProperty({
+    example: true,
+    description:
+      'Must be true: you accept the Terms and Conditions. The time of acceptance is saved with the account.',
+  })
+  @Equals(true, { message: 'Accept the Terms and Conditions to continue' })
+  acceptTerms!: boolean;
+
+  @ApiPropertyOptional({
+    default: true,
+    description:
+      'Set this to false if you only need the session cookies (see sign-in).',
   })
   @IsOptional()
   @IsBoolean()
@@ -86,12 +140,12 @@ export class MeDto {
   })
   fullName!: string | null;
   @ApiProperty({
-    enum: ['super_admin', 'admin'],
+    enum: PLATFORM_ADMIN_ROLES,
     nullable: true,
     description:
-      'Your Platform Admin level, or null if you are not a Platform Admin.',
+      'Your platform role (`super_admin`, `admin`, `billing_admin` or `support_admin`), or null if you are not platform staff. It says who you are; what the role may do is returned by `GET /platform/me`, and every platform route checks it again.',
   })
-  platformAdminLevel!: 'super_admin' | 'admin' | null;
+  platformAdminLevel!: PlatformAdminRole | null;
   @ApiProperty({ type: [MembershipDto] }) memberships!: MembershipDto[];
 }
 

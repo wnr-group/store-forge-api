@@ -9,6 +9,9 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto.js';
+import { AuditLogDto, AuditQueryDto } from '../audit/audit.dto.js';
+import { AuditService } from '../audit/audit.service.js';
 import { ApiParam, ApiProperty, ApiTags } from '@nestjs/swagger';
 import { ApiEndpoint } from '../../../common/decorators/api-endpoint.decorator.js';
 import {
@@ -16,6 +19,11 @@ import {
   CurrentUser,
   PlatformAccess,
 } from '../../../common/decorators/decorators.js';
+import {
+  PLATFORM_PERMISSIONS,
+  PLATFORM_ROLE_PERMISSIONS,
+} from '../../../common/constants/platform-permissions.js';
+import { PLATFORM_ADMIN_ROLES } from '../../../database/schema/enums.js';
 import type {
   AuthUser,
   PlatformLevel,
@@ -44,7 +52,14 @@ import {
 import { PlatformOrganizationsService } from './organizations.service.js';
 
 class PlatformMeDto {
-  @ApiProperty({ enum: ['super_admin', 'admin'] }) level!: string;
+  @ApiProperty({ enum: PLATFORM_ADMIN_ROLES }) level!: string;
+  @ApiProperty({
+    type: [String],
+    enum: PLATFORM_PERMISSIONS,
+    description:
+      'What your platform role allows, for showing or hiding screens. The API enforces it either way.',
+  })
+  permissions!: string[];
 }
 
 const ID = {
@@ -57,22 +72,27 @@ const ID = {
 @Controller('platform')
 @PlatformAccess()
 export class PlatformOrganizationsController {
-  constructor(private readonly orgs: PlatformOrganizationsService) {}
+  constructor(
+    private readonly orgs: PlatformOrganizationsService,
+    private readonly audit: AuditService,
+  ) {}
 
   @Get('me')
+  @PlatformAccess({ anyStaff: true })
   @ApiEndpoint({
     summary: 'Check my Platform Admin level',
     description:
-      'Find out whether you are a Platform Admin and at which level (`super_admin` or `admin`). The answer comes from the database (`platform_admin_role()`). If you are not a Platform Admin, you get a 403 error.',
+      'Find out whether you are a Platform Admin and at which level (`super_admin`, `admin`, `billing_admin` or `support_admin`) and what that role may do. The answer comes from the database (`platform_admin_role()`). If you are not a Platform Admin, you get a 403 error.',
     auth: 'platform',
     response: PlatformMeDto,
     message: 'Platform admin level retrieved successfully',
   })
   me(@CurrentPlatformLevel() level: PlatformLevel) {
-    return { level };
+    return { level, permissions: [...PLATFORM_ROLE_PERMISSIONS[level]] };
   }
 
   @Get('overview')
+  @PlatformAccess({ permission: 'tenants:read' })
   @ApiEndpoint({
     summary: 'View the platform overview',
     description:
@@ -86,10 +106,11 @@ export class PlatformOrganizationsController {
   }
 
   @Get('organizations')
+  @PlatformAccess({ permission: 'tenants:read' })
   @ApiEndpoint({
     summary: 'List organizations',
     description:
-      'See all the organizations on the platform, a page at a time. You can search by name or slug (the short web-address name), filter by status and sort the list. All of this is done inside the database, so it stays fast. If you ask for a page beyond the end of the list, you get the last page that actually exists.',
+      'See all the organizations on the platform, a page at a time. You can search by name, slug (the short web-address name), organization id, public id, the Owner email or the store web address, filter by status and sort the list. All of this is done inside the database, so it stays fast. If you ask for a page beyond the end of the list, you get the last page that actually exists.',
     auth: 'platform',
     response: [CompanyDto],
     paginated: true,
@@ -99,8 +120,35 @@ export class PlatformOrganizationsController {
     return this.orgs.list(admin.id, query);
   }
 
+  @Get('organizations/:id/activity')
+  @PlatformAccess({ permission: 'tenants:read' })
+  @ApiParam(ID)
+  @ApiEndpoint({
+    summary: "View an organization's activity history",
+    description:
+      'See what Platform Admins have done to this organization (created, edited, suspended, team and ownership changes), newest first, a page at a time. It is the activity log narrowed to one organization, and it is still available after the organization is deleted.',
+    auth: 'platform',
+    response: [AuditLogDto],
+    paginated: true,
+    message: 'Organization activity retrieved successfully',
+  })
+  activity(
+    @CurrentUser() admin: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: PaginationQueryDto,
+  ) {
+    return this.audit.list(
+      admin.id,
+      Object.assign(new AuditQueryDto(), {
+        page: query.page,
+        limit: query.limit,
+        org: id,
+      }),
+    );
+  }
+
   @Post('organizations')
-  @PlatformAccess({ bucket: 'org.create' })
+  @PlatformAccess({ permission: 'tenants:manage', bucket: 'org.create' })
   @ApiEndpoint({
     summary: 'Add an organization with its Owner',
     description:
@@ -118,6 +166,7 @@ export class PlatformOrganizationsController {
   }
 
   @Get('organizations/:id')
+  @PlatformAccess({ permission: 'tenants:read' })
   @ApiParam(ID)
   @ApiEndpoint({
     summary: 'View one organization',
@@ -133,7 +182,7 @@ export class PlatformOrganizationsController {
   }
 
   @Patch('organizations/:id')
-  @PlatformAccess({ bucket: 'org.edit' })
+  @PlatformAccess({ permission: 'tenants:manage', bucket: 'org.edit' })
   @ApiParam(ID)
   @ApiEndpoint({
     summary: 'Edit an organization',
@@ -154,7 +203,7 @@ export class PlatformOrganizationsController {
   }
 
   @Delete('organizations/:id')
-  @PlatformAccess({ bucket: 'org.delete' })
+  @PlatformAccess({ permission: 'tenants:manage', bucket: 'org.delete' })
   @ApiParam(ID)
   @ApiEndpoint({
     summary: 'Delete an organization permanently',
@@ -173,7 +222,7 @@ export class PlatformOrganizationsController {
   }
 
   @Patch('organizations/:id/status')
-  @PlatformAccess({ bucket: 'org.edit' })
+  @PlatformAccess({ permission: 'tenants:manage', bucket: 'org.edit' })
   @ApiParam(ID)
   @ApiEndpoint({
     summary: 'Suspend or reactivate an organization',
@@ -194,7 +243,7 @@ export class PlatformOrganizationsController {
   }
 
   @Patch('organizations/:id/store')
-  @PlatformAccess({ bucket: 'org.edit' })
+  @PlatformAccess({ permission: 'tenants:manage', bucket: 'org.edit' })
   @ApiParam(ID)
   @ApiEndpoint({
     summary: 'Edit the main store',
@@ -215,7 +264,7 @@ export class PlatformOrganizationsController {
   }
 
   @Post('organizations/:id/members')
-  @PlatformAccess({ bucket: 'team.manage' })
+  @PlatformAccess({ permission: 'tenants:manage', bucket: 'team.manage' })
   @ApiParam(ID)
   @ApiEndpoint({
     summary: 'Add a team member to an organization',
@@ -237,7 +286,7 @@ export class PlatformOrganizationsController {
   }
 
   @Patch('organizations/:id/members/:userId/status')
-  @PlatformAccess({ bucket: 'team.manage' })
+  @PlatformAccess({ permission: 'tenants:manage', bucket: 'team.manage' })
   @ApiParam(ID)
   @ApiParam({ name: 'userId', format: 'uuid' })
   @ApiEndpoint({
@@ -260,7 +309,7 @@ export class PlatformOrganizationsController {
   }
 
   @Delete('organizations/:id/members/:userId')
-  @PlatformAccess({ bucket: 'team.manage' })
+  @PlatformAccess({ permission: 'tenants:manage', bucket: 'team.manage' })
   @ApiParam(ID)
   @ApiParam({ name: 'userId', format: 'uuid' })
   @ApiEndpoint({
@@ -281,7 +330,7 @@ export class PlatformOrganizationsController {
   }
 
   @Post('organizations/:id/ownership/transfer')
-  @PlatformAccess({ bucket: 'ownership.change' })
+  @PlatformAccess({ permission: 'tenants:manage', bucket: 'ownership.change' })
   @ApiParam(ID)
   @ApiEndpoint({
     summary: 'Transfer ownership to an existing member',
@@ -303,7 +352,7 @@ export class PlatformOrganizationsController {
   }
 
   @Post('organizations/:id/ownership/recover')
-  @PlatformAccess({ bucket: 'ownership.change' })
+  @PlatformAccess({ permission: 'tenants:manage', bucket: 'ownership.change' })
   @ApiParam(ID)
   @ApiEndpoint({
     summary: 'Recover an organization with a new Owner',

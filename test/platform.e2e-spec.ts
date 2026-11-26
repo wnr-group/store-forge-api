@@ -99,9 +99,16 @@ describe.skipIf(!migrationsAvailable)('platform administration (e2e)', () => {
       const audit = (
         await admin.get(`/platform/audit-logs?org=${orgId}`).expect(200)
       ).body.data;
-      expect(audit).toHaveLength(1);
-      expect(audit[0]).toMatchObject({
-        action: 'organization.created',
+      // The organization and its starting subscription (default plan) are logged together.
+      expect(audit.map((e: { action: string }) => e.action).sort()).toEqual([
+        'organization.created',
+        'subscription.created',
+      ]);
+      expect(
+        audit.find(
+          (e: { action: string }) => e.action === 'organization.created',
+        ),
+      ).toMatchObject({
         adminEmail: 'admin@example.test',
         organizationName: 'Gamma Trading',
       });

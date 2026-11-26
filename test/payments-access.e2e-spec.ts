@@ -603,7 +603,7 @@ describe.skipIf(!migrationsAvailable)(
         expect(JSON.stringify(res.body)).not.toMatch(/razorpay|rzp_/i);
       });
 
-      it('AC-REG-13: the OpenAPI document gained exactly the three payments operations and no other route changed', async () => {
+      it('AC-REG-13: the baseline routes are unchanged; the payments settings operations are exactly the reviewed set', async () => {
         const { default: request } = await import('supertest');
         const doc = (
           await request(h.t.app.getHttpServer()).get('/api/docs-json')
@@ -612,13 +612,45 @@ describe.skipIf(!migrationsAvailable)(
         const ops = Object.entries(doc.paths).flatMap(([path, item]) =>
           methods.filter((m) => item[m]).map((m) => `${m} ${path}`),
         );
-        const payments = ops.filter((o) => o.includes('/payments/'));
-        // 148 is the operation count of the baseline (origin/main) application, Store Forge Studio included.
-        expect(ops.length - payments.length).toBe(148);
+        // The Owner's payment settings routes: exactly these.
+        const payments = ops.filter((o) => o.includes(' /api/v1/payments/'));
+        // The order lifecycle (migration 0045+) added the checkout, order-management and shopper payment routes.
+        const orderRoutes = ops.filter(
+          (o) =>
+            /\/api\/v1\/orders(\/|$)/.test(o) ||
+            o.includes('/public/stores/') ||
+            o.includes('/api/v1/webhooks/') ||
+            o.includes('/api/v1/shipping/') ||
+            /\/api\/v1\/shipments(\/|$)/.test(o) ||
+            o.includes('/api/v1/tax/') ||
+            o.includes('/api/v1/marketing/') ||
+            /\/api\/v1\/integrations(\/|$)/.test(o) ||
+            /\/api\/v1\/analytics\/(sales|revenue|products|customers)/.test(o),
+        );
+        // 148 is the operation count of the baseline (origin/main) application, Store Forge Studio included; 149 adds the
+        // platform organization activity route (GET /platform/organizations/{id}/activity, Platform Administration phase 2);
+        // 157 adds the eight plan and subscription routes of phase 3;
+        // 162 adds the five entitlement routes of phase 4;
+        // 184 adds the dashboard, billing and tenant billing routes of phase 5;
+        // 185 adds the audit log filter options of phase 6.
+        // 188 adds the three monitoring routes of phase 7;
+        // 191 adds the three platform logo routes (upload link, set, remove);
+        // 192 adds the public subscription plans route (GET /public/plans);
+        // 197 adds self-service sign-up: POST /auth/register and the four /signup routes (status, checkout, verify-payment, store).
+        expect(ops.length - payments.length - orderRoutes.length).toBe(197);
         expect(payments.sort()).toEqual([
           'delete /api/v1/payments/razorpay',
+          'get /api/v1/payments/cod',
           'get /api/v1/payments/razorpay',
+          'get /api/v1/payments/refunds',
+          'get /api/v1/payments/transactions',
+          'get /api/v1/payments/transactions/{id}',
+          'post /api/v1/payments/razorpay/verify',
+          'post /api/v1/payments/refunds/{id}/sync',
+          'post /api/v1/payments/transactions/{id}/refunds',
+          'put /api/v1/payments/cod',
           'put /api/v1/payments/razorpay',
+          'put /api/v1/payments/razorpay/enabled',
         ]);
       });
 

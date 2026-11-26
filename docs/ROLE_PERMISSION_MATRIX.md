@@ -6,7 +6,7 @@ Ported 1:1 from `lib/auth/permissions.ts`. The database enforces the same rules 
 
 | Actor | Source of truth |
 |---|---|
-| Platform Admin (`super_admin`, `admin`) | `platform_admins` via `is_platform_admin()` / `platform_admin_role()` |
+| Platform staff (`super_admin`, `admin` = Platform Admin, `billing_admin`, `support_admin`) | `platform_admins` via `is_platform_admin()` / `platform_admin_role()` |
 | Owner | `memberships.role = 'owner'` (exactly one per organization) |
 | Team member | `memberships.role = 'admin'` (legacy `staff` behaves identically) with `permissions` JSON per module |
 
@@ -45,6 +45,26 @@ Note: migration `0018` adds RESTRICTIVE RLS policies calling `has_module_access(
 | Platform settings: read | yes | yes |
 | Platform settings: update | **no** | yes |
 | Tenant data (catalog, customers, orders) | **never** (admin functions expose company metadata only) | **never** |
+
+### Platform roles (migration 0060, `common/constants/platform-permissions.ts`)
+
+The role is read from `platform_admins` by the database on every request. `PlatformAdminGuard` then applies the matrix below. A route that declares no `permission` is limited to `super_admin` and `admin`, so Billing and Support admins can only reach routes that explicitly opt them in.
+
+| Permission | super_admin | admin | billing_admin | support_admin |
+|---|---|---|---|---|
+| tenants:read | yes | yes | yes | yes |
+| tenants:manage | yes | yes | no | no |
+| plans:read / subscriptions:read | yes | yes | yes | subscriptions only |
+| plans:manage, subscriptions:manage, entitlements:manage | yes | yes | no | no |
+| usage:read | yes | yes | yes | yes |
+| billing:read | yes | yes | yes | no |
+| billing:manage | yes | no | yes | no |
+| audit:read, monitoring:read | yes | yes | no | no |
+| admins:read | yes | yes | no | no |
+| admins:manage, settings:manage | yes | no | no | no |
+| settings:read | yes | yes | yes | yes |
+
+The database enforces the same matrix (migration 0067): the `platform_*` functions and the platform tables check the role with `platform_role_in(...)` (operators: `super_admin`, `admin`; billing: `super_admin`, `billing_admin`), so a mistake in an API route cannot let a Billing or Support admin reach a function meant for another role. Tests: `test/platform-hardening.e2e-spec.ts` (database level) and `test/platform-security-matrix.e2e-spec.ts` (every route, every role).
 
 Platform authority and tenant roles are disjoint: an account that belongs to an organization cannot become a platform admin.
 

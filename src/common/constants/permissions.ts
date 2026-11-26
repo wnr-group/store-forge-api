@@ -83,11 +83,30 @@ const PERMISSIONS = {
   'members:manage': { ownerOnly: true },
   // A tenant's own payment credentials: Owner-only, and no module grant (not even settings write) can reach it.
   'payments:manage': { ownerOnly: true },
+  // The organization's own StoreForge subscription invoices and payments: Owner-only, like its payment credentials.
+  'billing:manage': { ownerOnly: true },
+  // A tenant's own shipping carrier accounts and how carriers are chosen: Owner-only, like the payment credentials.
+  'carriers:manage': { ownerOnly: true },
+  // Zones, methods, rates and the shipping origin follow the store settings: read to look, write to change.
+  'shipping:view': { module: 'settings', need: 'read' },
+  'shipping:manage': { module: 'settings', need: 'write' },
+  // GST settings follow the store settings; the tax report is sales data, so it follows orders.
+  'tax:view': { module: 'settings', need: 'read' },
+  'tax:manage': { module: 'settings', need: 'write' },
+  'tax:report': { module: 'orders', need: 'read' },
+  // Discounts, campaigns, abandoned carts and every sales report are order data: they follow the orders module.
+  'marketing:view': { module: 'orders', need: 'read' },
+  'marketing:manage': { module: 'orders', need: 'write' },
+  // Google Analytics / Meta Pixel connections are store settings (their identifiers are public, there is no secret to guard).
+  'integrations:view': { module: 'settings', need: 'read' },
+  'integrations:manage': { module: 'settings', need: 'write' },
   // Products, categories, collections, inventory.
   'catalog:view': { module: 'products', need: 'read' },
   'catalog:manage': { module: 'products', need: 'write' },
   'catalog:delete': { module: 'products', need: 'write' },
   'orders:view': { module: 'orders', need: 'read' },
+  // Moving an order through its lifecycle, cancelling it. Owner always; members only with the orders `write` level.
+  'orders:manage': { module: 'orders', need: 'write' },
   'customers:view': { module: 'customers', need: 'read' },
   'customers:manage': { module: 'customers', need: 'write' },
   'customers:delete': { module: 'customers', need: 'write' },
@@ -129,11 +148,23 @@ export const canViewCatalog = (a: Actor) => can(a, 'catalog:view');
 export const canManageCatalog = (a: Actor) => can(a, 'catalog:manage');
 export const canDeleteCatalog = (a: Actor) => can(a, 'catalog:delete');
 export const canViewOrders = (a: Actor) => can(a, 'orders:view');
+export const canManageOrders = (a: Actor) => can(a, 'orders:manage');
 export const canViewCustomers = (a: Actor) => can(a, 'customers:view');
 export const canManageCustomers = (a: Actor) => can(a, 'customers:manage');
 export const canDeleteCustomers = (a: Actor) => can(a, 'customers:delete');
 export const canManageMembers = (a: Actor) => can(a, 'members:manage');
 export const canManagePayments = (a: Actor) => can(a, 'payments:manage');
+export const canManageCarriers = (a: Actor) => can(a, 'carriers:manage');
+export const canViewShipping = (a: Actor) => can(a, 'shipping:view');
+export const canManageShipping = (a: Actor) => can(a, 'shipping:manage');
+export const canViewTax = (a: Actor) => can(a, 'tax:view');
+export const canManageTax = (a: Actor) => can(a, 'tax:manage');
+export const canViewTaxReport = (a: Actor) => can(a, 'tax:report');
+export const canViewMarketing = (a: Actor) => can(a, 'marketing:view');
+export const canManageMarketing = (a: Actor) => can(a, 'marketing:manage');
+export const canViewIntegrations = (a: Actor) => can(a, 'integrations:view');
+export const canManageIntegrations = (a: Actor) =>
+  can(a, 'integrations:manage');
 
 /** Members are stored with the broadest non-owner role; what they can actually do is decided by their permissions. */
 export const MEMBER_ROLE = 'admin' as const satisfies Role;
@@ -150,8 +181,8 @@ export const MODULE_LABELS: Record<
   },
   orders: {
     label: 'Orders',
-    hint: 'Orders are read-only for now.',
-    levels: ['none', 'read'],
+    hint: 'View orders; with write access, move them through their lifecycle and cancel them.',
+    levels: ['none', 'read', 'write'],
   },
   customers: {
     label: 'Customers',
@@ -211,7 +242,7 @@ export function summarizePermissions(
 /**
  * Roles an Owner can pick when adding or editing a member. A role is only a preset for the access levels below it:
  * nothing but the permissions is stored, and a member whose levels match no preset shows as "Custom".
- * (Orders are read-only for now, so no preset gives write on orders.)
+ * (No preset gives write on orders: the Owner grants it per member with a custom setup.)
  */
 export const ROLE_PRESETS = {
   manager: {
@@ -264,7 +295,7 @@ export const ROLE_PRESETS = {
 export type RolePresetKey = keyof typeof ROLE_PRESETS;
 export const ROLE_PRESET_KEYS = Object.keys(ROLE_PRESETS) as RolePresetKey[];
 
-/** Which preset these levels equal, or "custom". Missing modules count as no access (settings: read); orders write counts as read. */
+/** Which preset these levels equal, or "custom". Missing modules count as no access (settings: read). */
 export function presetOf(
   permissions: MemberPermissions,
 ): RolePresetKey | 'custom' {
@@ -275,8 +306,7 @@ export function presetOf(
       return { write: 'publish', read: 'read' }[
         accessLevel(actor, 'settings') as 'write' | 'read'
       ] as AccessLevel;
-    const l = accessLevel(actor, m);
-    return m === 'orders' && l === 'write' ? 'read' : l;
+    return accessLevel(actor, m);
   };
   return (
     ROLE_PRESET_KEYS.find((k) =>

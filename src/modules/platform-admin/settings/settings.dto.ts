@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsIn } from 'class-validator';
+import { IsIn, IsInt, IsString, Matches, Max, Min } from 'class-validator';
+import { IMAGE_TYPES, LOGO_MAX_BYTES } from '../../storage/storage-paths.js';
 import {
   CurrencyField,
   OptionalEmail,
@@ -14,6 +15,12 @@ export class PlatformSettingsDto {
   @ApiProperty({ example: 'INR' }) defaultCurrency!: string;
   @ApiProperty({ example: 'Asia/Kolkata' }) defaultTimezone!: string;
   @ApiProperty({ enum: ['active', 'inactive'] }) defaultStoreStatus!: string;
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'Public address of the platform logo, or null when the built-in logo is used.',
+  })
+  logoUrl!: string | null;
   @ApiProperty() updatedAt!: Date;
   @ApiPropertyOptional({ nullable: true }) updatedByEmail!: string | null;
 }
@@ -50,4 +57,43 @@ export class UpdatePlatformSettingsDto {
   @WhenPresent()
   @IsIn(['active', 'inactive'], { message: 'Choose how new stores start.' })
   defaultStoreStatus?: 'active' | 'inactive';
+}
+
+export class LogoUploadRequestDto {
+  @ApiProperty({ enum: IMAGE_TYPES })
+  @IsIn([...IMAGE_TYPES], {
+    message: 'The logo must be a JPEG, PNG or WebP image.',
+  })
+  type!: string;
+
+  @ApiProperty({ description: 'File size in bytes. At most 2 MB.' })
+  @IsInt()
+  @Min(1)
+  @Max(LOGO_MAX_BYTES, { message: 'The logo must be 2 MB or smaller.' })
+  size!: number;
+}
+
+export class LogoUploadTargetDto {
+  @ApiProperty({
+    description:
+      'Send this back to `PUT /platform/settings/logo` once the file is uploaded.',
+  })
+  path!: string;
+  @ApiProperty({ description: 'A token that can be used for one upload only.' })
+  token!: string;
+  @ApiProperty({
+    description: 'Upload the file to this address with a PUT request.',
+  })
+  signedUrl!: string;
+}
+
+export class SetLogoDto {
+  @ApiProperty({
+    example: 'logo/6f1c.png',
+    description:
+      'The `path` returned by the upload link, after the file was uploaded.',
+  })
+  @IsString()
+  @Matches(/^logo\/[A-Za-z0-9._-]{1,120}$/, { message: 'Invalid logo path.' })
+  path!: string;
 }

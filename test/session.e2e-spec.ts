@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   readSessionCookie,
   sessionCookieName,
@@ -220,10 +220,8 @@ describe.skipIf(!migrationsAvailable)(
           .expect(400);
       });
 
-      it('has no sign-up, registration, verification or recovery endpoint', async () => {
+      it('has no email verification or recovery endpoint', async () => {
         for (const path of [
-          'register',
-          'signup',
           'sign-up',
           'verify-email',
           'forgot-password',
@@ -235,6 +233,147 @@ describe.skipIf(!migrationsAvailable)(
             .set({ Origin: ORIGIN })
             .send({ email: 'a@b.co', password: 'x' })
             .expect(404);
+      });
+    });
+
+    describe('registration (self-service, no email verification)', () => {
+      const register = (body: Record<string, unknown>, ip = '198.20.0.1') =>
+        request(http())
+          .post('/api/v1/auth/register')
+          .set({ 'X-Forwarded-For': ip, Origin: ORIGIN })
+          .send(body);
+      const valid = {
+        fullName: 'Asha Rao',
+        email: 'asha@example.test',
+        password: 'Asha-pass-1',
+        confirmPassword: 'Asha-pass-1',
+        acceptTerms: true,
+      };
+
+      it('creates the account, signs the person in, and creates nothing else', async () => {
+        // The stand-in for Supabase Auth Admin creates the row; tell the stand-in for sign-in about it too.
+        const create = t.authAdmin.createConfirmedUser.bind(t.authAdmin);
+        const spy = vi
+          .spyOn(t.authAdmin, 'createConfirmedUser')
+          .mockImplementation(async (input) => {
+            const user = await create(input);
+            fake.addUser({ ...user, password: input.password });
+            return user;
+          });
+        const before = await t.db.asOwner((pg) =>
+          pg.query(
+            'select (select count(*) from tenants)::int t, (select count(*) from memberships)::int m, (select count(*) from stores)::int s',
+          ),
+        );
+        const res = await register(valid).expect(200);
+        expect(res.body).toMatchObject({
+          success: true,
+          message: 'Account created successfully',
+        });
+        // Signed in: the same HttpOnly cookie as a normal sign-in, no token in the body.
+        expect(setCookies(res).some((c) => c.startsWith(`${COOKIE}=`))).toBe(
+          true,
+        );
+        expect(JSON.stringify(res.body)).not.toMatch(
+          /access_token|refresh_token/,
+        );
+        // A person with a name and NO role, organization or platform level.
+        expect(res.body.data).toMatchObject({
+          email: 'asha@example.test',
+          platformAdminLevel: null,
+          memberships: [],
+        });
+        // The request carried the person's own details, never a password, to the Auth admin call.
+        expect(spy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            email: 'asha@example.test',
+            fullName: 'Asha Rao',
+            selfService: true,
+            metadata: { terms_accepted_at: expect.any(String) },
+          }),
+        );
+        const after = await t.db.asOwner((pg) =>
+          pg.query(
+            'select (select count(*) from tenants)::int t, (select count(*) from memberships)::int m, (select count(*) from stores)::int s',
+          ),
+        );
+        expect(after.rows[0]).toEqual(before.rows[0]);
+        // And the new credentials work for an ordinary sign-in afterwards.
+        const again = await login('asha@example.test', 'Asha-pass-1').expect(
+          200,
+        );
+        expect(again.body.data).toMatchObject({ fullName: 'Asha Rao' });
+      });
+
+      it('refuses an e-mail that is already registered, without changing that account', async () => {
+        const res = await register(valid, '198.20.0.2').expect(409);
+        expect(res.body.error.code).toBe('EMAIL_TAKEN');
+        expect(setCookies(res)).toEqual([]);
+        await login('asha@example.test', 'Asha-pass-1').expect(200);
+      });
+
+      it('checks everything on the server: confirmation, terms, password strength, e-mail, name and unexpected fields', async () => {
+        const created = vi.spyOn(t.authAdmin, 'createConfirmedUser');
+        created.mockClear();
+        const cases: Record<string, unknown>[] = [
+          {
+            ...valid,
+            email: 'b1@example.test',
+            confirmPassword: 'Different-1',
+          },
+          { ...valid, email: 'b2@example.test', acceptTerms: false },
+          { ...valid, email: 'b3@example.test', acceptTerms: 'true' },
+          {
+            ...valid,
+            email: 'b4@example.test',
+            password: 'short1',
+            confirmPassword: 'short1',
+          },
+          {
+            ...valid,
+            email: 'b5@example.test',
+            password: 'nodigitshere',
+            confirmPassword: 'nodigitshere',
+          },
+          { ...valid, email: 'not-an-email' },
+          { ...valid, email: 'b6@example.test', fullName: ' ' },
+          { ...valid, email: 'b7@example.test', role: 'owner' },
+          {
+            ...valid,
+            email: 'b8@example.test',
+            platformAdminLevel: 'super_admin',
+          },
+        ];
+        let ip = 10;
+        for (const body of cases) {
+          const res = await register(body, `198.20.1.${++ip}`);
+          expect(res.status, JSON.stringify(body)).toBe(400);
+          expect(setCookies(res)).toEqual([]);
+        }
+        expect(created).not.toHaveBeenCalled();
+      });
+
+      it('is rate limited per address, so it cannot be used to create accounts in bulk', async () => {
+        const body = {
+          ...valid,
+          email: 'limit@example.test',
+          acceptTerms: false,
+        };
+        let last = 0;
+        for (let i = 0; i < 12; i++)
+          last = (await register(body, '198.20.9.9')).status;
+        expect(last).toBe(429);
+      });
+
+      it('is closed to a request that does not come from the website or its server', async () => {
+        await request(http())
+          .post('/api/v1/auth/register')
+          .set({
+            'X-Forwarded-For': '198.20.2.1',
+            Origin: 'https://evil.example',
+          })
+          .send({ ...valid, email: 'evil@example.test' })
+          .expect(403);
       });
     });
 

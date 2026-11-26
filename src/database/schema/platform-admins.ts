@@ -16,7 +16,7 @@ export const platformAdmins = pgTable(
     userId: uuid('user_id')
       .primaryKey()
       .references(() => authUsers.id, { onDelete: 'cascade' }),
-    /** `super_admin` manages other admins and the platform settings; `admin` does everything else. */
+    /** `super_admin` manages other admins and the platform settings; `admin` runs tenants and plans; `billing_admin` and `support_admin` are narrower, read-mostly roles. */
     role: text('role', { enum: PLATFORM_ADMIN_ROLES })
       .notNull()
       .default('admin'),
@@ -29,7 +29,7 @@ export const platformAdmins = pgTable(
   (t) => [
     check(
       'platform_admins_role_check',
-      sql`${t.role} in ('super_admin', 'admin')`,
+      sql`${t.role} in ('super_admin', 'admin', 'billing_admin', 'support_admin')`,
     ),
   ],
 ).enableRLS();

@@ -1,9 +1,17 @@
-import { Module } from '@nestjs/common';
+import {
+  MiddlewareConsumer,
+  Module,
+  NestModule,
+  RequestMethod,
+} from '@nestjs/common';
+import { MonitoringModule } from './modules/monitoring/monitoring.module.js';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AppThrottlerGuard } from './common/guards/app-throttler.guard.js';
+import { requestMetaMiddleware } from './common/request-meta.js';
 import { CsrfGuard } from './common/guards/csrf.guard.js';
+import { FeatureGuard } from './common/guards/feature.guard.js';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard.js';
 import { OrganizationContextGuard } from './common/guards/organization-context.guard.js';
 import { PermissionsGuard } from './common/guards/permissions.guard.js';
@@ -26,8 +34,19 @@ import { PlatformAdminModule } from './modules/platform-admin/platform-admin.mod
 import { PublicModule } from './modules/public/public.module.js';
 import { TeamModule } from './modules/team/team.module.js';
 import { PaymentsModule } from './modules/payments/payments.module.js';
+import { OrdersModule } from './modules/orders/orders.module.js';
+import { ShipmentsModule } from './modules/shipments/shipments.module.js';
+import { ShippingModule } from './modules/shipping/shipping.module.js';
+import { TaxModule } from './modules/tax/tax.module.js';
+import { CheckoutPaymentsModule } from './modules/checkout-payments/checkout-payments.module.js';
+import { IntegrationsModule } from './modules/integrations/integrations.module.js';
+import { ReportsModule } from './modules/reports/reports.module.js';
+import { MarketingModule } from './modules/marketing/marketing.module.js';
 import { PagesModule } from './modules/pages/pages.module.js';
 import { ThemesModule } from './modules/themes/themes.module.js';
+import { BillingModule } from './modules/billing/billing.module.js';
+import { SignupModule } from './modules/signup/signup.module.js';
+import { EntitlementsModule } from './modules/entitlements/entitlements.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { OrganizationsModule } from './modules/organizations/organizations.module.js';
 import { StorageModule } from './modules/storage/storage.module.js';
@@ -52,6 +71,7 @@ import { UsersModule } from './modules/users/users.module.js';
       },
     }),
     DatabaseModule,
+    EntitlementsModule,
     AuthModule,
     HealthModule,
     UsersModule,
@@ -68,21 +88,40 @@ import { UsersModule } from './modules/users/users.module.js';
     AnalyticsModule,
     TeamModule,
     PaymentsModule,
+    OrdersModule,
+    CheckoutPaymentsModule,
+    ShippingModule,
+    ShipmentsModule,
+    TaxModule,
+    MarketingModule,
+    ReportsModule,
+    IntegrationsModule,
     ThemesModule,
     StudioModule,
     PagesModule,
     PublicModule,
     PlatformAdminModule,
+    BillingModule,
+    SignupModule,
+    MonitoringModule,
   ],
   providers: [
-    // Order matters: throttle -> CSRF -> authenticate -> resolve organization -> permission -> platform admin.
+    // Order matters: throttle -> CSRF -> authenticate -> resolve organization -> permission -> plan feature -> platform admin.
     { provide: APP_GUARD, useClass: AppThrottlerGuard },
     { provide: APP_GUARD, useClass: CsrfGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: OrganizationContextGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
+    { provide: APP_GUARD, useClass: FeatureGuard },
     { provide: APP_GUARD, useClass: PlatformAdminGuard },
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  /** Client address, user agent and a request id for the audit log and support (common/request-meta.ts). Runs before every guard. */
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(requestMetaMiddleware)
+      .forRoutes({ path: '*path', method: RequestMethod.ALL });
+  }
+}

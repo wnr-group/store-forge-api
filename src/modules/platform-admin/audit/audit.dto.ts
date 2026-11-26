@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsIn, IsOptional, IsUUID, Matches } from 'class-validator';
 import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto.js';
+import { ADMIN_AUDIT_ENTITY_TYPES } from '../../../database/schema/admin-audit.js';
 import { AUDIT_ACTIONS } from './audit-actions.js';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -30,6 +31,19 @@ export class AuditLogDto {
   })
   newData!: unknown;
   @ApiProperty() createdAt!: Date;
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'The address the action came from. Empty for entries made before this was recorded.',
+  })
+  ip!: string | null;
+  @ApiPropertyOptional({ nullable: true }) userAgent!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'The `X-Request-Id` of the request, to match the entry with the server logs.',
+  })
+  requestId!: string | null;
 }
 
 export class AuditAdminDto {
@@ -58,6 +72,16 @@ export class AuditQueryDto extends PaginationQueryDto {
   admin: string = 'all';
 
   @ApiPropertyOptional({
+    enum: ['all', ...ADMIN_AUDIT_ENTITY_TYPES],
+    default: 'all',
+    description:
+      'Show only actions on this kind of thing (organization, plan, subscription, invoice, ...).',
+  })
+  @IsOptional()
+  @IsIn(['all', ...ADMIN_AUDIT_ENTITY_TYPES])
+  entity: 'all' | (typeof ADMIN_AUDIT_ENTITY_TYPES)[number] = 'all';
+
+  @ApiPropertyOptional({
     format: 'uuid',
     description: 'Show only the actions that affected this organization.',
   })
@@ -80,4 +104,17 @@ export class AuditQueryDto extends PaginationQueryDto {
   @IsOptional()
   @Matches(DATE, { message: 'to must be YYYY-MM-DD.' })
   to?: string;
+}
+
+export class AuditFiltersDto {
+  @ApiProperty({
+    type: [String],
+    description: 'Every action an entry can have, for a filter list.',
+  })
+  actions!: string[];
+  @ApiProperty({
+    type: [String],
+    description: 'Every kind of thing an entry can be about.',
+  })
+  entityTypes!: string[];
 }

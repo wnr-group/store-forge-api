@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { EntitlementsService } from '../entitlements/entitlements.service.js';
 import { and, eq, ne, sql } from 'drizzle-orm';
 import {
   AppException,
@@ -111,6 +112,7 @@ export class TeamService {
   constructor(
     private readonly db: DatabaseService,
     private readonly authAdmin: SupabaseAdminService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   async list(ctx: OrgContext): Promise<TeamMemberDto[]> {
@@ -135,15 +137,21 @@ export class TeamService {
     });
     try {
       await mapErrors(() =>
-        this.db.withUser(ctx.userId, (tx) =>
-          tx.insert(memberships).values({
+        this.db.withUser(ctx.userId, async (tx) => {
+          // Inside the inserting transaction, under a lock, so two simultaneous requests cannot both fit under the limit.
+          await this.entitlements.assertWithinLimit(
+            tx,
+            ctx.tenantId,
+            'staff_accounts',
+          );
+          await tx.insert(memberships).values({
             tenantId: ctx.tenantId,
             userId: user.id,
             role: MEMBER_ROLE,
             permissions: dto.permissions,
             capabilities: dto.capabilities ?? [],
-          }),
-        ),
+          });
+        }),
       );
     } catch (e) {
       await this.authAdmin.deleteUserQuietly(user.id);
