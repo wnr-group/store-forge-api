@@ -240,6 +240,33 @@ describe('other request DTOs', () => {
     ); // null does not clear a required field
   });
 
+  it('store SEO fields: optional, nullable, empty becomes null, 70 and 160 characters at most', async () => {
+    expect(
+      (
+        await check(UpdateStoreDto, {
+          metaTitle: 't'.repeat(70),
+          metaDescription: 'd'.repeat(160),
+        })
+      ).failed,
+    ).toEqual([]);
+    expect((await check(UpdateStoreDto, { metaTitle: null })).failed).toEqual(
+      [],
+    );
+    expect((await check(UpdateStoreDto, { metaTitle: '  ' })).failed).toEqual(
+      [],
+    );
+    expect(
+      (await check(UpdateStoreDto, { metaTitle: 't'.repeat(71) })).failed,
+    ).toContain('metaTitle');
+    expect(
+      (await check(UpdateStoreDto, { metaDescription: 'd'.repeat(161) }))
+        .failed,
+    ).toContain('metaDescription');
+    expect((await check(UpdateStoreDto, { metaTitle: 5 })).failed).toContain(
+      'metaTitle',
+    );
+  });
+
   it('inventory adjustment: whole numbers, known modes and reasons', async () => {
     const base = {
       productId: '11111111-1111-4111-8111-111111111111',

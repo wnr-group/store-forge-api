@@ -14,6 +14,9 @@ export const storefrontSchema = z.object({
   slug: z.string(),
   description: z.string().nullable(),
   logo_path: z.string().nullable(),
+  /** Optional so a database not yet migrated to 0071 still parses. */
+  meta_title: z.string().nullish(),
+  meta_description: z.string().nullish(),
   currency: z.string(),
   products: z.array(
     z.object({

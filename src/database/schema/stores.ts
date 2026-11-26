@@ -26,6 +26,10 @@ export const stores = pgTable(
     description: text('description'),
     /** Object path of the logo in the `products` bucket (`{tenant_id}/store/...`), not a URL. */
     logoUrl: text('logo_url'),
+    /** SEO title of the storefront home page (max 70 characters). Null: the frontend uses the store name. */
+    metaTitle: text('meta_title'),
+    /** SEO description of the storefront home page (max 160 characters). Null: the frontend uses `description`. */
+    metaDescription: text('meta_description'),
     contactEmail: text('contact_email'),
     contactPhone: text('contact_phone'),
     currency: text('currency').notNull().default('INR'),
@@ -59,6 +63,14 @@ export const stores = pgTable(
     check(
       'stores_description_check',
       sql`${t.description} is null or char_length(${t.description}) <= 500`,
+    ),
+    check(
+      'stores_meta_title_check',
+      sql`${t.metaTitle} is null or char_length(${t.metaTitle}) <= 70`,
+    ),
+    check(
+      'stores_meta_description_check',
+      sql`${t.metaDescription} is null or char_length(${t.metaDescription}) <= 160`,
     ),
     check(
       'stores_contact_email_check',

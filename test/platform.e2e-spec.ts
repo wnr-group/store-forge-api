@@ -260,6 +260,37 @@ describe.skipIf(!migrationsAvailable)('platform administration (e2e)', () => {
         .expect(400); // the address is not editable here
     });
 
+    it("a platform store edit leaves the owner's SEO metadata alone, and cannot set it", async () => {
+      const owner = await as(t, ownerId);
+      await owner
+        .patch('/store', {
+          metaTitle: 'Gamma | Official shop',
+          metaDescription: 'The Gamma shop.',
+        })
+        .expect(200);
+      // Edits that touch other fields, and one that clears an optional field, must not reach the SEO columns.
+      await admin
+        .patch(`/platform/organizations/${orgId}/store`, {
+          description: 'Edited by support',
+          timezone: 'Europe/Paris',
+        })
+        .expect(200);
+      await admin
+        .patch(`/platform/organizations/${orgId}/store`, { description: null })
+        .expect(200);
+      const after = (await owner.get('/store').expect(200)).body.data;
+      expect(after).toMatchObject({
+        description: null,
+        timezone: 'Europe/Paris',
+        metaTitle: 'Gamma | Official shop',
+        metaDescription: 'The Gamma shop.',
+      });
+      // The admin endpoint does not accept the fields at all.
+      await admin
+        .patch(`/platform/organizations/${orgId}/store`, { metaTitle: 'x' })
+        .expect(400);
+    });
+
     it('suspending hides the organization from its members; reactivating restores it', async () => {
       const owner = await as(t, ownerId);
       await admin

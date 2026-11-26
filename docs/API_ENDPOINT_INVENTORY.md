@@ -15,7 +15,7 @@ Base path `/api/v1`. All JSON. Success envelope `{success,message,data,meta?}`; 
 | 74 | health | Readiness (database) | GET `/health/ready` | Public | - | - | `{status, service, database}`; 503 when the DB is down | `select 1` through the RLS-guarded path | new infra |
 | 2 | public | Platform branding | GET `/public/branding` | Public | - | - | `{platformName, supportEmail}` | `get_public_platform_settings()` | defaults to `StoreForge` if DB fails (`getPublicBranding`) |
 | 2a | public | Subscription plans on offer | GET `/public/plans` | Public | - | - | array of `{code, name, description, currency, monthlyPrice, yearlyPrice, trialDays, features[], limits[]}` | `get_public_plans()` | only active, restricted plans (an admin "publishes" a plan by making it active); no ids or subscriber counts; limit `null` = unlimited; read-only, no purchase |
-| 3 | public | Public storefront | GET `/public/storefronts/:slug` | Public | - | slug | storefront JSON or 404 | `get_public_storefront(slug)` | unknown/inactive/suspended look identical (404); runs as no-identity request role |
+| 3 | public | Public storefront | GET `/public/storefronts/:slug` | Public | - | slug | storefront JSON (includes `metaTitle`, `metaDescription`: the home page SEO title and description, each a string or null) or 404 | `get_public_storefront(slug)` | unknown/inactive/suspended look identical (404); runs as no-identity request role |
 
 ## Auth & profile
 
@@ -52,9 +52,9 @@ A registered person with no organization buys a plan, then names a store. Needs 
 | # | Module | Feature | Endpoint | Auth | Permission | Request | Response | DB | Logic |
 |---|---|---|---|---|---|---|---|---|---|
 | 8 | organizations | My organizations | GET `/organizations` | JWT | any | - | memberships[] | `memberships`,`tenants` | ordered by joined date |
-| 9 | organizations | Current organization + store + access | GET `/organizations/current` | JWT+Org | `dashboard:view` (any active member) | - | `{organization, role, permissions, access[], store}` | `memberships`,`tenants`,`stores` | `resolveActiveTenant`; primary store = oldest |
+| 9 | organizations | Current organization + store + access | GET `/organizations/current` | JWT+Org | `dashboard:view` (any active member) | - | `{organization, role, permissions, access[], store}` (store includes `metaTitle`, `metaDescription`) | `memberships`,`tenants`,`stores` | `resolveActiveTenant`; primary store = oldest |
 | 10 | store | Read store (+ currency lock flag) | GET `/store` | JWT+Org | any member | - | store + `currencyLocked` | `stores`,`products`,`orders` | `isCurrencyLocked` |
-| 11 | store | Update store settings | PATCH `/store` | JWT+Org | `store:manage` | `{name,slug,description,contactEmail,contactPhone,currency,timezone,logoPath}` | store | `stores`,`store_template_settings`(read),storage | row lock; logo must be direct child of `{tenant}/store`; slug availability fn; currency locked after products/orders; valid IANA tz; old logo removed after commit if unreferenced |
+| 11 | store | Update store settings | PATCH `/store` | JWT+Org | `store:manage` | `{name,slug,description,contactEmail,contactPhone,currency,timezone,logoPath,metaTitle,metaDescription}` | store (also returns `metaTitle`, `metaDescription`) | `stores`,`store_template_settings`(read),storage | row lock; `metaTitle` max 70 and `metaDescription` max 160 characters, omitted keeps, null or empty clears (stored as null); logo must be direct child of `{tenant}/store`; slug availability fn; currency locked after products/orders; valid IANA tz; old logo removed after commit if unreferenced |
 
 ## Team (Owner only)
 

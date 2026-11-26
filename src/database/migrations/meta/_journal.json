@@ -498,6 +498,13 @@
       "when": 1794300053000,
       "tag": "0070_self_service_signup",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1794300054000,
+      "tag": "0071_store_seo_metadata",
+      "breakpoints": true
     }
   ]
 }

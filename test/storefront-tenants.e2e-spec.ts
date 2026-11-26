@@ -277,5 +277,58 @@ describe.skipIf(!migrationsAvailable)(
       // The other store keeps its products.
       expect(await names('alpha-shop')).toHaveLength(3);
     });
+
+    it('serves each store its own SEO title and description, and hides them with an inactive store', async () => {
+      type Seo = { metaTitle: string | null; metaDescription: string | null };
+      const seo = async (slug: string) =>
+        (await storefront(slug)) as unknown as Seo;
+
+      // Nothing saved yet: both fields are present and null.
+      expect(await seo('alpha-shop')).toMatchObject({
+        metaTitle: null,
+        metaDescription: null,
+      });
+
+      await alice
+        .patch('/store', {
+          metaTitle: 'Alpha: coats and scarves',
+          metaDescription: 'Warm things for cold days.',
+        })
+        .expect(200);
+      await bob.patch('/store', { metaTitle: 'Beta: gaming gear' }).expect(200);
+
+      expect(await seo('alpha-shop')).toMatchObject({
+        metaTitle: 'Alpha: coats and scarves',
+        metaDescription: 'Warm things for cold days.',
+      });
+      // B only set a title: its description stays null and A's never leaks over.
+      expect(await seo('beta-shop')).toMatchObject({
+        metaTitle: 'Beta: gaming gear',
+        metaDescription: null,
+      });
+
+      // Clearing a value shows on the storefront too.
+      await alice.patch('/store', { metaTitle: null }).expect(200);
+      expect(await seo('alpha-shop')).toMatchObject({
+        metaTitle: null,
+        metaDescription: 'Warm things for cold days.',
+      });
+
+      // An inactive store still answers 404 (the visibility rule is unchanged), and comes back with its values.
+      await t.db.asOwner((pg) =>
+        pg.query("update stores set status = 'inactive' where id = $1", [
+          w.storeB,
+        ]),
+      );
+      await anonymous(t).get('/public/storefronts/beta-shop').expect(404);
+      await t.db.asOwner((pg) =>
+        pg.query("update stores set status = 'active' where id = $1", [
+          w.storeB,
+        ]),
+      );
+      expect(await seo('beta-shop')).toMatchObject({
+        metaTitle: 'Beta: gaming gear',
+      });
+    });
   },
 );
