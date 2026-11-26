@@ -8,13 +8,13 @@ import {
 } from '../../../common/app.exception.js';
 import { errorChain } from '../../../common/db-errors.js';
 import { Paginated } from '../../../common/dto/api-response.dto.js';
-import { generatePublicId } from '../../../common/utils/public-id.js';
 import {
   DatabaseService,
   rowsOf,
   type DbTx,
 } from '../../../database/database.service.js';
 import { SupabaseAdminService } from '../../auth/supabase-admin.service.js';
+import { TenantProvisioningService } from '../../provisioning/tenant-provisioning.service.js';
 import { StorageService } from '../../storage/storage.service.js';
 import type { CreateMemberDto } from '../../team/team.dto.js';
 import {
@@ -39,9 +39,6 @@ import type {
   UpdateOrganizationDto,
   UpdateOrganizationStoreDto,
 } from './organizations.dto.js';
-
-/** Attempts at a free public id before giving up (a collision among 36^6 values is already very unlikely). */
-const PUBLIC_ID_ATTEMPTS = 5;
 
 type CompanyRaw = {
   id: string;
@@ -160,6 +157,7 @@ export class PlatformOrganizationsService {
     private readonly authAdmin: SupabaseAdminService,
     private readonly storage: StorageService,
     private readonly subscriptions: SubscriptionsService,
+    private readonly provisioning: TenantProvisioningService,
   ) {}
 
   // --- reads -------------------------------------------------------------------------------------------------------
@@ -291,20 +289,11 @@ export class PlatformOrganizationsService {
     v: CreateOrganizationDto,
     ownerEmail: string,
   ) {
-    // The public id is generated here (Node crypto), never taken from the request. A collision rolls the transaction
-    // back with 'public_id_taken'; a fresh id is tried (each attempt is a new transaction, so nothing is half-written).
-    for (let attempt = 1; ; attempt++) {
-      try {
-        return await this.provisionTenant(adminId, ownerId, v, ownerEmail);
-      } catch (error) {
-        if (
-          errorChain(error).includes('public_id_taken') &&
-          attempt < PUBLIC_ID_ATTEMPTS
-        )
-          continue;
-        return mapProvisioningError(error);
-      }
-    }
+    // The public id is generated and retried by the shared provisioning service (a collision rolls the transaction back
+    // with 'public_id_taken' and a fresh id is tried; each attempt is a new transaction, so nothing is half-written).
+    return this.provisioning.withPublicId((publicId) =>
+      this.provisionTenant(adminId, ownerId, v, ownerEmail, publicId),
+    );
   }
 
   private provisionTenant(
@@ -312,6 +301,7 @@ export class PlatformOrganizationsService {
     ownerId: string,
     v: CreateOrganizationDto,
     ownerEmail: string,
+    publicId: string,
   ) {
     return this.db.withUser(adminId, async (tx) => {
       const rows = rowsOf<{
@@ -324,15 +314,15 @@ export class PlatformOrganizationsService {
       }>(
         await tx.execute(sql`select public.platform_provision_tenant(
           ${ownerId}::uuid, ${v.companyName}, ${v.storeName}, ${v.storeSlug},
-          ${v.storeDescription ?? null}, ${v.contactPhone ?? null}, ${v.address ?? null}, ${generatePublicId()}) as result`),
+          ${v.storeDescription ?? null}, ${v.contactPhone ?? null}, ${v.address ?? null}, ${publicId}) as result`),
       );
       const provisioned = rows[0]?.result;
       if (!provisioned?.tenant_id)
         throw new Error('platform_provision_tenant returned no result');
-      const [{ public_id: publicId }] = await withPublicIds(tx, [
+      const [{ public_id: createdPublicId }] = await withPublicIds(tx, [
         { id: provisioned.tenant_id },
       ]);
-      const result = { ...provisioned, public_id: publicId ?? '' };
+      const result = { ...provisioned, public_id: createdPublicId ?? '' };
       // Logged in the same transaction. A retry of an already created company (created = false) adds no second entry.
       if (result.created) {
         await recordAudit(tx, {

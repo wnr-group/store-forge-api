@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module.js';
+import { ProvisioningModule } from '../provisioning/provisioning.module.js';
 import { StorageModule } from '../storage/storage.module.js';
 import { PlatformAdminsController } from './admins/admins.controller.js';
 import { PlatformAdminsService } from './admins/admins.service.js';
@@ -22,7 +23,7 @@ import { PlatformUsageController } from './usage/usage.controller.js';
 import { PlatformUsageService } from './usage/usage.service.js';
 
 @Module({
-  imports: [AuthModule, StorageModule, BillingModule],
+  imports: [AuthModule, StorageModule, BillingModule, ProvisioningModule],
   controllers: [
     PlatformOrganizationsController,
     PlatformAdminsController,

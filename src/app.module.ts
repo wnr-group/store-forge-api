@@ -45,6 +45,7 @@ import { MarketingModule } from './modules/marketing/marketing.module.js';
 import { PagesModule } from './modules/pages/pages.module.js';
 import { ThemesModule } from './modules/themes/themes.module.js';
 import { BillingModule } from './modules/billing/billing.module.js';
+import { SignupModule } from './modules/signup/signup.module.js';
 import { EntitlementsModule } from './modules/entitlements/entitlements.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { OrganizationsModule } from './modules/organizations/organizations.module.js';
@@ -101,6 +102,7 @@ import { UsersModule } from './modules/users/users.module.js';
     PublicModule,
     PlatformAdminModule,
     BillingModule,
+    SignupModule,
     MonitoringModule,
   ],
   providers: [

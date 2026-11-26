@@ -268,9 +268,14 @@ describe('payments static scans', () => {
     // It adds no shopper login and enforces nothing.
     // public.dto.ts and public.service.ts: GET /public/branding also returns the platform logo address (no sign-in needed, nothing enforced).
     // public.controller.ts, public.dto.ts and public.service.ts: GET /public/plans lists the published subscription plans (no sign-in needed, nothing enforced).
+    // auth.controller.ts, auth.dto.ts, session.service.ts and supabase-admin.service.ts: POST /auth/register lets a would-be store owner
+    // create their own account (self-service sign-up). It is for merchants, not shoppers, and enforces nothing on any storefront.
     const staffRoleFiles = [
+      'src/modules/auth/auth.controller.ts',
       'src/modules/auth/auth.dto.ts',
       'src/modules/auth/auth.service.ts',
+      'src/modules/auth/session.service.ts',
+      'src/modules/auth/supabase-admin.service.ts',
       'src/modules/public/public.controller.ts',
       'src/modules/public/public.dto.ts',
       'src/modules/public/public.service.ts',

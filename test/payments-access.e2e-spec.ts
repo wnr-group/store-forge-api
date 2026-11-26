@@ -635,8 +635,9 @@ describe.skipIf(!migrationsAvailable)(
         // 185 adds the audit log filter options of phase 6.
         // 188 adds the three monitoring routes of phase 7;
         // 191 adds the three platform logo routes (upload link, set, remove);
-        // 192 adds the public subscription plans route (GET /public/plans).
-        expect(ops.length - payments.length - orderRoutes.length).toBe(192);
+        // 192 adds the public subscription plans route (GET /public/plans);
+        // 197 adds self-service sign-up: POST /auth/register and the four /signup routes (status, checkout, verify-payment, store).
+        expect(ops.length - payments.length - orderRoutes.length).toBe(197);
         expect(payments.sort()).toEqual([
           'delete /api/v1/payments/razorpay',
           'get /api/v1/payments/cod',

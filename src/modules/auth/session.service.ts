@@ -2,17 +2,19 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createServerClient } from '@supabase/ssr';
 import type { Request, Response } from 'express';
-import { AppException } from '../../common/app.exception.js';
+import { AppException, invalid } from '../../common/app.exception.js';
 import type { AppConfig } from '../../config/configuration.js';
 import { NodeEnv } from '../../config/env.validation.js';
 import type {
   LoginDto,
   LoginResponseDto,
   LoginSessionOnly,
+  RegisterDto,
   SessionDto,
 } from './auth.dto.js';
 import { AuthService } from './auth.service.js';
 import { LoginRateLimitService } from './login-rate-limit.service.js';
+import { SupabaseAdminService } from './supabase-admin.service.js';
 import { clientAddress, isTrustedServer } from './request-trust.js';
 import {
   CookieJar,
@@ -44,6 +46,7 @@ export class SessionService {
     private readonly config: ConfigService<AppConfig, true>,
     private readonly auth: AuthService,
     private readonly rateLimit: LoginRateLimitService,
+    private readonly authAdmin: SupabaseAdminService,
   ) {
     this.cookieName = sessionCookieName(
       this.config.get('supabase', { infer: true }).url,
@@ -122,7 +125,15 @@ export class SessionService {
       this.config.get('auth', { infer: true }).bffSecret,
     );
     await this.rateLimit.enforce(clientAddress(req, trusted), dto.email);
+    return this.establish(req, res, dto);
+  }
 
+  /** The sign-in itself (credentials, cookies, optional profile), after the caller has counted the attempt. */
+  private async establish(
+    req: Request,
+    res: Response,
+    dto: Pick<LoginDto, 'email' | 'password' | 'includeProfile'>,
+  ): Promise<LoginResponseDto | LoginSessionOnly> {
     const jar = new CookieJar(this.secure(req), this.cookieName);
     const { data, error } = await this.client(req, jar).auth.signInWithPassword(
       {
@@ -152,6 +163,47 @@ export class SessionService {
     return Object.assign(profile, {
       expiresAt: data.session.expires_at ?? null,
     });
+  }
+
+  /**
+   * Creates an account for the person who is registering and signs them in, so they can go straight on to choose a plan. Nothing else is
+   * created: no organization, no membership, no role (those come only after a verified payment). There is no email verification step in
+   * this version. The attempt is counted against the same limits as sign-in, before anything is created.
+   */
+  async register(
+    req: Request,
+    res: Response,
+    dto: RegisterDto,
+  ): Promise<LoginResponseDto | LoginSessionOnly> {
+    const trusted = isTrustedServer(
+      req,
+      this.config.get('auth', { infer: true }).bffSecret,
+    );
+    await this.rateLimit.enforce(clientAddress(req, trusted), dto.email);
+    if (dto.password !== dto.confirmPassword)
+      throw invalid('Passwords do not match.', {
+        confirmPassword: 'Passwords do not match',
+      });
+
+    await this.authAdmin.createConfirmedUser({
+      email: dto.email,
+      password: dto.password,
+      fullName: dto.fullName,
+      metadata: { terms_accepted_at: new Date().toISOString() },
+      selfService: true,
+    });
+    try {
+      return await this.establish(req, res, dto);
+    } catch (error) {
+      this.logger.warn(
+        `account created but the first sign-in failed: ${error instanceof Error ? error.message : 'unknown'}`,
+      );
+      throw new AppException(
+        'UNKNOWN',
+        'Your account was created, but we could not sign you in. Please sign in with your email and password.',
+        { code: 'REGISTERED_SIGN_IN_FAILED' },
+      );
+    }
   }
 
   /** Revokes the session at Supabase (best effort) and ALWAYS clears the cookies. */

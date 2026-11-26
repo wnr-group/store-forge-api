@@ -31,9 +31,21 @@ Base path `/api/v1`. All JSON. Success envelope `{success,message,data,meta?}`; 
 | # | Feature | Endpoint | Auth | Request | Response | Logic |
 |---|---|---|---|---|---|---|
 | 75 | Sign in (existing accounts only) | POST `/auth/login` | Public + origin/secret check | `{email, password}` | safe profile; **HttpOnly cookies** | Supabase password grant; DB login rate limit counted first; never creates users/orgs |
+| 75a | Create my account (self-service, no email verification) | POST `/auth/register` | Public + origin/secret check | `{fullName, email, password, confirmPassword, acceptTerms}` | safe profile; **HttpOnly cookies** | creates a confirmed Supabase user (terms acceptance time kept in user metadata) and signs it in; creates NO organization, membership or role; counted against the login limits; throttled |
 | 76 | Sign out | POST `/auth/logout` | Public + origin/secret check | - | `{signedOut}` | revokes at Supabase, always clears cookies |
 | 77 | Refresh session | POST `/auth/refresh` | Public + origin/secret check | - (cookie) | `{user, expiresAt}`; new cookies | refresh token rotation; used/revoked -> cookies cleared, 401 `SESSION_EXPIRED` |
 | 78 | Verify session | GET `/auth/session` | JWT (Bearer or cookie) | - | `{user:{id,email,fullName}, expiresAt}` | local signature/issuer/audience/expiry check, no database |
+
+## Self-service sign-up (migration 0070)
+
+A registered person with no organization buys a plan, then names a store. Needs a signed-in person but no organization; every route works only on the caller's own purchase. The price is worked out in the database; the browser never sends one.
+
+| # | Feature | Endpoint | Auth | Request | Logic |
+|---|---|---|---|---|---|
+| 160 | Where am I in the sign-up | GET `/signup/status` | JWT | - | `none`, `payment_required`, `store_required` or `provisioned`, from the caller's own purchase |
+| 161 | Choose a plan and start paying | POST `/signup/checkout` | JWT | `{planCode, billingInterval}` | published plans only; price and tax from the plan and billing settings; reuses the open Razorpay order (retry after a failed payment); free plans skip payment; platform staff refused |
+| 162 | Confirm a payment | POST `/signup/verify-payment` | JWT | `{razorpayOrderId, razorpayPaymentId, razorpaySignature}` | order must be the caller's own; checkout signature, then a lookup at Razorpay (captured, same order and amount); idempotent. Razorpay's signed webhook (`/webhooks/billing/razorpay`) reaches the same result |
+| 163 | Create my store | POST `/signup/store` | JWT | `{storeName}` | refused until paid; one SQL routine (shared with Platform Admin creation) makes tenant, Owner membership and store; the paid plan becomes the active subscription and a paid invoice is recorded; store address made from the name (suffix on a clash); idempotent |
 
 ## Workspace & store
 

@@ -71,13 +71,19 @@ export class SupabaseAdminService {
     email: string;
     password: string;
     fullName: string;
+    /** Extra user metadata, e.g. when the Terms were accepted by a person who registered themselves. */
+    metadata?: Record<string, string>;
+    /** True for an account the person created themselves (not provisioned by staff or an Owner). */
+    selfService?: boolean;
   }): Promise<ProvisionedUser> {
     const { data, error } = await this.client.auth.admin.createUser({
       email: input.email,
       password: input.password,
       email_confirm: true,
-      user_metadata: { full_name: input.fullName },
-      app_metadata: { provisioned: true },
+      user_metadata: { full_name: input.fullName, ...input.metadata },
+      app_metadata: input.selfService
+        ? { provisioned: false, self_service: true }
+        : { provisioned: true },
     });
     if (error || !data.user)
       throw this.mapError(error ?? { message: 'no user returned' });

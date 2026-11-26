@@ -19,4 +19,5 @@ export * from './shipping.js';
 export * from './marketing.js';
 export * from './subscriptions.js';
 export * from './billing.js';
+export * from './signup.js';
 export * from './monitoring.js';

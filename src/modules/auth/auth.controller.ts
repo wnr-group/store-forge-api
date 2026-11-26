@@ -22,6 +22,7 @@ import {
   LoginDto,
   LoginResponseDto,
   MeDto,
+  RegisterDto,
   SessionDto,
   SignedOutDto,
 } from './auth.dto.js';
@@ -60,6 +61,32 @@ export class AuthController {
     @Body() dto: LoginDto,
   ) {
     return this.sessions.login(req, res, dto);
+  }
+
+  @Post('register')
+  @Public()
+  @CsrfProtected()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @HttpCode(200)
+  @ApiEndpoint({
+    summary: 'Create my account',
+    description: [
+      'Create your own account with your full name, email and a password, and accept the Terms and Conditions. There is no email verification step: you are signed in straight away, with the same secure cookies as `POST /auth/login`, so you can choose a plan and pay.',
+      'Creating an account does NOT create a store or give you any role. A store (and the Owner role) only exists after a plan has been paid for and the store has been created (`POST /signup/store`).',
+      'Attempts count towards the same limits as sign-in. An email that is already registered gets the error `EMAIL_TAKEN`. Browsers must call this from an allowed website address (`Origin`), and the Next.js server must send its trusted secret.',
+    ].join('\n\n'),
+    auth: 'public',
+    body: RegisterDto,
+    response: LoginResponseDto,
+    message: 'Account created successfully',
+    errors: [400, 403, 409, 429],
+  })
+  register(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Body() dto: RegisterDto,
+  ) {
+    return this.sessions.register(req, res, dto);
   }
 
   @Post('logout')
