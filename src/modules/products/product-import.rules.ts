@@ -2,6 +2,7 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { AppException } from '../../common/app.exception.js';
 import { slugify } from '../../common/utils/slug.js';
+import { unescapeCell } from '../../common/utils/spreadsheet.js';
 import { CreateProductDto } from './products.dto.js';
 import { assertProductRules, type ProductValues } from './product-rules.js';
 import { ProductsService } from './products.service.js';
@@ -16,6 +17,7 @@ export interface ImportRowInput {
   price?: string;
   slug?: string;
   sku?: string;
+  part_number?: string;
   short_description?: string;
   description?: string;
   product_type?: string;
@@ -55,6 +57,7 @@ const FIELD_TO_COLUMN: Record<string, string> = {
   price: 'price',
   slug: 'slug',
   sku: 'sku',
+  partNumber: 'part_number',
   shortDescription: 'short_description',
   description: 'description',
   productType: 'product_type',
@@ -105,7 +108,7 @@ export async function validateRow(
   for (const [column, field] of Object.entries(COLUMN_TO_FIELD)) {
     const raw = (input as unknown as Record<string, unknown>)[column];
     if (blank(raw)) continue;
-    plain[field] = typeof raw === 'string' ? raw.trim() : raw;
+    plain[field] = typeof raw === 'string' ? unescapeCell(raw.trim()) : raw;
   }
   if (typeof plain.status === 'string')
     plain.status = plain.status.toLowerCase();
@@ -146,8 +149,8 @@ export async function validateRow(
       values,
       sku: values.sku,
       explicitSlug: values.slug ?? null,
-      category: input.category?.trim() || undefined,
-      subcategory: input.subcategory?.trim() || undefined,
+      category: unescapeCell(input.category?.trim() ?? '') || undefined,
+      subcategory: unescapeCell(input.subcategory?.trim() ?? '') || undefined,
     },
   };
 }

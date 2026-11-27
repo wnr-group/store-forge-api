@@ -94,10 +94,46 @@ All: Auth `JWT+Org`, permission `members:manage`. DB `memberships`, `profiles`, 
 | 35 | Bulk status | POST `/products/bulk-status` | `catalog:manage` | `{ids[],status}` | returns `{updated}` |
 | 36 | Duplicate | POST `/products/:id/duplicate` | `catalog:manage` | - | draft copy "(copy)", `sku=null`, no images |
 | 36a | Import products | POST `/products/import` | `catalog:manage` | `{rows[1..500]}` (snake_case file headers, `row` number, optional `source_errors`) | `{count}`; every row validated first, all-or-nothing in one transaction; 2 MB body limit on this route only; 400 `PRODUCT_IMPORT_INVALID` with `{total, errors[<=500]}`; products of one import share one `created_at` |
-| 37 | Signed upload URLs | POST `/uploads/signed-urls` | `catalog:manage` (scope store: `store:manage`) | `{scope: product\|collection\|store, ownerId?, files:[{type,size}]}` 1-10 files, jpeg/png/webp, <=5 MB | folder derived from verified tenant, never from input; Storage called with caller's token |
+| 36b | Export products | GET `/products/export?page&limit&status` | `catalog:view` | - | rows in the product-import format (`id`, `name`, `slug`, `sku`, `part_number`, prices as decimal text, stock, `status`, descriptions, `category`/`subcategory`, `has_variants`), oldest first, <=1000 per page with `totalPages`; text a spreadsheet could read as a formula starts with `'` (the product import removes it again); `id` and `has_variants` are ignored by the import |
+| 37 | Signed upload URLs | POST `/uploads/signed-urls` | `catalog:manage` (scope store: `store:manage`) | `{scope: product\|collection\|store\|catalog, ownerId?, files:[{type,size}]}` (scope `catalog`: ownerId = the catalog item id, folder `{tenant}/catalog/{id}`) 1-10 files, jpeg/png/webp, <=5 MB | folder derived from verified tenant, never from input; Storage called with caller's token |
 | 38 | Stock list | GET `/inventory?search&stock&page` | `catalog:view` | - | one row per sellable unit (simple product or active variant) |
 | 39 | Adjustment ledger | GET `/inventory/adjustments?limit` | `catalog:view` | - | newest first |
 | 40 | Adjust stock | POST `/inventory/adjustments` | `catalog:manage` | `{productId,variantId?,mode:add\|set,value,reason,note?}` | `FOR UPDATE`; tracked only; variant required iff product has variants; never < 0; zero delta rejected; ledger row same transaction |
+
+## Catalog hierarchy (Auth `JWT+Org`; migrations 0072-0074; design and rules: `CATALOG_HIERARCHY.md`)
+
+A configurable tree (for example Brand > Vehicle > Variant > Part group) that products are placed on. Separate from categories and collections. Every route is scoped to the caller's organization; a draft item hides everything below it from shoppers.
+
+| # | Feature | Endpoint | Permission | Request | Logic |
+|---|---|---|---|---|---|
+| H1 | View the hierarchy | GET `/catalog/hierarchy` | `catalog:view` | - | levels in order with item counts; 404 `CATALOG_HIERARCHY_NOT_FOUND` until set up |
+| H2 | Set up the hierarchy | POST `/catalog/hierarchy` | `catalog:manage` | `{name<=80,status?}` | starts as `draft`; one per organization for now (409 `CATALOG_HIERARCHY_EXISTS`) |
+| H3 | Rename / publish | PATCH `/catalog/hierarchy` | `catalog:manage` | `{name?,status?}` | only an `active` hierarchy is public |
+| H4 | List levels | GET `/catalog/levels` | `catalog:view` | - | top level first, with `nodeCount`, `canHoldProducts` |
+| H5 | Add a level | POST `/catalog/levels` | `catalog:manage` | `{name<=60,canHoldProducts?,position?}` | appended unless `position`; inserting before used levels is refused (409 `CATALOG_LEVEL_ORDER_BLOCKED`); <=20 levels; unique name (409 `CATALOG_LEVEL_NAME_TAKEN`) |
+| H6 | Reorder levels | POST `/catalog/levels/reorder` | `catalog:manage` | `{levelIds[]}` (all levels) | accepted only if every existing parent/child relation stays valid; otherwise 409 `CATALOG_LEVEL_ORDER_BLOCKED` with `details.problems`; the database re-checks at commit |
+| H7 | Rename a level | PATCH `/catalog/levels/:id` | `catalog:manage` | `{name?,canHoldProducts?}` | renaming is always safe; switching `canHoldProducts` off while products sit on the level is 409 `CATALOG_LEVEL_HAS_PRODUCTS` |
+| H8 | Delete a level | DELETE `/catalog/levels/:id` | `catalog:delete` | - | only a level without items (409 `CATALOG_LEVEL_IN_USE`); later levels move up |
+| H9 | Tree | GET `/catalog/tree?parentId&maxDepth` | `catalog:view` | - | nested, ordered, with `childCount`/`productCount`; cut at 5000 items (`truncated`) |
+| H10 | List items | GET `/catalog/nodes?parentId&levelId&status&search&sortBy&page&limit` | `catalog:view` | - | flat, paginated; `parentId=root` for the top level |
+| H11 | Add an item | POST `/catalog/nodes` | `catalog:manage` | `{id?,name<=120,slug?,parentId?,description?,status?,position?,seoTitle?,seoDescription?,imagePath?,imageAlt?<=200}` | level = the one below the parent (level 1 without a parent); slug made unique among siblings; 409 `CATALOG_NODE_SLUG_TAKEN` for an explicit duplicate; max 100000 items; `imagePath` needs the same `id` the file was uploaded under (400 `CATALOG_NODE_IMAGE_ID_REQUIRED`), is verified in Storage under a path lock, 409 `ID_TAKEN` for a used id |
+| H12 | Reorder children | POST `/catalog/nodes/reorder` | `catalog:manage` | `{parentId?,nodeIds[]}` (all children) | 400 `CATALOG_NODE_ORDER_INCOMPLETE` otherwise |
+| H13 | View an item | GET `/catalog/nodes/:id` | `catalog:view` | - | with breadcrumbs, slug path and counts; other tenant 404 |
+| H14 | Edit an item | PATCH `/catalog/nodes/:id` | `catalog:manage` | `{name?,slug?,description?,status?,position?,seoTitle?,seoDescription?,imagePath?,imageAlt?}` | new `imagePath` replaces the image (old file removed after the save, if nothing else uses it); `imagePath: null` removes image and `imageAlt`; `imageAlt` without an image is 400 `CATALOG_NODE_IMAGE_ALT_INVALID` |
+| H15 | Move an item | POST `/catalog/nodes/:id/move` | `catalog:manage` | `{parentId (uuid or null),position?}` | parent must be on the level above; no self/descendant parent (400 `CATALOG_NODE_CYCLE`, `CATALOG_NODE_LEVEL_MISMATCH`); the subtree moves along, paths are rewritten by trigger |
+| H16 | Delete an item | DELETE `/catalog/nodes/:id?cascade` | `catalog:delete` | - | 409 `CATALOG_NODE_HAS_CHILDREN` unless `cascade=true`; products are only unlinked; the image files of every deleted item are removed after the commit (batches of 200, only if unreferenced) |
+| H17 | Products on an item | GET `/catalog/nodes/:id/products?includeDescendants&search&sortBy&page&limit` | `catalog:view` | - | paginated; search name/SKU/part number; each product once with descendants |
+| H18 | Place products | POST `/catalog/nodes/:id/products` | `catalog:manage` | `{productIds[1..500]}` | idempotent `{assigned, alreadyAssigned}`; 400 `CATALOG_LEVEL_CANNOT_HOLD_PRODUCTS`, `PRODUCT_NOT_FOUND` |
+| H19 | Take products off | POST `/catalog/nodes/:id/products/unassign` | `catalog:manage` | `{productIds[1..500]}` | `{removed}`; products are not deleted |
+| H20 | Order the products | POST `/catalog/nodes/:id/products/reorder` | `catalog:manage` | `{productIds[]}` (all) | - |
+| H21 | Take one product off | DELETE `/catalog/nodes/:id/products/:productId` | `catalog:manage` | - | `{removed}` |
+| H22 | Bulk placement | POST `/catalog/assignments/bulk` | `catalog:manage` | `{action (assign or unassign),nodeIds[1..100],productIds[1..500]}` | items x products <= 20000; all or nothing |
+| H23 | Where is a product | GET `/catalog/products/:productId/nodes` | `catalog:view` | - | placements with the names from the top level down |
+| H24 | Set a product's placements | PUT `/catalog/products/:productId/nodes` | `catalog:manage` | `{nodeIds[<=200]}` | replaces the set |
+| H25 | Import | POST `/catalog/import` | `catalog:manage` | `{dryRun?,hierarchyName?,defaultStatus?,levels?[],rows[1..2000]}` | rows `level_1..level_20`, `status`, `description`, `position`, `product_id`/`product_sku`/`product_slug`, `product_position` (`part_number`, `product_name` informational; a part number alone never identifies a product); items matched by parent and name; dry run returns `{valid, summary, errors[<=500], totalErrors}`; real run with any problem 400 `CATALOG_IMPORT_INVALID` and nothing changes, otherwise one transaction; same file again changes nothing; 2 MB body limit on this route |
+| H26 | Export | GET `/catalog/export?page&limit` | `catalog:view` | - | `{hierarchy, levels[], columns[], rows[], page, limit, total, totalPages}` in the import format, <=1000 rows per page, parents first |
+| H27 | Public tree | GET `/public/storefronts/:slug/catalog/tree?maxDepth` | Public | - | levels + flat list of active items below active parents with `path`, `hasChildren`, `productCount`; `get_public_catalog_tree()`; unknown/inactive store 404; no published catalog = empty lists |
+| H28 | Public item | GET `/public/storefronts/:slug/catalog/nodes/:path?page&limit&includeDescendants&sort` | Public | - | `:path` = the slugs from the top level down, joined by `/` (several path segments); item, breadcrumbs, active children, a page of active products with `partNumber`; `get_public_catalog_node()`; draft item or draft ancestor 404 |
 
 ## Customers & analytics (Auth `JWT+Org`)
 

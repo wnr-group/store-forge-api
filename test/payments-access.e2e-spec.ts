@@ -637,7 +637,8 @@ describe.skipIf(!migrationsAvailable)(
         // 191 adds the three platform logo routes (upload link, set, remove);
         // 192 adds the public subscription plans route (GET /public/plans);
         // 197 adds self-service sign-up: POST /auth/register and the four /signup routes (status, checkout, verify-payment, store).
-        expect(ops.length - payments.length - orderRoutes.length).toBe(197);
+        // 226 adds the 29 catalog hierarchy routes: 25 under /catalog, the products export, and the 2 public catalog reads (migrations 0072-0073).
+        expect(ops.length - payments.length - orderRoutes.length).toBe(226);
         expect(payments.sort()).toEqual([
           'delete /api/v1/payments/razorpay',
           'get /api/v1/payments/cod',

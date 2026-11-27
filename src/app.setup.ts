@@ -75,15 +75,16 @@ export function configureApp(app: INestApplication): void {
 
   app.setGlobalPrefix(apiPrefix);
 
-  // Bulk import carries up to 500 rows, so ONLY that route gets a 2 MB JSON limit; every other route keeps Nest's 100 KB default.
+  // Bulk imports carry up to 500 products / 2000 catalog rows, so ONLY those routes get a 2 MB JSON limit; every other route keeps Nest's 100 KB default.
   // The handler is wrapped on purpose: Nest skips its own default parser when it finds a layer named "jsonParser",
   // which would silently stop every other route from parsing bodies (verified 2026-11-17 on Nest 12.4.2).
   const importJson = express.json({ limit: '2mb' });
-  app.use(
-    `/${apiPrefix}/products/import`,
-    (req: Request, res: Response, next: NextFunction) =>
-      importJson(req, res, next),
-  );
+  for (const route of ['products/import', 'catalog/import'])
+    app.use(
+      `/${apiPrefix}/${route}`,
+      (req: Request, res: Response, next: NextFunction) =>
+        importJson(req, res, next),
+    );
 
   // Razorpay signs the EXACT bytes it sends, so webhook routes receive the raw body (a Buffer in `req.body`) instead of parsed
   // JSON. Same wrapped-handler pattern as above; set here so production, Vercel and the tests all get it.

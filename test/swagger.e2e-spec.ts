@@ -49,6 +49,8 @@ const PUBLIC_ROUTES = new Set([
   'GET /api/v1/public/storefronts/{slug}/collections',
   'GET /api/v1/public/storefronts/{slug}/collections/{collectionSlug}',
   'GET /api/v1/public/storefronts/{slug}/products/{productSlug}',
+  'GET /api/v1/public/storefronts/{slug}/catalog/tree',
+  'GET /api/v1/public/storefronts/{slug}/catalog/nodes/{path}',
   'GET /api/v1/public/storefronts/{slug}/pages',
   'GET /api/v1/public/storefronts/{slug}/pages/{pageSlug}',
   'GET /api/v1/public/storefronts/{slug}/products/{productSlug}/reviews',

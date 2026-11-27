@@ -120,7 +120,13 @@ export class ProductsService {
     const where: (SQL | undefined)[] = [eq(products.tenantId, tenantId)];
     if (q.search) {
       const term = likeTerm(q.search);
-      where.push(or(ilike(products.name, term), ilike(products.sku, term)));
+      where.push(
+        or(
+          ilike(products.name, term),
+          ilike(products.sku, term),
+          ilike(products.partNumber, term),
+        ),
+      );
     }
     if (q.status !== 'all') where.push(eq(products.status, q.status));
     if (q.category === 'none') where.push(sql`${products.categoryId} is null`);
@@ -169,6 +175,7 @@ export class ProductsService {
             name: products.name,
             slug: products.slug,
             sku: products.sku,
+            partNumber: products.partNumber,
             status: products.status,
             priceMinor: products.priceMinor,
             hasVariants: products.hasVariants,
@@ -570,6 +577,8 @@ export class ProductsService {
       categoryId: v.categoryId,
       // With variants, SKU / price / stock live on the variants; the product row keeps its base price for display.
       sku: hasVariants ? null : v.sku,
+      // The part number is descriptive only; it is kept with or without variants.
+      partNumber: v.partNumber,
       priceMinor: money(v.price, currency, 'Price', 'price') ?? 0,
       compareAtPriceMinor: money(
         v.compareAtPrice,
@@ -625,6 +634,7 @@ export class ProductsService {
       categoryId: dto.categoryId ?? null,
       collectionIds: dto.collectionIds ?? [],
       sku: dto.sku ?? null,
+      partNumber: dto.partNumber ?? null,
       price: dto.price,
       compareAtPrice: dto.compareAtPrice ?? null,
       cost: dto.cost ?? null,
@@ -702,6 +712,7 @@ export class ProductsService {
       categoryId: pick(dto.categoryId, p.categoryId),
       collectionIds: dto.collectionIds ?? current.collectionIds,
       sku: pick(dto.sku, p.sku),
+      partNumber: pick(dto.partNumber, p.partNumber),
       price: dto.price ?? minorToInput(p.priceMinor, currency),
       compareAtPrice: pick(
         dto.compareAtPrice,

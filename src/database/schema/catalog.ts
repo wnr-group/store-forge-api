@@ -138,6 +138,8 @@ export const products = pgTable(
     productType: text('product_type'),
     /** Used when the product has no variants. With variants, SKU/price/stock live on the variants. */
     sku: text('sku'),
+    /** Manufacturer / catalogue part number (migration 0072). Nullable and NOT unique: the SKU stays the stable identifier. */
+    partNumber: text('part_number'),
     priceMinor: minor('price_minor').notNull().default(0),
     compareAtPriceMinor: minor('compare_at_price_minor'),
     costMinor: minor('cost_minor'),
@@ -187,6 +189,13 @@ export const products = pgTable(
       'products_sku_check',
       sql`${t.sku} is null or char_length(${t.sku}) between 1 and 64`,
     ),
+    check(
+      'products_part_number_check',
+      sql`${t.partNumber} is null or char_length(${t.partNumber}) between 1 and 64`,
+    ),
+    index('products_tenant_part_number_idx')
+      .on(t.tenantId, t.partNumber)
+      .where(sql`${t.partNumber} is not null`),
     check(
       'products_price_check',
       sql`${t.priceMinor} between 0 and 100000000000`,
