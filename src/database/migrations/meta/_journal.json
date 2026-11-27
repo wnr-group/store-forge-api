@@ -484,6 +484,27 @@
       "when": 1794300051000,
       "tag": "0068_platform_logo",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1794300052000,
+      "tag": "0069_public_plans",
+      "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1794300053000,
+      "tag": "0070_self_service_signup",
+      "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1794400000000,
+      "tag": "0071_customer_accounts",
+      "breakpoints": true
     }
   ]
 }

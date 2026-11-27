@@ -3,6 +3,7 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { gstinCheckChar } from '../src/modules/tax/gst.js';
 import { as, createTestApp, type TestApp } from './support/app.js';
+import { registerShopper } from './support/shopper.js';
 import { createTestDb, migrationsAvailable } from './support/pglite.js';
 import { seedWorld, type World } from './support/world.js';
 
@@ -24,6 +25,7 @@ describe.skipIf(!migrationsAvailable)(
   'GST over HTTP: settings, report, product rates and the public quote',
   () => {
     let t: TestApp;
+    const shopper: Record<string, string> = {};
     let w: World;
     let alice: Awaited<ReturnType<typeof as>>;
     let bob: Awaited<ReturnType<typeof as>>;
@@ -49,6 +51,7 @@ describe.skipIf(!migrationsAvailable)(
     ) =>
       anon()
         .post(api('/public/stores/alpha-shop/orders'))
+        .set('X-Customer-Session', shopper['alpha-shop'])
         .set('Idempotency-Key', key)
         .send({
           lines: [{ productSlug: 'tax-mug', quantity: 2 }],
@@ -83,6 +86,7 @@ describe.skipIf(!migrationsAvailable)(
         ),
       );
       t = await createTestApp(db);
+      shopper['alpha-shop'] = await registerShopper(t.app, 'alpha-shop');
       alice = await as(t, w.alice, w.tenantA);
       bob = await as(t, w.bob, w.tenantB);
       reader = await as(t, w.members.reader, w.tenantA);

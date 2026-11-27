@@ -4,6 +4,7 @@ import {
   ArrayMaxSize,
   IsArray,
   IsIn,
+  IsDateString,
   IsInt,
   IsOptional,
   IsString,
@@ -12,6 +13,7 @@ import {
   Max,
   MaxLength,
   Min,
+  MinLength,
   ValidateNested,
 } from 'class-validator';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto.js';
@@ -31,6 +33,102 @@ export class ShipmentItemInputDto {
   @Min(1, { message: 'Enter at least 1.' })
   @Max(100_000)
   quantity!: number;
+}
+
+/** The statuses an owner can move a hand-recorded parcel through (each one only forward). */
+export const MANUAL_SHIPMENT_STATUSES = [
+  'picked_up',
+  'in_transit',
+  'out_for_delivery',
+  'delivered',
+  'returned',
+] as const;
+
+const HTTPS_LINK = /^$|^https:\/\/[^\s]{3,500}$/;
+
+/** A parcel the store sent with a courier of its own (no carrier integration): who carries it and the tracking number. */
+export class ManualShipmentDto {
+  @ApiProperty({
+    example: 'India Post',
+    description: 'The shipping provider / courier.',
+  })
+  @Transform(trim)
+  @IsString()
+  @MinLength(1, { message: 'Enter the shipping provider.' })
+  @MaxLength(60)
+  courierName!: string;
+
+  @ApiProperty({
+    example: 'EE123456789IN',
+    description: 'The tracking number (waybill).',
+  })
+  @Transform(trim)
+  @IsString()
+  @MinLength(1, { message: 'Enter the tracking number.' })
+  @MaxLength(60)
+  trackingNumber!: string;
+
+  @ApiPropertyOptional({
+    description: 'A link where the customer can follow the parcel (https).',
+  })
+  @IsOptional()
+  @Transform(trim)
+  @Matches(HTTPS_LINK, { message: 'Enter a link that starts with https://' })
+  trackingUrl?: string;
+
+  @ApiPropertyOptional({ format: 'date', example: '2026-12-05' })
+  @IsOptional()
+  @IsDateString({}, { message: 'Enter a valid date.' })
+  estimatedDelivery?: string;
+
+  @ApiPropertyOptional({
+    type: [ShipmentItemInputDto],
+    description:
+      'Which items (and how many) are in this parcel. Leave out for everything not yet shipped.',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(200)
+  @ValidateNested({ each: true })
+  @Type(() => ShipmentItemInputDto)
+  items?: ShipmentItemInputDto[];
+}
+
+export class UpdateManualShipmentDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MinLength(1)
+  @MaxLength(60)
+  courierName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MinLength(1)
+  @MaxLength(60)
+  trackingNumber?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Transform(trim)
+  @Matches(HTTPS_LINK, { message: 'Enter a link that starts with https://' })
+  trackingUrl?: string;
+
+  @ApiPropertyOptional({ format: 'date' })
+  @IsOptional()
+  @IsDateString({}, { message: 'Enter a valid date.' })
+  estimatedDelivery?: string;
+
+  @ApiPropertyOptional({
+    enum: MANUAL_SHIPMENT_STATUSES,
+    description: 'Move the parcel forward; the order follows it.',
+  })
+  @IsOptional()
+  @IsIn(MANUAL_SHIPMENT_STATUSES, { message: 'Choose a valid status.' })
+  status?: (typeof MANUAL_SHIPMENT_STATUSES)[number];
 }
 
 export class CreateShipmentDto {

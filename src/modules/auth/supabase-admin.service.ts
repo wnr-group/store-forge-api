@@ -71,17 +71,38 @@ export class SupabaseAdminService {
     email: string;
     password: string;
     fullName: string;
+    /** Extra user metadata, e.g. when the Terms were accepted by a person who registered themselves. */
+    metadata?: Record<string, string>;
+    /** True for an account the person created themselves (not provisioned by staff or an Owner). */
+    selfService?: boolean;
   }): Promise<ProvisionedUser> {
     const { data, error } = await this.client.auth.admin.createUser({
       email: input.email,
       password: input.password,
       email_confirm: true,
-      user_metadata: { full_name: input.fullName },
-      app_metadata: { provisioned: true },
+      user_metadata: { full_name: input.fullName, ...input.metadata },
+      app_metadata: input.selfService
+        ? { provisioned: false, self_service: true }
+        : { provisioned: true },
     });
     if (error || !data.user)
       throw this.mapError(error ?? { message: 'no user returned' });
     return { id: data.user.id, email: data.user.email ?? input.email };
+  }
+
+  /**
+   * A single-use login token for an existing account (no e-mail is sent). Exchanging it (`verifyOtp`) starts a NEW session for the
+   * person, independent of the one they already have, which is how a signed-in person is carried to another store host.
+   */
+  async createLoginTokenHash(email: string): Promise<string> {
+    const { data, error } = await this.client.auth.admin.generateLink({
+      type: 'magiclink',
+      email,
+    });
+    const hash = data?.properties?.hashed_token;
+    if (error || !hash)
+      throw this.mapError(error ?? { message: 'no login token returned' });
+    return hash;
   }
 
   /** Admin-assisted password reset. The old password is never read or returned. */

@@ -11,6 +11,7 @@ import { ApiHeader, ApiParam, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { ApiEndpoint } from '../../common/decorators/api-endpoint.decorator.js';
 import { Public } from '../../common/decorators/decorators.js';
+import { loginRequired } from '../customer-accounts/customer-session.service.js';
 import {
   PlacedOrderDto,
   PlaceOrderDto,
@@ -37,23 +38,32 @@ export class CheckoutController {
     description:
       'A unique key per checkout attempt (8-128 letters, numbers, - or _). Repeating the request with the same key returns the same order instead of creating another.',
   })
+  @ApiHeader({
+    name: 'X-Customer-Session',
+    required: true,
+    description:
+      'The shopper session token from register/login for this store. Browsing and the cart need no account; placing an order does. Missing, expired or from another store: 401 `CUSTOMER_LOGIN_REQUIRED`.',
+  })
   @ApiEndpoint({
     summary: 'Place an order',
     description:
-      'Places an order from a cart. The server re-reads every product price and the stock from the database (browser prices are never trusted), holds the stock, and creates the order with its items, addresses and totals in one step. Cash-on-delivery orders are confirmed immediately. Online orders start as `pending_payment` and keep their stock reserved for a limited time. The response carries an `accessToken` ONCE; keep it to read or cancel the order later. If something in the cart changed you get a 409 `CHECKOUT_ISSUES` with the exact problems per item. Until the store has a payment method set up, you get a 409 `PAYMENT_METHOD_UNAVAILABLE`.',
+      'Places an order from a cart for a signed-in shopper (the order is tied to their account). The server re-reads every product price and the stock from the database (browser prices are never trusted), holds the stock, and creates the order with its items, addresses and totals in one step. Cash-on-delivery orders are confirmed immediately. Online orders start as `pending_payment` and keep their stock reserved for a limited time. The response carries an `accessToken` ONCE; keep it to read or cancel the order later. If something in the cart changed you get a 409 `CHECKOUT_ISSUES` with the exact problems per item. Until the store has a payment method set up, you get a 409 `PAYMENT_METHOD_UNAVAILABLE`.',
     auth: 'public',
     body: PlaceOrderDto,
     response: PlacedOrderDto,
     status: 201,
     message: 'Order placed successfully',
-    errors: [400, 404, 409, 429],
+    errors: [400, 401, 404, 409, 429],
   })
   place(
     @Param('slug') slug: string,
     @Body() dto: PlaceOrderDto,
     @Headers('idempotency-key') key: string | undefined,
+    @Headers('x-customer-session') session: string | undefined,
   ) {
-    return this.checkout.placeOrder(slug.toLowerCase(), dto, key);
+    // Placing an order needs a signed-in shopper; the service then verifies the session against THIS store.
+    if (!session) throw loginRequired();
+    return this.checkout.placeOrder(slug.toLowerCase(), dto, key, session);
   }
 
   @Get(':orderNumber')

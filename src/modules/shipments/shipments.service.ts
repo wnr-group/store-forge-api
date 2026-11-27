@@ -34,6 +34,7 @@ import {
 import { syncOrderWithShipments } from './shipment-order-sync.js';
 import {
   allocateItems,
+  canMoveShipment,
   carriesWholeOrder,
   isOpenShipment,
   itemsValue,
@@ -44,10 +45,12 @@ import {
 } from './shipment-rules.js';
 import {
   CreateShipmentDto,
+  ManualShipmentDto,
   ShipmentDetailDto,
   ShipmentDto,
   ShipmentLabelDto,
   ShipmentListQueryDto,
+  UpdateManualShipmentDto,
 } from './shipments.dto.js';
 
 /** The order must be at one of these to hand more of it to a carrier (a part-shipped order is `shipped` while items remain). */
@@ -335,6 +338,138 @@ export class ShipmentsService {
 
     // 3. Book with the carrier.
     return this.book(ctx.tenantId, shipmentId, this.actor(ctx));
+  }
+
+  /**
+   * Records a parcel the store sent with a courier of its own (no carrier integration): the provider name and tracking number the
+   * owner typed. It holds the order's items like any shipment and the order follows it (ready to ship), so the customer sees the
+   * courier and tracking number in their account straight away. Nothing is sent to any carrier.
+   */
+  async recordManual(
+    ctx: OrgContext,
+    orderId: string,
+    dto: ManualShipmentDto,
+  ): Promise<ShipmentDetailDto> {
+    try {
+      const id = await this.db.withCheckout(ctx.tenantId, async (tx) => {
+        const plan = await this.plan(
+          tx,
+          ctx.tenantId,
+          orderId,
+          { items: dto.items } as CreateShipmentDto,
+          true,
+          true,
+        );
+        const id = rowsOf<{ id: string }>(
+          await tx.execute(sql`
+            insert into public.shipments (tenant_id, order_id, provider_code, status, courier_name, awb, tracking_url, estimated_delivery,
+              payment_mode, cod_amount_minor, declared_value_minor, weight_grams, created_by)
+            values (${ctx.tenantId}::uuid, ${orderId}::uuid, 'manual', 'created', ${dto.courierName}, ${dto.trackingNumber},
+              ${dto.trackingUrl || null}, ${dto.estimatedDelivery ?? null}::timestamptz, ${plan.paymentMode}, ${plan.codAmountMinor},
+              ${plan.declaredValueMinor}, ${Math.max(plan.weightGrams, 1)}, ${ctx.userId}::uuid)
+            returning id`),
+        )[0].id;
+        for (const l of plan.lines)
+          await tx.execute(sql`
+            insert into public.shipment_items (tenant_id, shipment_id, order_item_id, quantity)
+            values (${ctx.tenantId}::uuid, ${id}::uuid, ${l.line.id}::uuid, ${l.quantity})`);
+        await this.addEvent(
+          tx,
+          ctx.tenantId,
+          id,
+          'created',
+          `Handed to ${dto.courierName}, tracking number ${dto.trackingNumber}`,
+          'owner',
+        );
+        await syncOrderWithShipments(
+          tx,
+          ctx.tenantId,
+          orderId,
+          this.actor(ctx),
+          'Shipment recorded by the store',
+        );
+        return id;
+      });
+      return await this.get(ctx, id);
+    } catch (error) {
+      throw this.trackingTaken(error);
+    }
+  }
+
+  /** Changes a hand-recorded parcel (provider, tracking number or link) or moves it forward; the order follows it. */
+  async updateManual(
+    ctx: OrgContext,
+    id: string,
+    dto: UpdateManualShipmentDto,
+  ): Promise<ShipmentDetailDto> {
+    const row = await this.row(ctx.tenantId, id);
+    if (row.provider_code !== 'manual')
+      throw conflict(
+        'Only a parcel recorded by hand can be changed here. Carrier parcels follow the carrier.',
+        undefined,
+        'SHIPMENT_NOT_MANUAL',
+      );
+    if (['delivered', 'returned', 'cancelled', 'failed'].includes(row.status))
+      throw conflict(
+        'This parcel is finished and can no longer be changed.',
+        undefined,
+        'SHIPMENT_FINISHED',
+      );
+    if (dto.status && !canMoveShipment(row.status, dto.status))
+      throw conflict(
+        'A parcel can only move forward.',
+        undefined,
+        'SHIPMENT_STATUS_BACKWARDS',
+      );
+    const status = dto.status ?? null;
+    try {
+      await this.db.withCheckout(ctx.tenantId, async (tx) => {
+        await lockOrder(tx, ctx.tenantId, row.order_id);
+        await tx.execute(sql`
+          update public.shipments set
+            courier_name = coalesce(${dto.courierName ?? null}, courier_name),
+            awb = coalesce(${dto.trackingNumber ?? null}, awb),
+            tracking_url = case when ${dto.trackingUrl === undefined} then tracking_url else ${dto.trackingUrl || null} end,
+            estimated_delivery = coalesce(${dto.estimatedDelivery ?? null}::timestamptz, estimated_delivery),
+            status = coalesce(${status}, status),
+            picked_up_at = case when ${status === 'picked_up' || status === 'in_transit'} then coalesce(picked_up_at, now()) else picked_up_at end,
+            delivered_at = case when ${status === 'delivered'} then now() else delivered_at end,
+            updated_at = now()
+          where id = ${id}::uuid and tenant_id = ${ctx.tenantId}::uuid`);
+        if (status) {
+          await this.addEvent(
+            tx,
+            ctx.tenantId,
+            id,
+            status,
+            `Marked ${status.replaceAll('_', ' ')} by the store`,
+            'owner',
+          );
+          await syncOrderWithShipments(
+            tx,
+            ctx.tenantId,
+            row.order_id,
+            this.actor(ctx),
+            'Shipment updated by the store',
+          );
+        }
+      });
+    } catch (error) {
+      throw this.trackingTaken(error);
+    }
+    return this.get(ctx, id);
+  }
+
+  private trackingTaken(error: unknown): unknown {
+    return /shipments_tenant_awb_key/.test(
+      String((error as Error).cause ?? error),
+    )
+      ? conflict(
+          'This tracking number is already recorded for another parcel.',
+          { trackingNumber: 'This tracking number is already in use.' },
+          'TRACKING_NUMBER_TAKEN',
+        )
+      : error;
   }
 
   /** Books (or resumes booking of) a saved shipment. */
@@ -723,6 +858,11 @@ export class ShipmentsService {
     orderId: string,
     dto: CreateShipmentDto,
     lock = false,
+    /**
+     * A parcel the store records by hand never reaches a carrier, so it needs neither a parcel weight nor a pickup address (the
+     * rest of the checks, and the items it holds, are the same).
+     */
+    manual = false,
   ): Promise<Plan> {
     if (lock) await lockOrder(tx, tenantId, orderId);
     const order = rowsOf<OrderRow>(
@@ -812,7 +952,7 @@ export class ShipmentsService {
       );
 
     const weightGrams = dto.weightGrams ?? itemsWeight(allocation.lines);
-    if (weightGrams <= 0)
+    if (weightGrams <= 0 && !manual)
       throw invalid(
         'Enter the parcel weight.',
         {
@@ -846,7 +986,7 @@ export class ShipmentsService {
         select name, phone, email, line1, line2, city, state, postal_code from public.tenant_shipping_origin
         where tenant_id = ${tenantId}::uuid`),
     )[0];
-    if (!origin)
+    if (!origin && !manual)
       throw invalid(
         'Set your pickup address in the shipping settings first.',
         undefined,
@@ -869,7 +1009,8 @@ export class ShipmentsService {
             }
           : null,
       destination,
-      origin,
+      // Only a carrier booking reads it, and a manual plan never reaches one.
+      origin: origin as OriginRow,
     };
   }
 

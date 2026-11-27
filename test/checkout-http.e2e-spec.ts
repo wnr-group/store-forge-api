@@ -1,6 +1,7 @@
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { as, createTestApp, type TestApp } from './support/app.js';
+import { registerShopper } from './support/shopper.js';
 import { createTestDb, migrationsAvailable } from './support/pglite.js';
 import { seedWorld, type World } from './support/world.js';
 
@@ -25,6 +26,7 @@ const validOrder = {
 
 describe.skipIf(!migrationsAvailable)('checkout HTTP routes (e2e)', () => {
   let t: TestApp;
+  const shopper: Record<string, string> = {};
   let w: World;
   let bearer: Awaited<ReturnType<typeof as>>;
   const post = (path: string) =>
@@ -44,6 +46,7 @@ describe.skipIf(!migrationsAvailable)('checkout HTTP routes (e2e)', () => {
       ),
     );
     t = await createTestApp(db);
+    shopper['alpha-shop'] = await registerShopper(t.app, 'alpha-shop');
     bearer = await as(t, w.alice);
   });
   afterAll(async () => {
@@ -54,6 +57,7 @@ describe.skipIf(!migrationsAvailable)('checkout HTTP routes (e2e)', () => {
 
   it('needs no sign-in, but refuses an order without an Idempotency-Key', async () => {
     const res = await post('/public/stores/alpha-shop/orders')
+      .set('X-Customer-Session', shopper['alpha-shop'])
       .send(validOrder)
       .expect(400);
     expect(res.body.error.code).toBe('IDEMPOTENCY_KEY_REQUIRED');
@@ -73,6 +77,7 @@ describe.skipIf(!migrationsAvailable)('checkout HTTP routes (e2e)', () => {
       surprise: true,
     };
     const res = await post('/public/stores/alpha-shop/orders')
+      .set('X-Customer-Session', shopper['alpha-shop'])
       .set('Idempotency-Key', 'http-key-000001')
       .send(bad)
       .expect(400);
@@ -82,6 +87,7 @@ describe.skipIf(!migrationsAvailable)('checkout HTTP routes (e2e)', () => {
 
   it('refuses to take an order until the store has set up the chosen payment method', async () => {
     const res = await post('/public/stores/alpha-shop/orders')
+      .set('X-Customer-Session', shopper['alpha-shop'])
       .set('Idempotency-Key', 'http-key-000002')
       .send(validOrder)
       .expect(409);
@@ -90,6 +96,7 @@ describe.skipIf(!migrationsAvailable)('checkout HTTP routes (e2e)', () => {
 
   it('answers 404 for an unknown store and for an unknown order', async () => {
     await post('/public/stores/ghost-store/orders')
+      .set('X-Customer-Session', shopper['alpha-shop'])
       .set('Idempotency-Key', 'http-key-000003')
       .send(validOrder)
       .expect(404);

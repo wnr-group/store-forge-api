@@ -1,8 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  Equals,
   IsBoolean,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
@@ -10,7 +12,12 @@ import {
   PLATFORM_ADMIN_ROLES,
   type PlatformAdminRole,
 } from '../../database/schema/enums.js';
-import { EmailField, PasswordField } from '../../common/validation/fields.js';
+import {
+  EmailField,
+  PasswordField,
+  RequiredText,
+} from '../../common/validation/fields.js';
+import { HOST_LABEL } from './handoff-code.js';
 
 /** Same rules as the Next.js login form: a trimmed, lower-cased e-mail and a non-empty password of at most 72 characters. */
 export class LoginDto {
@@ -31,6 +38,51 @@ export class LoginDto {
     default: true,
     description:
       'Set this to false if you only need the session cookies. The response then contains just `id`, `email` and `expiresAt`, and the database lookup for your profile and organizations is skipped.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  includeProfile?: boolean;
+}
+
+/**
+ * Self-service account creation (no email verification in this version). The same password rules as every other place that sets
+ * one; the confirmation and the terms are checked here too, never only in the browser.
+ */
+export class RegisterDto {
+  @ApiProperty({ example: 'Asha Rao', description: 'Your full name.' })
+  @RequiredText('Full name', 80, 2)
+  fullName!: string;
+
+  @ApiProperty({ example: 'asha@example.com' })
+  @EmailField('Email')
+  email!: string;
+
+  @ApiProperty({
+    description:
+      'A password of 8 to 72 characters with at least one letter and one number. It is never saved or written to logs.',
+  })
+  @PasswordField()
+  password!: string;
+
+  @ApiProperty({
+    description: 'Type the password again. It must be exactly the same.',
+  })
+  @IsString({ message: 'Confirm your password' })
+  @MaxLength(72)
+  confirmPassword!: string;
+
+  @ApiProperty({
+    example: true,
+    description:
+      'Must be true: you accept the Terms and Conditions. The time of acceptance is saved with the account.',
+  })
+  @Equals(true, { message: 'Accept the Terms and Conditions to continue' })
+  acceptTerms!: boolean;
+
+  @ApiPropertyOptional({
+    default: true,
+    description:
+      'Set this to false if you only need the session cookies (see sign-in).',
   })
   @IsOptional()
   @IsBoolean()
@@ -114,6 +166,13 @@ export type LoginSessionOnly = Pick<MeDto, 'id' | 'email'> & {
   expiresAt: number | null;
 };
 
+/** The reduced sign-in answer (see `LoginSessionOnly`): who signed in and when the session ends. */
+export class LoginSessionDto {
+  @ApiProperty({ format: 'uuid' }) id!: string;
+  @ApiPropertyOptional({ nullable: true }) email!: string | null;
+  @ApiPropertyOptional({ nullable: true }) expiresAt!: number | null;
+}
+
 export class SessionUserDto {
   @ApiProperty({ format: 'uuid' }) id!: string;
   @ApiPropertyOptional({ nullable: true }) email!: string | null;
@@ -137,4 +196,40 @@ export class SessionDto {
 
 export class SignedOutDto {
   @ApiProperty({ example: true }) signedOut!: boolean;
+}
+
+export class HandoffRequestDto {
+  @ApiProperty({
+    example: 'urban-nest-zqkod2',
+    description:
+      'The host label of the store to open, `{store slug}-{public id}`: the part before the root domain. You must be an active member of that store.',
+  })
+  @IsString()
+  @Matches(HOST_LABEL, { message: 'Enter a valid store address.' })
+  audience!: string;
+}
+
+export class HandoffDto {
+  @ApiProperty({
+    description:
+      'A one-time code. It works once, only for the store it was made for, and only for one minute.',
+  })
+  code!: string;
+  @ApiProperty({ example: 60 }) expiresInSeconds!: number;
+}
+
+export class HandoffExchangeDto {
+  @ApiProperty({ description: 'The code from `POST /auth/handoff`.' })
+  @IsString()
+  @MinLength(20)
+  @MaxLength(2000)
+  code!: string;
+
+  @ApiProperty({
+    example: 'urban-nest-zqkod2',
+    description: 'The store host that is receiving the code.',
+  })
+  @IsString()
+  @Matches(HOST_LABEL, { message: 'Enter a valid store address.' })
+  audience!: string;
 }

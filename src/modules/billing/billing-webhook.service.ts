@@ -135,7 +135,14 @@ export class BillingWebhookService {
         await tx.execute(sql`select public.billing_apply_payment(
           ${orderId}, ${id}, ${amount}::bigint, ${currency}, ${str(p.method)}, 'captured', null, null) as r`),
       )[0].r;
-      return r.result === 'unknown_order' ? 'ignored' : r.result;
+      if (r.result !== 'unknown_order') return r.result;
+      // Not an invoice payment: it may be a customer buying a plan before their store exists (self-service sign-up).
+      // This only marks the purchase paid; the store is created by the customer's own request, so a redelivered event cannot create one.
+      const s = rowsOf<{ r: { result: string } }>(
+        await tx.execute(sql`select public.signup_apply_payment(
+          ${orderId}, ${id}, ${amount}::bigint, ${currency}, ${str(p.method)}, 'captured', null, null) as r`),
+      )[0].r;
+      return s.result === 'unknown_order' ? 'ignored' : `signup:${s.result}`;
     }
     if (type === 'payment.failed') {
       const p = e.payment;
@@ -147,7 +154,13 @@ export class BillingWebhookService {
           ${orderId}, ${id}, ${int(p.amount)}::bigint, ${str(p.currency) ?? ''}, ${str(p.method)}, 'failed',
           ${str(p.error_code)}, ${str(p.error_description)}) as r`),
       )[0].r;
-      return r.result === 'unknown_order' ? 'ignored' : r.result;
+      if (r.result !== 'unknown_order') return r.result;
+      const s = rowsOf<{ r: { result: string } }>(
+        await tx.execute(sql`select public.signup_apply_payment(
+          ${orderId}, ${id}, ${int(p.amount)}::bigint, ${str(p.currency) ?? ''}, ${str(p.method)}, 'failed',
+          ${str(p.error_code)}, ${str(p.error_description)}) as r`),
+      )[0].r;
+      return s.result === 'unknown_order' ? 'ignored' : `signup:${s.result}`;
     }
     if (
       type === 'refund.created' ||

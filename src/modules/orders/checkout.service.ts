@@ -9,6 +9,10 @@ import {
   rowsOf,
   type DbTx,
 } from '../../database/database.service.js';
+import {
+  CustomerSessionService,
+  type CustomerPrincipal,
+} from '../customer-accounts/customer-session.service.js';
 import { loadCatalog } from './catalog-loader.js';
 import { priceLines, type RequestedLine } from './checkout-pricing.js';
 import {
@@ -87,7 +91,7 @@ export interface OrderRow {
   shipping_days_max: number | null;
 }
 
-const ORDER_COLUMNS = sql`id, order_number, status, payment_status, payment_method, fulfillment_status, currency,
+export const ORDER_COLUMNS = sql`id, order_number, status, payment_status, payment_method, fulfillment_status, currency,
   subtotal_minor::float8 as subtotal_minor, discount_minor::float8 as discount_minor, shipping_minor::float8 as shipping_minor,
   cod_fee_minor::float8 as cod_fee_minor, tax_minor::float8 as tax_minor, tax_inclusive, total_minor::float8 as total_minor, placed_at,
   shipping_method_name, shipping_zone_name, shipping_days_min, shipping_days_max`;
@@ -117,6 +121,8 @@ export class CheckoutService {
     @Optional()
     @Inject(CHECKOUT_CART_TRACKER)
     private readonly carts?: CheckoutCartTracker,
+    /** Verifies the shopper's account session when an order is placed from one. */
+    @Optional() private readonly sessions?: CustomerSessionService,
   ) {}
 
   /** Store slug -> tenant. Unknown, inactive and suspended stores are indistinguishable (not found). */
@@ -138,6 +144,11 @@ export class CheckoutService {
     slug: string,
     dto: PlaceOrderDto,
     idempotencyKey: string | undefined,
+    /**
+     * The shopper's account session token (`X-Customer-Session`). When given it is verified here, against THIS store only, and the
+     * order is tied to that account. The HTTP route always requires it; a caller inside the API that has no shopper (tests) omits it.
+     */
+    sessionToken?: string,
   ): Promise<PlacedOrderDto> {
     if (!idempotencyKey || !IDEMPOTENCY_KEY.test(idempotencyKey))
       throw invalid(
@@ -148,8 +159,22 @@ export class CheckoutService {
     const store = await this.resolveStore(slug);
 
     // A repeat of a finished checkout is answered without asking any carrier anything.
-    const already = await this.db.withCheckout(store.tenantId, (tx) =>
-      this.replay(tx, store.tenantId, idempotencyKey),
+    const { account, already } = await this.db.withCheckout(
+      store.tenantId,
+      async (tx) => {
+        const principal =
+          sessionToken === undefined
+            ? null
+            : await this.requireSessions().require(
+                tx,
+                store.tenantId,
+                sessionToken,
+              );
+        return {
+          account: principal,
+          already: await this.replay(tx, store.tenantId, idempotencyKey),
+        };
+      },
     );
     if (already) return already;
 
@@ -174,7 +199,7 @@ export class CheckoutService {
     });
     try {
       const placed = await this.db.withCheckout(store.tenantId, (tx) =>
-        this.place(tx, store, dto, idempotencyKey, prepared),
+        this.place(tx, store, dto, idempotencyKey, prepared, account),
       );
       // After the order is saved, and never able to fail it.
       await this.carts?.converted({
@@ -295,6 +320,7 @@ export class CheckoutService {
     dto: PlaceOrderDto,
     key: string,
     prepared: unknown,
+    account: CustomerPrincipal | null,
   ): Promise<PlacedOrderDto> {
     const { tenantId, currency } = store;
     const replayed = await this.replay(tx, tenantId, key);
@@ -426,8 +452,10 @@ export class CheckoutService {
         'ORDER_TOTAL_INVALID',
       );
 
-    // 4. Customer (created on first purchase; an existing record is never edited by an anonymous request).
-    const customerId = await this.customerId(tx, tenantId, dto);
+    // 4. Customer: the signed-in shopper's own record, or (without an account) one created on first purchase. An existing
+    // record is never edited by an anonymous request.
+    const customerId =
+      account?.customerId ?? (await this.customerId(tx, tenantId, dto));
 
     // 5. Order number, then the order and everything that belongs to it.
     const orderNumber = rowsOf<{ last_number: number }>(
@@ -440,13 +468,13 @@ export class CheckoutService {
     const accessToken = randomBytes(32).toString('base64url');
     const orderId = rowsOf<{ id: string }>(
       await tx.execute(sql`
-        insert into public.orders (tenant_id, customer_id, order_number, status, payment_method, payment_status, currency,
+        insert into public.orders (tenant_id, customer_id, account_id, order_number, status, payment_method, payment_status, currency,
           subtotal_minor, discount_minor, shipping_minor, cod_fee_minor, tax_minor, tax_inclusive, total_minor,
           tax_regime, state_tax_kind, cgst_minor, sgst_minor, igst_minor, seller_gstin, seller_state_code, supply_state_code,
           customer_name, customer_email, customer_phone, idempotency_key, access_token_hash,
           shipping_method_id, shipping_method_name, shipping_zone_name, shipping_carrier_code, shipping_service_code,
           shipping_days_min, shipping_days_max, shipping_weight_grams)
-        values (${tenantId}::uuid, ${customerId}::uuid, ${orderNumber}, ${cod ? 'confirmed' : 'pending_payment'},
+        values (${tenantId}::uuid, ${customerId}::uuid, ${account?.accountId ?? null}::uuid, ${orderNumber}, ${cod ? 'confirmed' : 'pending_payment'},
           ${dto.paymentMethod}, ${cod ? 'pending_collection' : 'unpaid'}, ${currency},
           ${priced.subtotalMinor}, ${adjustment.discountMinor}, ${adjustment.shippingMinor}, ${codFeeMinor},
           ${tax.taxMinor}, ${tax.inclusive}, ${totalMinor},
@@ -607,6 +635,12 @@ export class CheckoutService {
       await tx.execute(sql`
         select id from public.customers where tenant_id = ${tenantId}::uuid and lower(email) = lower(${dto.customer.email})`),
     )[0].id;
+  }
+
+  private requireSessions(): CustomerSessionService {
+    if (!this.sessions)
+      throw new Error('Customer sessions are not available in this context.');
+    return this.sessions;
   }
 
   /** Builds the response from the stored order, so a replay and a first call show exactly the same figures. */

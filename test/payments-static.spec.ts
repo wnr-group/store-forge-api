@@ -267,9 +267,22 @@ describe('payments static scans', () => {
     // auth.dto.ts and auth.service.ts: GET /auth/me reports platform STAFF roles (all four, as /platform/me does).
     // It adds no shopper login and enforces nothing.
     // public.dto.ts and public.service.ts: GET /public/branding also returns the platform logo address (no sign-in needed, nothing enforced).
+    // public.controller.ts, public.dto.ts and public.service.ts: GET /public/plans lists the published subscription plans (no sign-in needed, nothing enforced).
+    // auth.controller.ts, auth.dto.ts, session.service.ts and supabase-admin.service.ts: POST /auth/register lets a would-be store owner
+    // create their own account (self-service sign-up). It is for merchants, not shoppers, and enforces nothing on any storefront.
+    // handoff-code.ts, handoff-code.spec.ts, handoff.service.ts and auth.module.ts: POST /auth/handoff[/exchange] carries a signed-in store owner to
+    // their own store host (session cookies are host-only). Merchants only; no shopper login, nothing enforced on any storefront.
     const staffRoleFiles = [
+      'src/modules/auth/auth.controller.ts',
       'src/modules/auth/auth.dto.ts',
+      'src/modules/auth/auth.module.ts',
       'src/modules/auth/auth.service.ts',
+      'src/modules/auth/handoff-code.spec.ts',
+      'src/modules/auth/handoff-code.ts',
+      'src/modules/auth/handoff.service.ts',
+      'src/modules/auth/session.service.ts',
+      'src/modules/auth/supabase-admin.service.ts',
+      'src/modules/public/public.controller.ts',
       'src/modules/public/public.dto.ts',
       'src/modules/public/public.service.ts',
     ];

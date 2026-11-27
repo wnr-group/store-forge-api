@@ -29,6 +29,6 @@ import { TenantBillingController } from './tenant-billing.controller.js';
     BillingPaymentsService,
     BillingWebhookService,
   ],
-  exports: [BillingService],
+  exports: [BillingService, PlatformRazorpayService],
 })
 export class BillingModule {}

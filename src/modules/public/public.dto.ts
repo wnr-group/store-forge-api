@@ -170,3 +170,51 @@ export class PublicPageLinkDto {
   @ApiProperty() title!: string;
   @ApiProperty() slug!: string;
 }
+
+export class PublicPlanFeatureDto {
+  @ApiProperty({ example: 'discount_codes' }) key!: string;
+  @ApiProperty({ example: 'Discount codes and coupons' }) label!: string;
+}
+
+export class PublicPlanLimitDto {
+  @ApiProperty({ example: 'products' }) key!: string;
+  @ApiProperty({ example: 'Products' }) label!: string;
+  @ApiProperty({ enum: ['count', 'bytes'] }) unit!: string;
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'The most the plan allows (bytes for storage), or null when it is unlimited.',
+  })
+  value!: number | null;
+}
+
+export class PublicPlanDto {
+  @ApiProperty({ example: 'starter' }) code!: string;
+  @ApiProperty({ example: 'Starter' }) name!: string;
+  @ApiPropertyOptional({ nullable: true }) description!: string | null;
+  @ApiProperty({ example: 'INR' }) currency!: string;
+  @ApiProperty({
+    example: '499.00',
+    description: 'Price per month as plain decimal text. 0 for a free plan.',
+  })
+  monthlyPrice!: string;
+  @ApiProperty({ example: 49900 }) monthlyPriceMinor!: number;
+  @ApiProperty({
+    example: '4990.00',
+    description: 'Price per year as plain decimal text. 0 for a free plan.',
+  })
+  yearlyPrice!: string;
+  @ApiProperty({ example: 499000 }) yearlyPriceMinor!: number;
+  @ApiProperty({ example: 14, description: 'Free trial days. 0 for none.' })
+  trialDays!: number;
+  @ApiProperty({
+    type: [PublicPlanFeatureDto],
+    description: 'The features the plan includes, in catalog order.',
+  })
+  features!: PublicPlanFeatureDto[];
+  @ApiProperty({
+    type: [PublicPlanLimitDto],
+    description: 'Every limit in the catalog, with its value for this plan.',
+  })
+  limits!: PublicPlanLimitDto[];
+}

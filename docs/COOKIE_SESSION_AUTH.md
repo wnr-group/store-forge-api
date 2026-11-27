@@ -80,3 +80,7 @@ Generate the secret: `node -e "console.log(require('crypto').randomBytes(32).toS
 * API: 20 end-to-end tests of this flow against the real schema and a fake Supabase Auth (`test/session.e2e-spec.ts`) plus unit tests of the CSRF rules, address trust and cookie handling.
 * Next.js: 25 tests (`tests/unit/auth-api-mode.test.ts`) against a real local HTTP server standing in for the API, and the existing 20 auth tests still pass in the old mode.
 * Real run: both servers against the real Supabase project and database with the existing demo accounts, driven through the real login form in Chromium (see the migration report). Passwords were not changed.
+
+## Opening a store host already signed in (handoff)
+
+Cookies are host-only, so a store host starts signed out. `POST /auth/handoff {audience}` (signed in) returns a code for ONE store host: the database must show the caller as an active member of the store that owns that host. The code is an HMAC-signed `{login token, host, expiry}` (key derived from `AUTH_BFF_SECRET`), valid 60 seconds. The login token is a single-use Supabase link token (`auth.admin.generateLink`, no e-mail sent), so Supabase itself makes the code single use. `POST /auth/handoff/exchange {code, audience}` (trusted Next.js server only) checks signature, expiry and host, then `verifyOtp` starts a NEW session whose host-only cookies are set on that response. The session on the main site is not touched, and the cookie `Domain` is never set.

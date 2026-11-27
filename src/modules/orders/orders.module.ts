@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { CustomerSessionModule } from '../customer-accounts/customer-session.module.js';
 import { CheckoutDiscountService } from '../marketing/checkout-discount.service.js';
 import { CartRecoveryService } from '../marketing/cart-recovery.service.js';
 import { MarketingModule } from '../marketing/marketing.module.js';
@@ -27,7 +28,13 @@ import { OrdersService } from './orders.service.js';
 import { ReservationExpiryService } from './reservation-expiry.service.js';
 
 @Module({
-  imports: [PaymentsModule, ShippingModule, TaxModule, MarketingModule],
+  imports: [
+    PaymentsModule,
+    ShippingModule,
+    TaxModule,
+    MarketingModule,
+    CustomerSessionModule,
+  ],
   controllers: [
     CheckoutController,
     PublicShippingController,

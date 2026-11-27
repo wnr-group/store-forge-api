@@ -8,9 +8,17 @@ import { platformAssetUrl } from '../storage/storage-paths.js';
 import { RecommendationsService } from '../recommendations/recommendations.service.js';
 import type { PublicRecommendationsQueryDto } from '../recommendations/recommendations.dto.js';
 import type { RecordWebVitalsDto } from '../studio/studio.dto.js';
+import {
+  FEATURE_CATALOG,
+  FEATURE_KEYS,
+  LIMIT_CATALOG,
+  LIMIT_KEYS,
+} from '../../common/constants/plan-catalog.js';
+import { minorToInput } from '../../common/utils/money.js';
 import type {
   PublicBrandingDto,
   PublicHostDto,
+  PublicPlanDto,
   StorefrontDto,
 } from './public.dto.js';
 
@@ -85,6 +93,55 @@ export class PublicService {
       );
       return DEFAULT_BRANDING;
     }
+  }
+
+  /**
+   * The subscription plans on offer: the active, restricted plans a Platform Admin has published. Read through a narrow
+   * SECURITY DEFINER function, because the plan tables are visible to Platform Admins only. A limit with no number is unlimited.
+   */
+  async plans(): Promise<PublicPlanDto[]> {
+    const rows = await this.db.withPublic(async (tx) =>
+      rowsOf<{
+        code: string;
+        name: string;
+        description: string | null;
+        currency: string;
+        monthly_price_minor: number | string;
+        yearly_price_minor: number | string;
+        trial_days: number;
+        features: string[];
+        limits: Record<string, number | string | null>;
+      }>(await tx.execute(sql`select * from public.get_public_plans()`)),
+    );
+    return rows.map((r) => {
+      const monthly = Number(r.monthly_price_minor);
+      const yearly = Number(r.yearly_price_minor);
+      const included = new Set(r.features ?? []);
+      return {
+        code: r.code,
+        name: r.name,
+        description: r.description,
+        currency: r.currency,
+        monthlyPrice: minorToInput(monthly, r.currency),
+        monthlyPriceMinor: monthly,
+        yearlyPrice: minorToInput(yearly, r.currency),
+        yearlyPriceMinor: yearly,
+        trialDays: r.trial_days,
+        features: FEATURE_KEYS.filter((k) => included.has(k)).map((key) => ({
+          key,
+          label: FEATURE_CATALOG[key].label,
+        })),
+        limits: LIMIT_KEYS.map((key) => {
+          const v = r.limits?.[key];
+          return {
+            key,
+            label: LIMIT_CATALOG[key].label,
+            unit: LIMIT_CATALOG[key].unit,
+            value: v === null || v === undefined ? null : Number(v),
+          };
+        }),
+      };
+    });
   }
 
   /**

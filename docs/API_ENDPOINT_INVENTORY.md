@@ -14,6 +14,7 @@ Base path `/api/v1`. All JSON. Success envelope `{success,message,data,meta?}`; 
 | 1 | health | Liveness (no dependencies) | GET `/health` | Public | - | - | `{status, service}` | - | process is up |
 | 74 | health | Readiness (database) | GET `/health/ready` | Public | - | - | `{status, service, database}`; 503 when the DB is down | `select 1` through the RLS-guarded path | new infra |
 | 2 | public | Platform branding | GET `/public/branding` | Public | - | - | `{platformName, supportEmail}` | `get_public_platform_settings()` | defaults to `StoreForge` if DB fails (`getPublicBranding`) |
+| 2a | public | Subscription plans on offer | GET `/public/plans` | Public | - | - | array of `{code, name, description, currency, monthlyPrice, yearlyPrice, trialDays, features[], limits[]}` | `get_public_plans()` | only active, restricted plans (an admin "publishes" a plan by making it active); no ids or subscriber counts; limit `null` = unlimited; read-only, no purchase |
 | 3 | public | Public storefront | GET `/public/storefronts/:slug` | Public | - | slug | storefront JSON or 404 | `get_public_storefront(slug)` | unknown/inactive/suspended look identical (404); runs as no-identity request role |
 
 ## Auth & profile
@@ -30,9 +31,23 @@ Base path `/api/v1`. All JSON. Success envelope `{success,message,data,meta?}`; 
 | # | Feature | Endpoint | Auth | Request | Response | Logic |
 |---|---|---|---|---|---|---|
 | 75 | Sign in (existing accounts only) | POST `/auth/login` | Public + origin/secret check | `{email, password}` | safe profile; **HttpOnly cookies** | Supabase password grant; DB login rate limit counted first; never creates users/orgs |
+| 75a | Create my account (self-service, no email verification) | POST `/auth/register` | Public + origin/secret check | `{fullName, email, password, confirmPassword, acceptTerms}` | safe profile; **HttpOnly cookies** | creates a confirmed Supabase user (terms acceptance time kept in user metadata) and signs it in; creates NO organization, membership or role; counted against the login limits; throttled |
 | 76 | Sign out | POST `/auth/logout` | Public + origin/secret check | - | `{signedOut}` | revokes at Supabase, always clears cookies |
 | 77 | Refresh session | POST `/auth/refresh` | Public + origin/secret check | - (cookie) | `{user, expiresAt}`; new cookies | refresh token rotation; used/revoked -> cookies cleared, 401 `SESSION_EXPIRED` |
 | 78 | Verify session | GET `/auth/session` | JWT (Bearer or cookie) | - | `{user:{id,email,fullName}, expiresAt}` | local signature/issuer/audience/expiry check, no database |
+| 78a | Get a one-time code to open my store | POST `/auth/handoff` | JWT (Bearer or cookie) | - | `{audience}` (the store host label) | `{code, expiresInSeconds}` | `memberships`, `stores`; Supabase Auth admin | only an active member of the store that owns the host; the code is signed, works once, for that host only, for 60 seconds; throttled |
+| 78b | Sign a store host in with a code | POST `/auth/handoff/exchange` | Public + origin/secret check (trusted Next.js server only) | - | `{code, audience}` | `{id, email, expiresAt}`; new host-only cookies | Supabase Auth | wrong, used, expired or other-host code -> 401 `HANDOFF_INVALID`; the session on the root site is untouched; throttled |
+
+## Self-service sign-up (migration 0070)
+
+A registered person with no organization buys a plan, then names a store. Needs a signed-in person but no organization; every route works only on the caller's own purchase. The price is worked out in the database; the browser never sends one.
+
+| # | Feature | Endpoint | Auth | Request | Logic |
+|---|---|---|---|---|---|
+| 160 | Where am I in the sign-up | GET `/signup/status` | JWT | - | `none`, `payment_required`, `store_required` or `provisioned`, from the caller's own purchase |
+| 161 | Choose a plan and start paying | POST `/signup/checkout` | JWT | `{planCode, billingInterval}` | published plans only; price and tax from the plan and billing settings; reuses the open Razorpay order (retry after a failed payment); free plans skip payment; platform staff refused |
+| 162 | Confirm a payment | POST `/signup/verify-payment` | JWT | `{razorpayOrderId, razorpayPaymentId, razorpaySignature}` | order must be the caller's own; checkout signature, then a lookup at Razorpay (captured, same order and amount); idempotent. Razorpay's signed webhook (`/webhooks/billing/razorpay`) reaches the same result |
+| 163 | Create my store | POST `/signup/store` | JWT | `{storeName}` | refused until paid; one SQL routine (shared with Platform Admin creation) makes tenant, Owner membership and store; the paid plan becomes the active subscription and a paid invoice is recorded; store address made from the name (suffix on a clash); idempotent |
 
 ## Workspace & store
 
@@ -392,3 +407,25 @@ Routes added by the Studio releases after the foundation above. The request and 
 | 243 | integrations | Test an integration | POST `/integrations/:provider/test` | `integrations:manage` | org (header required) | provider | `ok`, the checks, a note on what the test cannot prove | `marketing_integrations`, `marketing_integration_events` | contacts only the provider's own host with a format-checked ID; a failure is reported and audited but never switches a working integration off; throttled (10 a minute) |
 | 244 | integrations | Remove an integration | DELETE `/integrations/:provider` | `integrations:manage` | org (header required) | provider | `null` | `marketing_integrations` | the audit history stays; audited; throttled |
 | 245 | integrations | Which tracking a storefront may load | GET `/public/stores/:slug/tracking` | - | Public (throttled) | - | enabled and validated integrations with their public identifiers, `consentRequired: true` | `public_tracking_config()` (pinned tenant) | a store only ever receives its own; no secret column is read; cacheable for a minute; the storefront must load nothing until the shopper agrees |
+
+## Storefront customer accounts and tracking (migration 0071)
+
+A shopper's own account in ONE store. It is separate from owner, staff and platform-admin sign-in: the shopper proves who they are with an opaque session (`X-Customer-Session`, issued by register/login, valid for that store only), never with a bearer token, and an owner token is not accepted here. Placing an order (row 150) needs this session; browsing and the cart need nothing.
+
+| # | Module | Purpose | Route | Permission | Auth | Input | Output | Tables / functions | Rules |
+|---|---|---|---|---|---|---|---|---|---|
+| 246 | customer-accounts | Create a shopper account | POST `/public/stores/:slug/account/register` | - | Public (throttled, 10 a minute) | full name, email, optional phone, password (8+ with a letter and a number) | the session token (shown once), expiry and profile (201) | `customer_accounts`, `customer_sessions`, `customers` (pinned tenant) | email unique per store (409 `CUSTOMER_EMAIL_TAKEN`); the same email can join other stores; password stored only as a scrypt hash; the merchant's existing `customers` row is reused, its order history is NOT inherited |
+| 247 | customer-accounts | Sign a shopper in | POST `/public/stores/:slug/account/login` | - | Public (throttled, 10 a minute) | email, password | the session token, expiry and profile | `customer_accounts`, `customer_sessions` | unknown email and wrong password look the same (401 `CUSTOMER_INVALID_LOGIN`); 8 wrong passwords lock the account for 15 minutes (429 `CUSTOMER_LOCKED`) |
+| 248 | customer-accounts | Sign a shopper out | POST `/public/stores/:slug/account/logout` | - | Public + `X-Customer-Session` | - | `null` | `customer_sessions` | ends this session only |
+| 249 | customer-accounts | Get my profile | GET `/public/stores/:slug/account/me` | - | Public + `X-Customer-Session` | - | name, email, phone | `customer_accounts`, `customer_sessions` | a session of another store, an expired or a signed-out one is 401 `CUSTOMER_LOGIN_REQUIRED` |
+| 250 | customer-accounts | Update my profile | PATCH `/public/stores/:slug/account/me` | - | Public + `X-Customer-Session` | name, phone | the profile | `customer_accounts` | the email cannot be changed; the merchant's `customers` record is left alone |
+| 251 | customer-accounts | Change my password | POST `/public/stores/:slug/account/password` | - | Public + `X-Customer-Session` (throttled) | current password, new password | `null` | `customer_accounts`, `customer_sessions` | needs the current password; every other session is signed out; there is no forgot-password flow |
+| 252 | customer-accounts | List my saved addresses | GET `/public/stores/:slug/account/addresses` | - | Public + `X-Customer-Session` | - | the addresses, default first | `customer_addresses` | only this account's rows |
+| 253 | customer-accounts | Save a delivery address | POST `/public/stores/:slug/account/addresses` | - | Public + `X-Customer-Session` | label, name, phone, address, state, PIN, `isDefault` | the updated list (201) | `customer_addresses` | at most 10 (409 `ADDRESS_LIMIT`); the first is the default; one default per account |
+| 254 | customer-accounts | Change a saved address | PUT `/public/stores/:slug/account/addresses/:id` | - | Public + `X-Customer-Session` | as above | the updated list | `customer_addresses` | another shopper's id is 404 |
+| 255 | customer-accounts | Remove a saved address | DELETE `/public/stores/:slug/account/addresses/:id` | - | Public + `X-Customer-Session` | - | the updated list | `customer_addresses` | the next address becomes the default; orders keep their own copy |
+| 256 | customer-accounts | List my orders | GET `/public/stores/:slug/account/orders?page&limit` | - | Public + `X-Customer-Session` | page, limit (max 50) | summaries, newest first, with paging meta | `orders`, `order_items` | only orders placed from this account (`orders.account_id`) |
+| 257 | customer-accounts | View one of my orders | GET `/public/stores/:slug/account/orders/:orderNumber` | - | Public + `X-Customer-Session` | order number | items, amounts, payment, address, parcels (courier, tracking number, link) and the status timeline with times | `orders`, `order_items`, `order_addresses`, `shipments`, `order_status_history` | someone else's order and a missing one both answer 404; internal notes and actors are never shown |
+| 258 | customer-accounts | Cancel one of my orders | POST `/public/stores/:slug/account/orders/:orderNumber/cancel` | - | Public + `X-Customer-Session` | - | the order | same as the order rules | only while unpaid or confirmed and not shipped; a paid order is 409 `REFUND_REQUIRED` |
+| 259 | shipments | Record a parcel you sent yourself | POST `/orders/:orderId/shipments/manual` | `orders:manage` | org (header required) | shipping provider, tracking number, optional link, expected date, optional items | the shipment (201) | `shipments`, `shipment_items`, `orders` | same order rules as a carrier shipment; the order moves to ready to ship and the customer sees provider and tracking number at once; a tracking number is unique per store (409 `TRACKING_NUMBER_TAKEN`) |
+| 260 | shipments | Update a parcel you recorded yourself | PATCH `/shipments/:id/manual` | `orders:manage` | org (header required) | provider, tracking number, link, date, status (forward only) | the shipment | `shipments`, `shipment_events`, `orders` | only `manual` parcels (409 `SHIPMENT_NOT_MANUAL`); the order follows the parcel |

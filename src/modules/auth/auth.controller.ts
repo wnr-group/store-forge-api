@@ -19,13 +19,19 @@ import {
 import type { AuthUser } from '../../common/interfaces/request-context.js';
 import {
   ChangePasswordDto,
+  HandoffDto,
+  HandoffExchangeDto,
+  HandoffRequestDto,
   LoginDto,
   LoginResponseDto,
+  LoginSessionDto,
   MeDto,
+  RegisterDto,
   SessionDto,
   SignedOutDto,
 } from './auth.dto.js';
 import { AuthService } from './auth.service.js';
+import { HandoffService } from './handoff.service.js';
 import { SessionService } from './session.service.js';
 
 @ApiTags('auth')
@@ -34,6 +40,7 @@ export class AuthController {
   constructor(
     private readonly auth: AuthService,
     private readonly sessions: SessionService,
+    private readonly handoffs: HandoffService,
   ) {}
 
   @Post('login')
@@ -60,6 +67,32 @@ export class AuthController {
     @Body() dto: LoginDto,
   ) {
     return this.sessions.login(req, res, dto);
+  }
+
+  @Post('register')
+  @Public()
+  @CsrfProtected()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @HttpCode(200)
+  @ApiEndpoint({
+    summary: 'Create my account',
+    description: [
+      'Create your own account with your full name, email and a password, and accept the Terms and Conditions. There is no email verification step: you are signed in straight away, with the same secure cookies as `POST /auth/login`, so you can choose a plan and pay.',
+      'Creating an account does NOT create a store or give you any role. A store (and the Owner role) only exists after a plan has been paid for and the store has been created (`POST /signup/store`).',
+      'Attempts count towards the same limits as sign-in. An email that is already registered gets the error `EMAIL_TAKEN`. Browsers must call this from an allowed website address (`Origin`), and the Next.js server must send its trusted secret.',
+    ].join('\n\n'),
+    auth: 'public',
+    body: RegisterDto,
+    response: LoginResponseDto,
+    message: 'Account created successfully',
+    errors: [400, 403, 409, 429],
+  })
+  register(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Body() dto: RegisterDto,
+  ) {
+    return this.sessions.register(req, res, dto);
   }
 
   @Post('logout')
@@ -129,6 +162,46 @@ export class AuthController {
   })
   me(@CurrentUser() user: AuthUser) {
     return this.auth.me(user);
+  }
+
+  @Post('handoff')
+  @HttpCode(200)
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @ApiEndpoint({
+    summary: 'Get a one-time code to open my store',
+    description:
+      'Session cookies belong to one website address only, so a store address starts with no session. Ask for a code for your store address here, then send the person to `{store address}/auth/handoff?code=...`: that address trades it for its own session (`POST /auth/handoff/exchange`). The code works once, only for that store address, and only for one minute. You must be an active member of the store that owns the address.',
+    auth: 'jwt',
+    body: HandoffRequestDto,
+    response: HandoffDto,
+    message: 'Code created successfully',
+    errors: [400, 403, 429, 503],
+  })
+  handoff(@CurrentUser() user: AuthUser, @Body() dto: HandoffRequestDto) {
+    return this.handoffs.issue(user, dto.audience);
+  }
+
+  @Post('handoff/exchange')
+  @Public()
+  @CsrfProtected()
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @HttpCode(200)
+  @ApiEndpoint({
+    summary: 'Sign in a store address with a one-time code',
+    description:
+      'Trades the code from `POST /auth/handoff` for a new session on the store address that received it, set in the same secure cookies as `POST /auth/login`. Only the Next.js server may call this (it must send its trusted secret). A code that is wrong, used, expired or made for another address gets `HANDOFF_INVALID`.',
+    auth: 'public',
+    body: HandoffExchangeDto,
+    response: LoginSessionDto,
+    message: 'Signed in successfully',
+    errors: [400, 401, 403, 429, 503],
+  })
+  exchangeHandoff(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+    @Body() dto: HandoffExchangeDto,
+  ) {
+    return this.handoffs.exchange(req, res, dto.code, dto.audience);
   }
 
   @Post('change-password')
