@@ -2,7 +2,7 @@
 
 A store owner describes the catalogue as a tree with **any number of named levels**, for example `Brand > Vehicle > Variant > Part group`, and places products on its items. One product can sit on many items (no copies of the product). Categories and collections are **not** changed: this is a separate structure.
 
-Migrations: `0072_catalog_hierarchy_core.sql` (tables, integrity, security, `products.part_number`) and `0073_catalog_hierarchy_public.sql` (public reads). Code: `src/modules/catalog-hierarchy/`, models in `src/database/schema/catalog-hierarchy.ts`. Routes: `API_ENDPOINT_INVENTORY.md`, section "Catalog hierarchy".
+Migrations: `0072_catalog_hierarchy_core.sql` (tables, integrity, security, `products.part_number`), `0073_catalog_hierarchy_public.sql` (public reads) and `0074_catalog_node_images.sql` (optional item images). Code: `src/modules/catalog-hierarchy/`, models in `src/database/schema/catalog-hierarchy.ts`. Routes: `API_ENDPOINT_INVENTORY.md`, section "Catalog hierarchy".
 
 ## Data model
 
@@ -10,7 +10,7 @@ Migrations: `0072_catalog_hierarchy_core.sql` (tables, integrity, security, `pro
 |---|---|
 | `catalog_hierarchies` | The hierarchy: `name`, `status` (`draft` / `active`). **One per organization for now** (unique index `catalog_hierarchies_one_per_tenant_idx`; dropping that index is all it takes to allow several, every other table already carries `hierarchy_id`). |
 | `catalog_levels` | Named levels, numbered `1..n` without gaps (max 20). `can_hold_products` says whether items of the level may carry products (default `false`). Unique name per hierarchy, case-insensitive. |
-| `catalog_nodes` | The items. `parent_id`, `level_id`, `name`, `slug` (unique among siblings), `description`, `position`, `status`, SEO fields. `path_ids` (ids from the top down to the item) and `depth` are maintained by a trigger and can never be written by a client. |
+| `catalog_nodes` | The items. `parent_id`, `level_id`, `name`, `slug` (unique among siblings), `description`, `position`, `status`, SEO fields. `path_ids` (ids from the top down to the item) and `depth` are maintained by a trigger and can never be written by a client. `image_path` / `image_alt`: one optional image (see "Item images"). |
 | `catalog_node_products` | Many-to-many link `(node_id, product_id)` with a `position`. |
 | `products.part_number` | Nullable, **not unique**, max 64 characters; index `(tenant_id, part_number)`. The SKU is untouched and stays the stable product identifier. |
 
@@ -49,13 +49,26 @@ Levels can be renamed freely (items keep their place). A new order is **accepted
   "levels": [ { "id": "", "name": "Brand", "position": 1, "canHoldProducts": false } ],
   "nodes": [ { "id": "", "parentId": null, "levelId": "", "name": "Toyota", "slug": "toyota",
                "path": "toyota", "description": null, "position": 0, "depth": 1,
-               "seoTitle": null, "seoDescription": null, "hasChildren": true, "productCount": 0 } ],
+               "seoTitle": null, "seoDescription": null, "imagePath": null, "imageAlt": null,
+               "hasChildren": true, "productCount": 0 } ],
   "truncated": false }
 ```
 
 `GET /public/storefronts/:slug/catalog/nodes/:path?page&limit&includeDescendants&sort` (`:path` = slugs from the top, joined by `/`, e.g. `toyota/camry/brakes`) returns `store`, `hierarchy`, `node` (with its `level`), `breadcrumbs[]`, `children[]` (same shape as tree nodes) and `products: { items[], page, limit, total, includeDescendants }`. A product card is `{ name, slug, partNumber, shortDescription, priceMinor, compareAtPriceMinor, imagePath, available }`. `sort` = `position` (default), `newest`, `name`, `price_asc`, `price_desc`; `limit` 1..100.
 
 Rules: unknown / inactive / suspended store -> 404; no active hierarchy -> the tree is empty (`hierarchy: null`) and any item is 404; a draft item, or any item below a draft item, is 404 and absent from the tree; draft products never appear. `productCount` counts the active products placed **directly** on an item. The response contains no tenant or internal ids beyond the item / level / hierarchy ids shown above. Responses are not cached by the API; add a short CDN or framework cache in front if needed (the data changes only when the owner edits the catalog).
+
+## Item images (migration 0074)
+
+Every item can have **one optional image** (`imagePath`) with an optional short description (`imageAlt`, 1 to 200 characters; the storefront can fall back to the item name). The API returns the **storage path**, never a web address (like collections and products); the frontend builds the public URL of the `products` bucket.
+
+* **Upload**: `POST /uploads/signed-urls` with `scope: "catalog"` and `ownerId` = the item id. The folder is `{tenantId}/catalog/{itemId}/`, derived from the verified organization. Needs `catalog:manage`, the same check the Storage policy applies (`can_write_storage_object`: any path deeper than the tenant folder that is not `store/` needs Products write). The plan **storage quota** is checked exactly as for products and collections. Type and size rules (JPEG / PNG / WebP, 5 MB) are the existing ones.
+* **Create with an image**: choose the id first (a UUID), upload into that folder, then `POST /catalog/nodes` with the same `id`, `imagePath` and optional `imageAlt`. `imagePath` without `id` is refused. The file is checked in Storage **under a per-path advisory lock inside the save transaction**, the same protocol as collections.
+* **Replace**: `PATCH` with the new `imagePath`. **Remove**: `PATCH` with `imagePath: null` (also clears `imageAlt`). Leaving `imagePath` out keeps the image; `imageAlt` alone edits the description. A description without an image is refused (`CATALOG_NODE_IMAGE_ALT_INVALID`).
+* **Clean-up** (best effort, after the database change committed): the previous file after a replace or remove, and the file of **every item that is deleted**, including a whole subtree (`cascade=true`). Files are removed in batches of 200, and only when nothing else still references them (`StorageReferencesService.findReferencedPaths` now also looks at `catalog_nodes.image_path`). A failed save leaves the old image untouched; a failed upload or save can leave an unreferenced file, never an item pointing at a missing one. A storage failure never fails the request.
+* **Database rules**: `catalog_nodes_image_path_check` ties the path to this item and this organization (`{tenant}/catalog/{id}/%`, no `..`, at most 300 characters); `catalog_nodes_image_alt_check` allows a description only with an image. `UPDATE` of the two columns is granted to members; everything else about the grants is unchanged.
+* **Public API**: every item of the tree, the item of the node page and its children carry `imagePath` and `imageAlt` (null without an image). Draft items and everything below them stay hidden, with their images. The two public functions were re-created in 0074 with the same `SECURITY DEFINER`, empty `search_path` and grants as in 0073.
+* **Import / export** do not include images (an import never changes or clears an image).
 
 ## Import and export
 
@@ -92,12 +105,12 @@ The frontend reads the CSV / Excel file and sends **JSON rows** (like the produc
 
 ## Rollback
 
-The migrations are additive and there is no down-migration convention in this project. To undo them by hand (in this order, after the code is rolled back): drop the public functions `get_public_catalog_tree(text,integer)` and `get_public_catalog_node(text,text,integer,integer,boolean,text)`; restore `get_public_product` from `0033_product_presentations_public_functions.sql`; drop tables `catalog_node_products`, `catalog_nodes`, `catalog_levels`, `catalog_hierarchies` (`CASCADE`); drop the functions `catalog_nodes_before_write`, `catalog_nodes_after_move`, `catalog_levels_integrity`, `catalog_levels_products_flag`, `catalog_node_products_level_check`; drop index `products_tenant_part_number_idx`, constraint `products_part_number_check` and column `products.part_number`. Dropping the tables removes the catalog structure and the placements, never the products.
+The migrations are additive and there is no down-migration convention in this project. To undo 0074 by hand (after the code is rolled back): restore `get_public_catalog_tree` and `get_public_catalog_node` from the text in `0073_catalog_hierarchy_public.sql` (`CREATE OR REPLACE`), then drop index `catalog_nodes_image_path_idx`, constraints `catalog_nodes_image_path_check` and `catalog_nodes_image_alt_check`, and columns `catalog_nodes.image_path` / `image_alt` (the image files stay in storage). To undo 0072-0073 by hand (in this order, after the code is rolled back): drop the public functions `get_public_catalog_tree(text,integer)` and `get_public_catalog_node(text,text,integer,integer,boolean,text)`; restore `get_public_product` from `0033_product_presentations_public_functions.sql`; drop tables `catalog_node_products`, `catalog_nodes`, `catalog_levels`, `catalog_hierarchies` (`CASCADE`); drop the functions `catalog_nodes_before_write`, `catalog_nodes_after_move`, `catalog_levels_integrity`, `catalog_levels_products_flag`, `catalog_node_products_level_check`; drop index `products_tenant_part_number_idx`, constraint `products_part_number_check` and column `products.part_number`. Dropping the tables removes the catalog structure and the placements, never the products.
 
 ## Known limitations
 
 * One hierarchy per organization (by design, see above).
-* No images on items (no upload folder / storage policy for them yet).
+* One image per item; images are not part of the catalog import / export. Files whose upload or save failed (or whose clean-up failed) stay in storage as unreferenced objects until removed by hand; no sweeping job exists yet.
 * Reordering levels that have related items is refused instead of restructuring the tree.
 * `productCount` is direct only (no count that includes descendants), to keep the public tree cheap.
 * Public listings return `partNumber` for catalog listings and in the product page; the older storefront and collection cards are unchanged.

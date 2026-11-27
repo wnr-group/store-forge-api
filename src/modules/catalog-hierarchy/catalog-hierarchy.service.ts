@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import {
   and,
   asc,
@@ -21,7 +21,10 @@ import {
 import { Paginated } from '../../common/dto/api-response.dto.js';
 import { likeTerm, offsetOf } from '../../common/dto/pagination-query.dto.js';
 import { mapErrors } from '../../common/db-errors.js';
-import type { OrgContext } from '../../common/interfaces/request-context.js';
+import type {
+  AuthUser,
+  OrgContext,
+} from '../../common/interfaces/request-context.js';
 import {
   DatabaseService,
   rowsOf,
@@ -65,6 +68,11 @@ import {
   type LevelRef,
   type LevelUsage,
 } from './catalog-hierarchy.rules.js';
+import { catalogNodeFolder } from '../storage/storage-paths.js';
+import { StorageReferencesService } from '../storage/storage-references.service.js';
+
+/** Image files are checked and removed in batches: one lock per file, and a bounded number of query parameters. */
+const IMAGE_CLEANUP_BATCH = 200;
 
 export const hierarchyNotFound = () =>
   notFound(
@@ -189,6 +197,8 @@ export const toNodeDto = (r: NodeRow): CatalogNodeDto => ({
   status: r.node.status,
   seoTitle: r.node.seoTitle,
   seoDescription: r.node.seoDescription,
+  imagePath: r.node.imagePath,
+  imageAlt: r.node.imageAlt,
   depth: r.node.depth,
   pathIds: r.node.pathIds,
   childCount: r.childCount,
@@ -240,7 +250,12 @@ async function nextPosition(
 
 @Injectable()
 export class CatalogHierarchyService {
-  constructor(private readonly db: DatabaseService) {}
+  private readonly logger = new Logger(CatalogHierarchyService.name);
+
+  constructor(
+    private readonly db: DatabaseService,
+    private readonly references: StorageReferencesService,
+  ) {}
 
   // -------------------------------------------------------------------------------------------------------------------
   // Hierarchy
@@ -649,8 +664,22 @@ export class CatalogHierarchyService {
 
   async createNode(
     ctx: OrgContext,
+    user: AuthUser,
     dto: CreateCatalogNodeDto,
   ): Promise<CatalogNodeDetailDto> {
+    if (dto.imagePath && !dto.id)
+      throw invalid(
+        'Send the id you uploaded the image under.',
+        { id: 'Required together with imagePath.' },
+        'CATALOG_NODE_IMAGE_ID_REQUIRED',
+      );
+    if (dto.imageAlt && !dto.imagePath)
+      throw invalid(
+        'An image description needs an image.',
+        { imageAlt: 'Send an image first.' },
+        'CATALOG_NODE_IMAGE_ALT_INVALID',
+      );
+    const nodeId = dto.id ?? crypto.randomUUID();
     return this.db.withUser(ctx.userId, (tx) =>
       mapErrors(async () => {
         const h = await requireHierarchy(tx, ctx.tenantId);
@@ -697,9 +726,21 @@ export class CatalogHierarchyService {
             parentId,
             nodeSlugFromName(dto.name),
           ));
+        // Lock the file path, THEN check the object exists, all inside this transaction (see StorageReferencesService).
+        const [image] = dto.imagePath
+          ? await this.references.verifyObjectsUnderLock(
+              tx,
+              user.token,
+              catalogNodeFolder(ctx.tenantId, nodeId),
+              [dto.imagePath],
+            )
+          : [];
         const [created] = await tx
           .insert(catalogNodes)
           .values({
+            id: nodeId,
+            imagePath: image?.path ?? null,
+            imageAlt: image ? (dto.imageAlt ?? null) : null,
             tenantId: ctx.tenantId,
             hierarchyId: h.id,
             levelId: level.id,
@@ -745,14 +786,41 @@ export class CatalogHierarchyService {
 
   async updateNode(
     ctx: OrgContext,
+    user: AuthUser,
     id: string,
     dto: UpdateCatalogNodeDto,
   ): Promise<CatalogNodeDetailDto> {
-    return this.db.withUser(ctx.userId, (tx) =>
+    const saved = await this.db.withUser(ctx.userId, (tx) =>
       mapErrors(async () => {
         const row = await findNodeRow(tx, ctx.tenantId, id);
         if (!row) throw nodeNotFound();
         const set: Partial<typeof catalogNodes.$inferInsert> = {};
+        const previousImage = row.node.imagePath;
+        let imagePath = previousImage;
+        if (dto.imagePath !== undefined) {
+          if (!dto.imagePath) imagePath = null;
+          else if (dto.imagePath === previousImage) imagePath = previousImage;
+          else
+            imagePath = (
+              await this.references.verifyObjectsUnderLock(
+                tx,
+                user.token,
+                catalogNodeFolder(ctx.tenantId, id),
+                [dto.imagePath],
+              )
+            )[0].path;
+          if (imagePath !== previousImage) set.imagePath = imagePath;
+        }
+        if (imagePath === null) {
+          // Removing the image removes its description; a description alone is meaningless.
+          if (dto.imageAlt)
+            throw invalid(
+              'An image description needs an image.',
+              { imageAlt: 'Send an image first.' },
+              'CATALOG_NODE_IMAGE_ALT_INVALID',
+            );
+          if (row.node.imageAlt !== null) set.imageAlt = null;
+        } else if (dto.imageAlt !== undefined) set.imageAlt = dto.imageAlt;
         if (dto.name !== undefined) set.name = dto.name;
         if (dto.slug !== undefined) set.slug = dto.slug;
         if (dto.description !== undefined) set.description = dto.description;
@@ -763,9 +831,42 @@ export class CatalogHierarchyService {
           set.seoDescription = dto.seoDescription;
         if (Object.keys(set).length > 0)
           await tx.update(catalogNodes).set(set).where(eq(catalogNodes.id, id));
-        return this.nodeDetail(tx, ctx.tenantId, id);
+        return {
+          detail: await this.nodeDetail(tx, ctx.tenantId, id),
+          replaced: previousImage && previousImage !== imagePath,
+          previousImage,
+        };
       }),
     );
+    // Only after the change is saved: the old file goes, unless something still uses it.
+    if (saved.replaced && saved.previousImage)
+      await this.removeImages(user, ctx.tenantId, [saved.previousImage]);
+    return saved.detail;
+  }
+
+  /**
+   * Best-effort removal of image files after the database change committed. Files are processed in batches (one lock per
+   * file, bounded query size), so a huge subtree is fine. A failure leaves an unreferenced file, never a broken item.
+   */
+  private async removeImages(
+    user: AuthUser,
+    tenantId: string,
+    paths: string[],
+  ): Promise<void> {
+    const unique = [...new Set(paths)];
+    for (let i = 0; i < unique.length; i += IMAGE_CLEANUP_BATCH) {
+      try {
+        await this.references.removeUnreferencedObjects(
+          user,
+          tenantId,
+          unique.slice(i, i + IMAGE_CLEANUP_BATCH),
+        );
+      } catch (e) {
+        this.logger.error(
+          `catalog image clean-up failed: ${e instanceof Error ? e.message : 'unknown'}`,
+        );
+      }
+    }
   }
 
   /** Moves an item (with everything below it) under another parent of the level above, or to the top level. */
@@ -870,10 +971,11 @@ export class CatalogHierarchyService {
 
   async deleteNode(
     ctx: OrgContext,
+    user: AuthUser,
     id: string,
     cascade: boolean,
   ): Promise<CatalogDeletedDto> {
-    return this.db.withUser(ctx.userId, (tx) =>
+    const done = await this.db.withUser(ctx.userId, (tx) =>
       mapErrors(async () => {
         const node = await findNodeRow(tx, ctx.tenantId, id);
         if (!node) throw nodeNotFound();
@@ -907,10 +1009,19 @@ export class CatalogHierarchyService {
               sql`${id}::uuid = any(${catalogNodes.pathIds})`,
             ),
           )
-          .returning({ id: catalogNodes.id });
-        return { deleted: gone.length };
+          .returning({
+            id: catalogNodes.id,
+            imagePath: catalogNodes.imagePath,
+          });
+        return {
+          deleted: gone.length,
+          images: gone.flatMap((g) => (g.imagePath ? [g.imagePath] : [])),
+        };
       }),
     );
+    // After the commit: the files of every deleted item (the whole subtree), unless something else still uses them.
+    await this.removeImages(user, ctx.tenantId, done.images);
+    return { deleted: done.deleted };
   }
 }
 

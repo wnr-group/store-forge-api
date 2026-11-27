@@ -4,6 +4,7 @@
  *   {tenantId}/{productId}/{file}        product media
  *   {tenantId}/collections/{id}/{file}   collection images
  *   {tenantId}/store/{file}              store logo
+ *   {tenantId}/catalog/{nodeId}/{file}   catalog hierarchy item images
  * The database CHECK constraints and the Storage policies enforce the same layout.
  */
 export const PRODUCT_BUCKET = 'products';
@@ -28,6 +29,8 @@ export const productFolder = (tenantId: string, productId: string) =>
 export const collectionFolder = (tenantId: string, collectionId: string) =>
   `${tenantId}/collections/${collectionId}`;
 export const storeFolder = (tenantId: string) => `${tenantId}/store`;
+export const catalogNodeFolder = (tenantId: string, nodeId: string) =>
+  `${tenantId}/catalog/${nodeId}`;
 
 /** True when `path` is a direct child file of `folder` with no traversal tricks. */
 export function isDirectChild(path: string, folder: string): boolean {

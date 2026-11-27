@@ -29,6 +29,8 @@ interface RawNode {
   depth: number;
   seo_title?: string | null;
   seo_description?: string | null;
+  image_path?: string | null;
+  image_alt?: string | null;
   has_children: boolean;
   product_count: number;
 }
@@ -60,6 +62,8 @@ interface RawNodePage {
     depth: number;
     seo_title: string | null;
     seo_description: string | null;
+    image_path?: string | null;
+    image_alt?: string | null;
     has_children: boolean;
     product_count: number;
     level: RawLevel;
@@ -116,6 +120,8 @@ const node = (n: RawNode): PublicCatalogNodeDto => ({
   depth: n.depth,
   seoTitle: n.seo_title ?? null,
   seoDescription: n.seo_description ?? null,
+  imagePath: n.image_path ?? null,
+  imageAlt: n.image_alt ?? null,
   hasChildren: n.has_children,
   productCount: Number(n.product_count),
 });
@@ -193,6 +199,8 @@ export class PublicCatalogService {
       depth: p.node.depth,
       seoTitle: p.node.seo_title,
       seoDescription: p.node.seo_description,
+      imagePath: p.node.image_path ?? null,
+      imageAlt: p.node.image_alt ?? null,
       hasChildren: p.node.has_children,
       productCount: Number(p.node.product_count),
       level: level(p.node.level),

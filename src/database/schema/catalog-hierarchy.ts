@@ -114,6 +114,9 @@ export const catalogNodes = pgTable(
       .default('draft'),
     seoTitle: text('seo_title'),
     seoDescription: text('seo_description'),
+    /** One optional image: `{tenant_id}/catalog/{id}/{file}` in the `products` bucket (migration 0074). */
+    imagePath: text('image_path'),
+    imageAlt: text('image_alt'),
     pathIds: uuid('path_ids')
       .array()
       .notNull()
@@ -163,6 +166,17 @@ export const catalogNodes = pgTable(
     ),
     index('catalog_nodes_level_idx').on(t.levelId),
     index('catalog_nodes_path_ids_idx').using('gin', t.pathIds),
+    index('catalog_nodes_image_path_idx')
+      .on(t.tenantId, t.imagePath)
+      .where(sql`${t.imagePath} is not null`),
+    check(
+      'catalog_nodes_image_path_check',
+      sql`${t.imagePath} is null or (${t.imagePath} like ${t.tenantId}::text || '/catalog/' || ${t.id}::text || '/%' and ${t.imagePath} !~ '\\.\\.' and char_length(${t.imagePath}) <= 300)`,
+    ),
+    check(
+      'catalog_nodes_image_alt_check',
+      sql`${t.imageAlt} is null or (${t.imagePath} is not null and char_length(btrim(${t.imageAlt})) between 1 and 200)`,
+    ),
     check(
       'catalog_nodes_name_check',
       sql`char_length(btrim(${t.name})) between 1 and 120`,

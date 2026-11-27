@@ -15,7 +15,7 @@ The database already exists and is **owned by the Next.js repo's migrations** (`
 | `categories` | Catalog | unique `(tenant_id,slug)`; `parent_id` self-FK `set null`; `parent <> id` |
 | `collections` | Catalog | unique `(tenant_id,slug)`; `status draft\|active`; image path `{tenant}/collections/{id}/..` |
 | `collection_products` | M:N | PK `(collection_id,product_id)`; composite FKs on `(tenant_id, ...)` |
-| `catalog_hierarchies`, `catalog_levels`, `catalog_nodes`, `catalog_node_products` | catalog hierarchy (migration 0072; see `CATALOG_HIERARCHY.md`) | one hierarchy per tenant (unique index), levels numbered 1..n, tree with trigger-maintained `path_ids`/`depth`, M:N node to product; composite FKs on `(tenant_id, ...)`; RLS plus Products-module restrictive policies |
+| `catalog_hierarchies`, `catalog_levels`, `catalog_nodes`, `catalog_node_products` | catalog hierarchy (migration 0072; see `CATALOG_HIERARCHY.md`) | one hierarchy per tenant (unique index), levels numbered 1..n, tree with trigger-maintained `path_ids`/`depth`, M:N node to product; composite FKs on `(tenant_id, ...)`; RLS plus Products-module restrictive policies; `catalog_nodes.image_path` / `image_alt` (migration 0074): one optional image per item, path pinned to `{tenant}/catalog/{node id}/...` by a check |
 | `products.part_number` | nullable, not unique (migration 0072) | the SKU stays the identifier |
 | `products` | Catalog | unique `(tenant_id,slug)`; partial unique `(tenant_id,sku)`; money `bigint` minor units 0..1e11; `quantity>=0`; `status draft\|active` |
 | `product_images` | Media | composite FK to product; unique `storage_path`; one primary per product (partial unique); mime jpeg/png/webp; size 1..10 MiB |
@@ -47,7 +47,7 @@ Tables intentionally **not modelled** (template customization, excluded): `templ
 | `platform_tenant_usage`, `platform_usage_page`, `platform_usage_summary`, `platform_inactive_organizations`, `platform_new_organizations_series` | Usage analytics |
 | `rate_limit_admin(bucket,limit,window)` | Platform rate limits |
 | `get_public_storefront(slug)` | Public storefront |
-| `get_public_catalog_tree(slug, max_depth)`, `get_public_catalog_node(slug, path, page, limit, include_descendants, sort)` | Public catalog hierarchy (migration 0073) |
+| `get_public_catalog_tree(slug, max_depth)`, `get_public_catalog_node(slug, path, page, limit, include_descendants, sort)` | Public catalog hierarchy (migration 0073; re-created in 0074 to add each item's `image_path` / `image_alt`) |
 
 ## Indexes (existing, unchanged)
 

@@ -26,6 +26,7 @@ import type {
   OrgContext,
 } from '../../common/interfaces/request-context.js';
 import {
+  catalogNodeFolder,
   collectionFolder,
   IMAGE_TYPES,
   MAX_IMAGES_PER_PRODUCT,
@@ -53,14 +54,14 @@ class UploadFileDto {
 }
 
 class RequestUploadsDto {
-  @ApiProperty({ enum: ['product', 'collection', 'store'] })
-  @IsIn(['product', 'collection', 'store'])
-  scope!: 'product' | 'collection' | 'store';
+  @ApiProperty({ enum: ['product', 'collection', 'store', 'catalog'] })
+  @IsIn(['product', 'collection', 'store', 'catalog'])
+  scope!: 'product' | 'collection' | 'store' | 'catalog';
 
   @ApiPropertyOptional({
     format: 'uuid',
     description:
-      'The id of the product or collection these files belong to. Required unless the scope is `store`.',
+      'The id of the product, collection or catalog item these files belong to (for a new catalog item, the id you will send when you create it). Required unless the scope is `store`.',
   })
   @IsOptional()
   @IsUUID()
@@ -107,7 +108,7 @@ export class UploadsController {
   @ApiEndpoint({
     summary: 'Get links to upload images',
     description:
-      "Ask for secure, one-time upload links for your images. Choose what the images are for (a product, a collection or the store itself) and describe each file (its type and size). The folder the files go into is worked out from your own organization, never from the request, so nobody can upload into another store's folder. Then upload each file straight to Supabase Storage using its link, and send the `path` you got back when you save the product, collection or store.",
+      "Ask for secure, one-time upload links for your images. Choose what the images are for (a product, a collection, a catalog item or the store itself) and describe each file (its type and size). The folder the files go into is worked out from your own organization, never from the request, so nobody can upload into another store's folder. Then upload each file straight to Supabase Storage using its link, and send the `path` you got back when you save the product, collection or store.",
     auth: 'org',
     permission: '`store:manage` for scope `store`, otherwise `catalog:manage`',
     body: RequestUploadsDto,
@@ -134,14 +135,16 @@ export class UploadsController {
       throw forbidden();
     if (dto.scope !== 'store' && !dto.ownerId)
       throw invalid('ownerId is required.', {
-        ownerId: 'Required for product and collection uploads',
+        ownerId: 'Required for product, collection and catalog uploads',
       });
     const folder =
       dto.scope === 'store'
         ? storeFolder(org.tenantId)
         : dto.scope === 'collection'
           ? collectionFolder(org.tenantId, dto.ownerId!)
-          : productFolder(org.tenantId, dto.ownerId!);
+          : dto.scope === 'catalog'
+            ? catalogNodeFolder(org.tenantId, dto.ownerId!)
+            : productFolder(org.tenantId, dto.ownerId!);
     // New uploads stop once the plan storage limit is reached (the file sizes being asked for count too).
     await this.entitlements.assertWithinLimitAs(
       user.id,

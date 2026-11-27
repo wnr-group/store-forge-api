@@ -51,6 +51,18 @@ export class PublicCatalogNodeDto {
   @ApiProperty({ description: '1 for a top-level item.' }) depth!: number;
   @ApiPropertyOptional({ nullable: true }) seoTitle?: string | null;
   @ApiPropertyOptional({ nullable: true }) seoDescription?: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'Where the item image is stored in the public `products` bucket (a storage path, not a web address); null when the item has no image.',
+  })
+  imagePath!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'A short description of the image; use the item name when it is empty.',
+  })
+  imageAlt!: string | null;
   @ApiProperty({
     description:
       'Whether the item has active children (also when they were left out by `maxDepth`).',

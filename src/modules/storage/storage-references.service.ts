@@ -16,7 +16,7 @@ const lockKey = (path: string) =>
 /**
  * Reference protection for uploaded files (port of services/storage-references.service.ts).
  *
- * A stored path can be referenced from the catalog columns (product images, collection image, store logo) AND
+ * A stored path can be referenced from the catalog columns (product images, collection image, catalog item image, store logo) AND
  * from template-customization data that this API does not manage: `store_template_settings.hero_image_path`,
  * `templates.draft` and every row of `template_versions.document`. Those tables are only READ here, through raw
  * SQL, so removing a file can never break a template (see docs/EXCLUDED_FEATURES.md).
@@ -76,6 +76,7 @@ export class StorageReferencesService {
         select p.path from (values ${values}) as p(path)
         where exists (select 1 from public.product_images x where x.tenant_id = ${tenantId} and x.storage_path = p.path)
            or exists (select 1 from public.collections x where x.tenant_id = ${tenantId} and x.image_path = p.path)
+           or exists (select 1 from public.catalog_nodes x where x.tenant_id = ${tenantId} and x.image_path = p.path)
            or exists (select 1 from public.stores x where x.tenant_id = ${tenantId} and x.logo_url = p.path)
            or exists (select 1 from public.store_template_settings x where x.tenant_id = ${tenantId} and x.hero_image_path = p.path)
            or exists (select 1 from public.templates x where x.tenant_id = ${tenantId}

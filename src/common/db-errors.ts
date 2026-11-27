@@ -142,6 +142,29 @@ const RULES: Rule[] = [
       ),
   },
   {
+    match: /catalog_nodes_image_path_check/,
+    error: () =>
+      invalid(
+        'That image does not belong to this item.',
+        field('imagePath', 'Upload the image for this item again.'),
+        'CATALOG_NODE_IMAGE_INVALID',
+      ),
+  },
+  {
+    match: /catalog_nodes_image_alt_check/,
+    error: () =>
+      invalid(
+        'The image description can be up to 200 characters and needs an image.',
+        field('imageAlt', 'Use 1 to 200 characters, with an image.'),
+        'CATALOG_NODE_IMAGE_ALT_INVALID',
+      ),
+  },
+  {
+    match: /catalog_nodes_pkey/,
+    error: () =>
+      conflict('An item with that id already exists.', undefined, 'ID_TAKEN'),
+  },
+  {
     match: /catalog_node_products_product_fk|catalog_node_products_node_fk/,
     error: () =>
       invalid(

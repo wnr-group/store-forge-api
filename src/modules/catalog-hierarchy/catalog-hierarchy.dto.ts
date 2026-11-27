@@ -87,6 +87,19 @@ export class CatalogNodeDto {
   @ApiProperty({ enum: CATALOG_STATUSES }) status!: string;
   @ApiPropertyOptional({ nullable: true }) seoTitle!: string | null;
   @ApiPropertyOptional({ nullable: true }) seoDescription!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'Where the image file is stored in the `products` storage bucket (`{tenantId}/catalog/{id}/...`). This is a storage path, not a web address.',
+  })
+  imagePath!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    maxLength: 200,
+    description:
+      'A short description of the image. Optional; use the item name when it is empty.',
+  })
+  imageAlt!: string | null;
   @ApiProperty({ description: '1 for a top-level item.' }) depth!: number;
   @ApiProperty({
     type: [String],
@@ -290,6 +303,15 @@ export class ReorderCatalogLevelsDto {
 }
 
 export class CreateCatalogNodeDto {
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description:
+      'An id you create yourself, so you can upload the image into `{tenantId}/catalog/{id}/` before the item exists. Required when `imagePath` is sent; otherwise the server makes one.',
+  })
+  @IsOptional()
+  @IsUUID()
+  id?: string;
+
   @ApiProperty({ maxLength: 120, example: 'Toyota' })
   @RequiredText('Name', 120)
   name!: string;
@@ -337,6 +359,21 @@ export class CreateCatalogNodeDto {
   @ApiPropertyOptional({ nullable: true, maxLength: 160 })
   @OptionalText('SEO description', 160)
   seoDescription?: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    maxLength: 300,
+    description:
+      "The `path` you got from `POST /uploads/signed-urls` (scope `catalog`, `ownerId` = this item's `id`) after uploading the file.",
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  imagePath?: string | null;
+
+  @ApiPropertyOptional({ nullable: true, maxLength: 200 })
+  @OptionalText('Image description', 200)
+  imageAlt?: string | null;
 }
 
 export class UpdateCatalogNodeDto {
@@ -372,6 +409,25 @@ export class UpdateCatalogNodeDto {
   @ApiPropertyOptional({ nullable: true, maxLength: 160 })
   @OptionalText('SEO description', 160)
   seoDescription?: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    maxLength: 300,
+    description:
+      'A new image path (replaces the current image), `null` or an empty text to remove the image and its description. Leave it out to keep the image.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  imagePath?: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    maxLength: 200,
+    description: 'Send null or an empty text to clear it.',
+  })
+  @OptionalText('Image description', 200)
+  imageAlt?: string | null;
 }
 
 export class MoveCatalogNodeDto {

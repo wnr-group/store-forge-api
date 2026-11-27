@@ -14,10 +14,14 @@ import { ApiParam, ApiTags } from '@nestjs/swagger';
 import { ApiEndpoint } from '../../common/decorators/api-endpoint.decorator.js';
 import {
   CurrentOrg,
+  CurrentUser,
   OrgScoped,
   RequirePermission,
 } from '../../common/decorators/decorators.js';
-import type { OrgContext } from '../../common/interfaces/request-context.js';
+import type {
+  AuthUser,
+  OrgContext,
+} from '../../common/interfaces/request-context.js';
 import { CatalogAssignmentsService } from './catalog-assignments.service.js';
 import {
   CatalogExportDto,
@@ -316,7 +320,7 @@ export class CatalogHierarchyController {
   @ApiEndpoint({
     summary: 'Add an item',
     description:
-      'Add an item under a parent, or at the top level when you send no `parentId`. It goes on the level right after its parent (or level 1), so that level has to exist. Without a slug one is made from the name, unique among its siblings. New items are drafts: a draft hides itself and everything below it from shoppers.',
+      'Add an item under a parent, or at the top level when you send no `parentId`. It goes on the level right after its parent (or level 1), so that level has to exist. Without a slug one is made from the name, unique among its siblings. New items are drafts: a draft hides itself and everything below it from shoppers. To give the item an image, choose an `id` (a UUID), upload the file with `POST /uploads/signed-urls` (scope `catalog`, `ownerId` = that id), then send the same `id`, the returned `imagePath` and an optional `imageAlt` here.',
     auth: 'org',
     permission: 'catalog:manage',
     body: CreateCatalogNodeDto,
@@ -325,8 +329,12 @@ export class CatalogHierarchyController {
     message: 'Catalog item created successfully',
     errors: [404, 409],
   })
-  createNode(@CurrentOrg() org: OrgContext, @Body() dto: CreateCatalogNodeDto) {
-    return this.hierarchy.createNode(org, dto);
+  createNode(
+    @CurrentOrg() org: OrgContext,
+    @CurrentUser() user: AuthUser,
+    @Body() dto: CreateCatalogNodeDto,
+  ) {
+    return this.hierarchy.createNode(org, user, dto);
   }
 
   @Post('nodes/reorder')
@@ -375,7 +383,7 @@ export class CatalogHierarchyController {
   @ApiEndpoint({
     summary: 'Edit an item',
     description:
-      'Change the name, address, description, status, position or SEO texts. Send only what you want to change. To move an item under another parent use the move route.',
+      "Change the name, address, description, status, position, SEO texts or image. Send only what you want to change. To replace the image upload a new file (scope `catalog`, `ownerId` = this item's id) and send its `imagePath`; send `imagePath: null` to remove the image and its description. The old file is deleted after the change is saved, unless something else still uses it. To move an item under another parent use the move route.",
     auth: 'org',
     permission: 'catalog:manage',
     body: UpdateCatalogNodeDto,
@@ -385,10 +393,11 @@ export class CatalogHierarchyController {
   })
   updateNode(
     @CurrentOrg() org: OrgContext,
+    @CurrentUser() user: AuthUser,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateCatalogNodeDto,
   ) {
-    return this.hierarchy.updateNode(org, id, dto);
+    return this.hierarchy.updateNode(org, user, id, dto);
   }
 
   @Post('nodes/:id/move')
@@ -419,7 +428,7 @@ export class CatalogHierarchyController {
   @ApiEndpoint({
     summary: 'Delete an item',
     description:
-      'Delete an item. If it has children the request is refused (409, CATALOG_NODE_HAS_CHILDREN) unless you send `cascade=true`, which deletes everything below it too. Products are never deleted, only taken off the deleted items.',
+      'Delete an item. If it has children the request is refused (409, CATALOG_NODE_HAS_CHILDREN) unless you send `cascade=true`, which deletes everything below it too. Products are never deleted, only taken off the deleted items. The images of the deleted items are removed from storage afterwards (unless something else still uses them).',
     auth: 'org',
     permission: 'catalog:delete',
     response: CatalogDeletedDto,
@@ -428,10 +437,11 @@ export class CatalogHierarchyController {
   })
   deleteNode(
     @CurrentOrg() org: OrgContext,
+    @CurrentUser() user: AuthUser,
     @Param('id', ParseUUIDPipe) id: string,
     @Query() query: DeleteCatalogNodeQueryDto,
   ) {
-    return this.hierarchy.deleteNode(org, id, query.cascade === true);
+    return this.hierarchy.deleteNode(org, user, id, query.cascade === true);
   }
 
   // ------------------------------------------------------------------------------------------------------ products
