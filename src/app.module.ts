@@ -23,6 +23,7 @@ import { validateEnv } from './config/env.validation.js';
 import { DatabaseModule } from './database/database.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { AnalyticsModule } from './modules/analytics/analytics.module.js';
+import { CatalogHierarchyModule } from './modules/catalog-hierarchy/catalog-hierarchy.module.js';
 import { CategoriesModule } from './modules/categories/categories.module.js';
 import { CollectionsModule } from './modules/collections/collections.module.js';
 import { CustomersModule } from './modules/customers/customers.module.js';
@@ -80,6 +81,7 @@ import { UsersModule } from './modules/users/users.module.js';
     StorageModule,
     CategoriesModule,
     CollectionsModule,
+    CatalogHierarchyModule,
     ProductsModule,
     RecommendationsModule,
     ReviewsModule,

@@ -9,6 +9,7 @@ const base = (over: Partial<ProductValues> = {}): ProductValues => ({
   categoryId: null,
   collectionIds: [],
   sku: null,
+  partNumber: null,
   price: '100',
   compareAtPrice: null,
   cost: null,

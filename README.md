@@ -150,7 +150,7 @@ The service-role key never touches the database layer.
 
 ## API overview
 
-Base path `/api/v1`. The OpenAPI JSON is at `/api/docs-json`. Every endpoint with its permissions and rules is listed in [docs/API_ENDPOINT_INVENTORY.md](docs/API_ENDPOINT_INVENTORY.md). Marketing and analytics (discounts, campaigns, abandoned carts, reports, Google Analytics and Meta Pixel): [docs/MARKETING_ANALYTICS_PLAN.md](docs/MARKETING_ANALYTICS_PLAN.md) and [docs/MARKETING_ANALYTICS_REVIEW.md](docs/MARKETING_ANALYTICS_REVIEW.md).
+Base path `/api/v1`. The OpenAPI JSON is at `/api/docs-json`. Every endpoint with its permissions and rules is listed in [docs/API_ENDPOINT_INVENTORY.md](docs/API_ENDPOINT_INVENTORY.md). Marketing and analytics (discounts, campaigns, abandoned carts, reports, Google Analytics and Meta Pixel): [docs/MARKETING_ANALYTICS_PLAN.md](docs/MARKETING_ANALYTICS_PLAN.md) and [docs/MARKETING_ANALYTICS_REVIEW.md](docs/MARKETING_ANALYTICS_REVIEW.md). The configurable catalog hierarchy (levels such as Brand > Vehicle > Variant, product placement, part numbers, import and export, public catalog API): [docs/CATALOG_HIERARCHY.md](docs/CATALOG_HIERARCHY.md).
 
 | Area | Routes |
 |---|---|

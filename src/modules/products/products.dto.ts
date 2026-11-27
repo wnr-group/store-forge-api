@@ -43,6 +43,12 @@ export class ProductListItemDto {
   @ApiProperty() name!: string;
   @ApiProperty() slug!: string;
   @ApiPropertyOptional({ nullable: true }) sku!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'The part number. It is not unique and never replaces the SKU.',
+  })
+  partNumber!: string | null;
   @ApiProperty({ enum: PRODUCT_STATUSES }) status!: string;
   @ApiProperty({
     description:
@@ -121,6 +127,12 @@ export class ProductDetailDto {
       'The product code (SKU). It is used only when the product has no variants.',
   })
   sku!: string | null;
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'The part number (for example a manufacturer or catalogue number). It is not unique, may be shared by several products and is never used to identify a product; the SKU stays the product code.',
+  })
+  partNumber!: string | null;
   @ApiProperty() priceMinor!: number;
   @ApiPropertyOptional({ nullable: true }) compareAtPriceMinor!: number | null;
   @ApiPropertyOptional({ nullable: true }) costMinor!: number | null;
@@ -312,6 +324,15 @@ class ProductWritableFields {
   })
   @Sku()
   sku?: string | null;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    maxLength: 64,
+    description:
+      'The part number. It is optional, not unique and independent of the SKU. Send null or an empty text to clear it.',
+  })
+  @OptionalText('Part number', 64)
+  partNumber?: string | null;
 
   @ApiPropertyOptional({ nullable: true, example: '1299.50' })
   @OptionalMoneyText('Compare-at price')

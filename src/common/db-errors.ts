@@ -14,6 +14,142 @@ const field = (name: string, message: string) => ({ [name]: message });
 
 /** Known constraint names -> messages that are safe to show (ported from lib/db/errors.ts). Anything else is rethrown. */
 const RULES: Rule[] = [
+  // Catalog hierarchy (migration 0072). Listed first: a few table names end in "products" and would match older rules.
+  {
+    match: /catalog_hierarchies_one_per_tenant_idx/,
+    error: () =>
+      conflict(
+        'Your catalog hierarchy already exists.',
+        undefined,
+        'CATALOG_HIERARCHY_EXISTS',
+      ),
+  },
+  {
+    match: /catalog_levels_name_key/,
+    error: () =>
+      conflict(
+        'Another level already has that name.',
+        field('name', 'This name is already in use.'),
+        'CATALOG_LEVEL_NAME_TAKEN',
+      ),
+  },
+  {
+    match: /catalog_nodes_root_slug_key|catalog_nodes_child_slug_key/,
+    error: () =>
+      conflict(
+        'Another item with the same parent already uses that address.',
+        field('slug', 'This slug is already in use.'),
+        'CATALOG_NODE_SLUG_TAKEN',
+      ),
+  },
+  {
+    match: /CATALOG_NODE_LEVEL_MISMATCH/,
+    error: () =>
+      invalid(
+        'An item has to sit on the level right below its parent (top-level items on the first level).',
+        undefined,
+        'CATALOG_NODE_LEVEL_MISMATCH',
+      ),
+  },
+  {
+    match: /CATALOG_NODE_CYCLE/,
+    error: () =>
+      invalid(
+        'An item cannot be moved under itself or under one of its own descendants.',
+        undefined,
+        'CATALOG_NODE_CYCLE',
+      ),
+  },
+  {
+    match: /CATALOG_NODE_LEVEL_IMMUTABLE/,
+    error: () =>
+      invalid(
+        'The level of an item cannot be changed.',
+        undefined,
+        'CATALOG_NODE_LEVEL_IMMUTABLE',
+      ),
+  },
+  {
+    match: /CATALOG_PARENT_NOT_FOUND|CATALOG_LEVEL_NOT_FOUND/,
+    error: () =>
+      invalid(
+        'The parent item or the level no longer exists.',
+        undefined,
+        'CATALOG_PARENT_NOT_FOUND',
+      ),
+  },
+  {
+    match: /CATALOG_LEVEL_ORDER_BLOCKED/,
+    error: () =>
+      conflict(
+        'The levels cannot be put in this order, because existing items depend on the current order.',
+        undefined,
+        'CATALOG_LEVEL_ORDER_BLOCKED',
+      ),
+  },
+  {
+    match: /CATALOG_LEVEL_NUMBERING|catalog_levels_position_key/,
+    error: () =>
+      conflict(
+        'The levels were changed at the same time. Reload and try again.',
+        undefined,
+        'CATALOG_LEVEL_CONFLICT',
+      ),
+  },
+  {
+    match: /CATALOG_LEVEL_HAS_PRODUCTS/,
+    error: () =>
+      conflict(
+        'Products are still placed on items of this level. Take them off first.',
+        undefined,
+        'CATALOG_LEVEL_HAS_PRODUCTS',
+      ),
+  },
+  {
+    match: /CATALOG_LEVEL_CANNOT_HOLD_PRODUCTS/,
+    error: () =>
+      invalid(
+        'Products cannot be placed on items of this level.',
+        undefined,
+        'CATALOG_LEVEL_CANNOT_HOLD_PRODUCTS',
+      ),
+  },
+  {
+    match: /catalog_nodes_level_fk/,
+    error: () =>
+      conflict(
+        'That level still has items.',
+        undefined,
+        'CATALOG_LEVEL_IN_USE',
+      ),
+  },
+  {
+    match: /catalog_nodes_parent_fk/,
+    error: () =>
+      conflict(
+        'That item still has items below it.',
+        undefined,
+        'CATALOG_NODE_HAS_CHILDREN',
+      ),
+  },
+  {
+    match: /catalog_nodes_slug_check/,
+    error: () =>
+      invalid(
+        'Use lowercase letters, numbers and single hyphens, up to 80 characters.',
+        field('slug', 'This is not a valid slug.'),
+        'CATALOG_NODE_SLUG_INVALID',
+      ),
+  },
+  {
+    match: /catalog_node_products_product_fk|catalog_node_products_node_fk/,
+    error: () =>
+      invalid(
+        'The product or the item no longer exists.',
+        undefined,
+        'CATALOG_TARGET_NOT_FOUND',
+      ),
+  },
   {
     match: /products_pkey|collections_pkey/,
     error: () =>

@@ -33,6 +33,12 @@ export class ImportRowDto {
   @ApiPropertyOptional() @optionalText(50) price?: string;
   @ApiPropertyOptional() @optionalText(500) slug?: string;
   @ApiPropertyOptional() @optionalText(200) sku?: string;
+  @ApiPropertyOptional({
+    description:
+      'The part number. Optional, not unique and never used to match products.',
+  })
+  @optionalText(200)
+  part_number?: string;
   @ApiPropertyOptional() @optionalText(2000) short_description?: string;
   @ApiPropertyOptional() @optionalText(25000) description?: string;
   @ApiPropertyOptional() @optionalText(500) product_type?: string;
@@ -44,6 +50,18 @@ export class ImportRowDto {
   @ApiPropertyOptional() @optionalText(20) status?: string;
   @ApiPropertyOptional() @optionalText(500) category?: string;
   @ApiPropertyOptional() @optionalText(500) subcategory?: string;
+  @ApiPropertyOptional({
+    description:
+      'Information only (it comes from GET /products/export): ignored.',
+  })
+  @optionalText(50)
+  id?: string;
+  @ApiPropertyOptional({
+    description:
+      'Information only (it comes from GET /products/export): ignored.',
+  })
+  @optionalText(20)
+  has_variants?: string;
   @ApiPropertyOptional({ type: [ImportSourceErrorDto], maxItems: 20 })
   @IsOptional()
   @IsArray()

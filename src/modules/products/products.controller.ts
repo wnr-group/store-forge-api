@@ -31,6 +31,11 @@ import {
   ProductListQueryDto,
   UpdateProductDto,
 } from './products.dto.js';
+import {
+  ProductExportDto,
+  ProductExportQueryDto,
+} from './product-export.dto.js';
+import { ProductExportService } from './product-export.service.js';
 import { ImportProductsDto, ImportResultDto } from './product-import.dto.js';
 import { ProductImportService } from './product-import.service.js';
 import { ProductsService } from './products.service.js';
@@ -42,6 +47,7 @@ export class ProductsController {
   constructor(
     private readonly products: ProductsService,
     private readonly importer: ProductImportService,
+    private readonly exporter: ProductExportService,
   ) {}
 
   @Get()
@@ -49,7 +55,7 @@ export class ProductsController {
   @ApiEndpoint({
     summary: 'List products',
     description:
-      'See the products in your store, a page at a time. You can search by product name or SKU (the product code), filter by status, category or stock level, and sort the results. Searching, filtering and paging are all done by the server, so only the page you asked for is sent back. For example: `GET /products?page=1&limit=20&search=tee&status=active&stock=low&sortBy=price&sortOrder=asc`.',
+      'See the products in your store, a page at a time. You can search by product name, SKU (the product code) or part number, filter by status, category or stock level, and sort the results. Searching, filtering and paging are all done by the server, so only the page you asked for is sent back. For example: `GET /products?page=1&limit=20&search=tee&status=active&stock=low&sortBy=price&sortOrder=asc`.',
     auth: 'org',
     permission: 'catalog:view',
     response: [ProductListItemDto],
@@ -58,6 +64,25 @@ export class ProductsController {
   })
   list(@CurrentOrg() org: OrgContext, @Query() query: ProductListQueryDto) {
     return this.products.list(org, query);
+  }
+
+  // Declared before `:id` so "export" is never read as an id.
+  @Get('export')
+  @RequirePermission('catalog:view')
+  @ApiEndpoint({
+    summary: 'Export products as rows',
+    description:
+      'Your products as rows in the product import format, up to 1000 at a time, oldest first: name, address, SKU, part number, prices, stock, status, descriptions, category and subcategory. Ask for page 1, 2, ... until totalPages and write the rows into a CSV or Excel file. Products with variants are included (has_variants = true), but the import only creates simple products. Text that a spreadsheet could read as a formula starts with an apostrophe, which the import removes.',
+    auth: 'org',
+    permission: 'catalog:view',
+    response: ProductExportDto,
+    message: 'Products exported successfully',
+  })
+  exportProducts(
+    @CurrentOrg() org: OrgContext,
+    @Query() query: ProductExportQueryDto,
+  ) {
+    return this.exporter.export(org, query);
   }
 
   @Get(':id')

@@ -56,6 +56,10 @@ export const SLUG_PATTERN = '^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$';
 export const PRODUCT_STATUSES = ['draft', 'active'] as const;
 export type ProductStatus = (typeof PRODUCT_STATUSES)[number];
 
+/** Hierarchies and their nodes are hidden from shoppers while draft (migration 0072). */
+export const CATALOG_STATUSES = ['draft', 'active'] as const;
+export type CatalogStatus = (typeof CATALOG_STATUSES)[number];
+
 export const COLLECTION_STATUSES = ['draft', 'active'] as const;
 export type CollectionStatus = (typeof COLLECTION_STATUSES)[number];
 

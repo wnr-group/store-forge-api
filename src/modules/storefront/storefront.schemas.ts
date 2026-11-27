@@ -70,6 +70,7 @@ export const publicProductPayloadSchema = z.object({
     short_description: z.string().nullable().optional(),
     product_type: z.string().nullable().optional(),
     sku: z.string().nullable().optional(),
+    part_number: z.string().nullable().optional(),
     price_minor: z.number(),
     compare_at_price_minor: z.number().nullable().optional(),
     has_variants: z.boolean().default(false),

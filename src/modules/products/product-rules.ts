@@ -23,6 +23,7 @@ export interface ProductValues {
   categoryId: string | null;
   collectionIds: string[];
   sku: string | null;
+  partNumber: string | null;
   price: string;
   compareAtPrice: string | null;
   cost: string | null;

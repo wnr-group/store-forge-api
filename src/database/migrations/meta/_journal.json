@@ -505,6 +505,20 @@
       "when": 1794300054000,
       "tag": "0071_store_seo_metadata",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1794300055000,
+      "tag": "0072_catalog_hierarchy_core",
+      "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1794300056000,
+      "tag": "0073_catalog_hierarchy_public",
+      "breakpoints": true
     }
   ]
 }
