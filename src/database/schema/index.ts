@@ -7,6 +7,7 @@ export * from './stores.js';
 export * from './tenants.js';
 export * from './catalog.js';
 export * from './customers.js';
+export * from './customer-accounts.js';
 export * from './order-lifecycle.js';
 export * from './admin-audit.js';
 export * from './platform-settings.js';

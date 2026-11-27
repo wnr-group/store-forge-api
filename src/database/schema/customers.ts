@@ -85,6 +85,8 @@ export const orders = pgTable(
     customerId: uuid('customer_id').references(() => customers.id, {
       onDelete: 'set null',
     }),
+    /** The storefront account the order was placed from (migration 0071); null for orders without one. */
+    accountId: uuid('account_id'),
     orderNumber: integer('order_number').notNull(),
     status: text('status', { enum: ORDER_STATUSES })
       .notNull()

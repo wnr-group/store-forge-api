@@ -35,6 +35,7 @@ import { PublicModule } from './modules/public/public.module.js';
 import { TeamModule } from './modules/team/team.module.js';
 import { PaymentsModule } from './modules/payments/payments.module.js';
 import { OrdersModule } from './modules/orders/orders.module.js';
+import { CustomerAccountsModule } from './modules/customer-accounts/customer-accounts.module.js';
 import { ShipmentsModule } from './modules/shipments/shipments.module.js';
 import { ShippingModule } from './modules/shipping/shipping.module.js';
 import { TaxModule } from './modules/tax/tax.module.js';
@@ -89,6 +90,7 @@ import { UsersModule } from './modules/users/users.module.js';
     TeamModule,
     PaymentsModule,
     OrdersModule,
+    CustomerAccountsModule,
     CheckoutPaymentsModule,
     ShippingModule,
     ShipmentsModule,

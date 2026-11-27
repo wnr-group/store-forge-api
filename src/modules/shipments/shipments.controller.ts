@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   Res,
@@ -22,10 +23,12 @@ import {
 import type { OrgContext } from '../../common/interfaces/request-context.js';
 import {
   CreateShipmentDto,
+  ManualShipmentDto,
   ShipmentDetailDto,
   ShipmentDto,
   ShipmentLabelDto,
   ShipmentListQueryDto,
+  UpdateManualShipmentDto,
 } from './shipments.dto.js';
 import { ShipmentTrackingService } from './shipment-tracking.service.js';
 import { ShipmentsService } from './shipments.service.js';
@@ -102,6 +105,53 @@ export class ShipmentsController {
     @Body() dto: CreateShipmentDto,
   ) {
     return this.shipments.create(org, orderId, dto);
+  }
+
+  @Post('orders/:orderId/shipments/manual')
+  @Throttle(CARRIER_CALL)
+  @RequirePermission('orders:manage')
+  @ApiParam({ name: 'orderId', format: 'uuid' })
+  @ApiEndpoint({
+    summary: 'Record a parcel you sent yourself',
+    description:
+      'For a store that ships with its own courier (no carrier connection): type the shipping provider and the tracking number (and optionally a tracking link and the expected delivery date). The order moves to ready to ship and the customer sees the provider and tracking number in their account at once. The same order rules as a carrier shipment apply: confirmed and paid (or cash on delivery).',
+    auth: 'org',
+    permission: 'orders:manage',
+    body: ManualShipmentDto,
+    response: ShipmentDetailDto,
+    status: 201,
+    message: 'Shipment recorded successfully',
+    errors: [400, 404, 409, 429],
+  })
+  recordManual(
+    @CurrentOrg() org: OrgContext,
+    @Param('orderId', ParseUUIDPipe) orderId: string,
+    @Body() dto: ManualShipmentDto,
+  ) {
+    return this.shipments.recordManual(org, orderId, dto);
+  }
+
+  @Patch('shipments/:id/manual')
+  @Throttle(CARRIER_CALL)
+  @RequirePermission('orders:manage')
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiEndpoint({
+    summary: 'Update a parcel you recorded yourself',
+    description:
+      'Change the provider, tracking number or link, or move the parcel forward (picked up, in transit, out for delivery, delivered, returned). The order follows the parcel and the customer sees every change with its time. Parcels booked with a carrier cannot be changed here (409 `SHIPMENT_NOT_MANUAL`).',
+    auth: 'org',
+    permission: 'orders:manage',
+    body: UpdateManualShipmentDto,
+    response: ShipmentDetailDto,
+    message: 'Shipment updated successfully',
+    errors: [400, 404, 409, 429],
+  })
+  updateManual(
+    @CurrentOrg() org: OrgContext,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateManualShipmentDto,
+  ) {
+    return this.shipments.updateManual(org, id, dto);
   }
 
   @Get('shipments/:id')

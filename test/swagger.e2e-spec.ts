@@ -56,6 +56,20 @@ const PUBLIC_ROUTES = new Set([
   'GET /api/v1/public/storefronts/{slug}/recommendations',
   'GET /api/v1/public/storefronts/{slug}/landing-pages/{pageSlug}',
   'POST /api/v1/public/vitals',
+  // The shopper's own account area of one store: its own session (X-Customer-Session), never a bearer token.
+  'POST /api/v1/public/stores/{slug}/account/register',
+  'POST /api/v1/public/stores/{slug}/account/login',
+  'POST /api/v1/public/stores/{slug}/account/logout',
+  'GET /api/v1/public/stores/{slug}/account/me',
+  'PATCH /api/v1/public/stores/{slug}/account/me',
+  'POST /api/v1/public/stores/{slug}/account/password',
+  'GET /api/v1/public/stores/{slug}/account/addresses',
+  'POST /api/v1/public/stores/{slug}/account/addresses',
+  'PUT /api/v1/public/stores/{slug}/account/addresses/{id}',
+  'DELETE /api/v1/public/stores/{slug}/account/addresses/{id}',
+  'GET /api/v1/public/stores/{slug}/account/orders',
+  'GET /api/v1/public/stores/{slug}/account/orders/{orderNumber}',
+  'POST /api/v1/public/stores/{slug}/account/orders/{orderNumber}/cancel',
 ]);
 
 /**
@@ -184,6 +198,8 @@ describe('OpenAPI coverage (e2e)', () => {
       'POST /api/v1/integrations/{provider}/enable', // acts on the provider alone
       'POST /api/v1/integrations/{provider}/disable',
       'POST /api/v1/integrations/{provider}/test',
+      'POST /api/v1/public/stores/{slug}/account/logout', // the session is the header
+      'POST /api/v1/public/stores/{slug}/account/orders/{orderNumber}/cancel', // the shopper's session is the input
       'POST /api/v1/auth/logout', // the session is the cookie
       'POST /api/v1/auth/refresh',
     ]);

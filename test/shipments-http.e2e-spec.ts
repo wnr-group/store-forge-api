@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { as, createTestApp, type TestApp } from './support/app.js';
+import { registerShopper } from './support/shopper.js';
 import { FakeCarrier } from './support/fake-carrier.js';
 import { createTestDb, migrationsAvailable } from './support/pglite.js';
 import { addShiprocketShipping, SR } from './support/shipments-world.js';
@@ -25,6 +26,7 @@ describe.skipIf(!migrationsAvailable)(
   'shipments, labels, carrier webhooks and the tracking job (HTTP e2e)',
   () => {
     let t: TestApp;
+    const shopper: Record<string, string> = {};
     let w: World;
     let alice: Awaited<ReturnType<typeof as>>;
     let bob: Awaited<ReturnType<typeof as>>;
@@ -38,6 +40,7 @@ describe.skipIf(!migrationsAvailable)(
     async function place(qty = 1) {
       const res = await anon()
         .post(api('/public/stores/alpha-shop/orders'))
+        .set('X-Customer-Session', shopper['alpha-shop'])
         .set('Idempotency-Key', randomBytes(12).toString('hex'))
         .send({
           lines: [{ productSlug: 'http-ship-mug', quantity: qty }],
@@ -84,6 +87,7 @@ describe.skipIf(!migrationsAvailable)(
         ),
       );
       t = await createTestApp(db);
+      shopper['alpha-shop'] = await registerShopper(t.app, 'alpha-shop');
 
       // Every carrier call in the app goes to a scriptable fake.
       const fake = new FakeCarrier();

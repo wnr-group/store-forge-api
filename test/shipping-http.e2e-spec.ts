@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { as, createTestApp, type TestApp } from './support/app.js';
+import { registerShopper } from './support/shopper.js';
 import { createTestDb, migrationsAvailable } from './support/pglite.js';
 import { seedWorld, type World } from './support/world.js';
 
@@ -19,6 +20,7 @@ describe.skipIf(!migrationsAvailable)(
   'shipping zones, methods and delivery options (HTTP e2e)',
   () => {
     let t: TestApp;
+    const shopper: Record<string, string> = {};
     let w: World;
     let alice: Awaited<ReturnType<typeof as>>;
     let bob: Awaited<ReturnType<typeof as>>;
@@ -34,6 +36,7 @@ describe.skipIf(!migrationsAvailable)(
       const db = await createTestDb();
       w = await seedWorld(db);
       t = await createTestApp(db);
+      shopper['alpha-shop'] = await registerShopper(t.app, 'alpha-shop');
       alice = await as(t, w.alice, w.tenantA);
       bob = await as(t, w.bob, w.tenantB);
       reader = await as(t, w.members.reader, w.tenantA);
@@ -569,6 +572,7 @@ describe.skipIf(!migrationsAvailable)(
         const order = (body: object) =>
           anon()
             .post('/api/v1/public/stores/alpha-shop/orders')
+            .set('X-Customer-Session', shopper['alpha-shop'])
             .set('Idempotency-Key', 'http-missing-0001')
             .send(body);
         const base = {
@@ -628,6 +632,7 @@ describe.skipIf(!migrationsAvailable)(
         const place = (body: object, key: string) =>
           anon()
             .post('/api/v1/public/stores/alpha-shop/orders')
+            .set('X-Customer-Session', shopper['alpha-shop'])
             .set('Idempotency-Key', key)
             .send(body);
         const asOwner = await as(t, w.alice, w.tenantA);
