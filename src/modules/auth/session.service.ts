@@ -206,6 +206,39 @@ export class SessionService {
     }
   }
 
+  /**
+   * Starts a NEW session from a single-use login token (see `SupabaseAdminService.createLoginTokenHash`) and sets its cookies on this
+   * response. The token is consumed, so a second try fails. Nothing is set on failure.
+   */
+  async signInWithTokenHash(
+    req: Request,
+    res: Response,
+    tokenHash: string,
+  ): Promise<LoginSessionOnly> {
+    const jar = new CookieJar(this.secure(req), this.cookieName);
+    const { data, error } = await this.client(req, jar, {
+      ignoreSession: true,
+    }).auth.verifyOtp({ token_hash: tokenHash, type: 'magiclink' });
+    if (error || !data.session || !data.user) {
+      if (
+        error &&
+        (error.status === 429 || error.code === 'over_request_rate_limit')
+      )
+        throw this.mapSignInError(error);
+      throw new AppException(
+        'UNAUTHENTICATED',
+        'This sign-in link has expired. Please sign in again.',
+        { code: 'HANDOFF_INVALID' },
+      );
+    }
+    this.send(res, jar);
+    return {
+      id: data.user.id,
+      email: data.user.email ?? null,
+      expiresAt: data.session.expires_at ?? null,
+    };
+  }
+
   /** Revokes the session at Supabase (best effort) and ALWAYS clears the cookies. */
   async logout(req: Request, res: Response): Promise<void> {
     const jar = new CookieJar(this.secure(req), this.cookieName);

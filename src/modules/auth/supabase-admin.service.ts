@@ -90,6 +90,21 @@ export class SupabaseAdminService {
     return { id: data.user.id, email: data.user.email ?? input.email };
   }
 
+  /**
+   * A single-use login token for an existing account (no e-mail is sent). Exchanging it (`verifyOtp`) starts a NEW session for the
+   * person, independent of the one they already have, which is how a signed-in person is carried to another store host.
+   */
+  async createLoginTokenHash(email: string): Promise<string> {
+    const { data, error } = await this.client.auth.admin.generateLink({
+      type: 'magiclink',
+      email,
+    });
+    const hash = data?.properties?.hashed_token;
+    if (error || !hash)
+      throw this.mapError(error ?? { message: 'no login token returned' });
+    return hash;
+  }
+
   /** Admin-assisted password reset. The old password is never read or returned. */
   async setUserPassword(userId: string, password: string): Promise<void> {
     const { error } = await this.client.auth.admin.updateUserById(userId, {

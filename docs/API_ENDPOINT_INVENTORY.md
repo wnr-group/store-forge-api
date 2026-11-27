@@ -35,6 +35,8 @@ Base path `/api/v1`. All JSON. Success envelope `{success,message,data,meta?}`; 
 | 76 | Sign out | POST `/auth/logout` | Public + origin/secret check | - | `{signedOut}` | revokes at Supabase, always clears cookies |
 | 77 | Refresh session | POST `/auth/refresh` | Public + origin/secret check | - (cookie) | `{user, expiresAt}`; new cookies | refresh token rotation; used/revoked -> cookies cleared, 401 `SESSION_EXPIRED` |
 | 78 | Verify session | GET `/auth/session` | JWT (Bearer or cookie) | - | `{user:{id,email,fullName}, expiresAt}` | local signature/issuer/audience/expiry check, no database |
+| 78a | Get a one-time code to open my store | POST `/auth/handoff` | JWT (Bearer or cookie) | - | `{audience}` (the store host label) | `{code, expiresInSeconds}` | `memberships`, `stores`; Supabase Auth admin | only an active member of the store that owns the host; the code is signed, works once, for that host only, for 60 seconds; throttled |
+| 78b | Sign a store host in with a code | POST `/auth/handoff/exchange` | Public + origin/secret check (trusted Next.js server only) | - | `{code, audience}` | `{id, email, expiresAt}`; new host-only cookies | Supabase Auth | wrong, used, expired or other-host code -> 401 `HANDOFF_INVALID`; the session on the root site is untouched; throttled |
 
 ## Self-service sign-up (migration 0070)
 

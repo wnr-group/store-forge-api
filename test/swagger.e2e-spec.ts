@@ -25,6 +25,7 @@ const PUBLIC_ROUTES = new Set([
   'POST /api/v1/auth/register',
   'POST /api/v1/auth/logout',
   'POST /api/v1/auth/refresh',
+  'POST /api/v1/auth/handoff/exchange',
   'GET /api/v1/public/branding',
   'GET /api/v1/public/plans',
   'POST /api/v1/public/stores/{slug}/orders',

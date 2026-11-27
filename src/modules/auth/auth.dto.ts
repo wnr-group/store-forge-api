@@ -4,6 +4,7 @@ import {
   IsBoolean,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
@@ -16,6 +17,7 @@ import {
   PasswordField,
   RequiredText,
 } from '../../common/validation/fields.js';
+import { HOST_LABEL } from './handoff-code.js';
 
 /** Same rules as the Next.js login form: a trimmed, lower-cased e-mail and a non-empty password of at most 72 characters. */
 export class LoginDto {
@@ -164,6 +166,13 @@ export type LoginSessionOnly = Pick<MeDto, 'id' | 'email'> & {
   expiresAt: number | null;
 };
 
+/** The reduced sign-in answer (see `LoginSessionOnly`): who signed in and when the session ends. */
+export class LoginSessionDto {
+  @ApiProperty({ format: 'uuid' }) id!: string;
+  @ApiPropertyOptional({ nullable: true }) email!: string | null;
+  @ApiPropertyOptional({ nullable: true }) expiresAt!: number | null;
+}
+
 export class SessionUserDto {
   @ApiProperty({ format: 'uuid' }) id!: string;
   @ApiPropertyOptional({ nullable: true }) email!: string | null;
@@ -187,4 +196,40 @@ export class SessionDto {
 
 export class SignedOutDto {
   @ApiProperty({ example: true }) signedOut!: boolean;
+}
+
+export class HandoffRequestDto {
+  @ApiProperty({
+    example: 'urban-nest-zqkod2',
+    description:
+      'The host label of the store to open, `{store slug}-{public id}`: the part before the root domain. You must be an active member of that store.',
+  })
+  @IsString()
+  @Matches(HOST_LABEL, { message: 'Enter a valid store address.' })
+  audience!: string;
+}
+
+export class HandoffDto {
+  @ApiProperty({
+    description:
+      'A one-time code. It works once, only for the store it was made for, and only for one minute.',
+  })
+  code!: string;
+  @ApiProperty({ example: 60 }) expiresInSeconds!: number;
+}
+
+export class HandoffExchangeDto {
+  @ApiProperty({ description: 'The code from `POST /auth/handoff`.' })
+  @IsString()
+  @MinLength(20)
+  @MaxLength(2000)
+  code!: string;
+
+  @ApiProperty({
+    example: 'urban-nest-zqkod2',
+    description: 'The store host that is receiving the code.',
+  })
+  @IsString()
+  @Matches(HOST_LABEL, { message: 'Enter a valid store address.' })
+  audience!: string;
 }
